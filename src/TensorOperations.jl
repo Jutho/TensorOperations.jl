@@ -1,17 +1,13 @@
 module TensorOperations
 
-export tensorcopy, tensorcopy!
-export tensoradd, tensoradd!
-export tensordot
-export tensorproject, tensorproject!
-export tensortrace, tensortrace!
-export tensorcontract, tensorcontract!
+export @l_str
+export tensorcopy, tensoradd, tensordot, tensorproject, tensortrace, tensorcontract
 
 using Base.Cartesian
 include("cache.jl")
 include("level1.jl")
-#include("level2.jl")
-include("level3.jl")
+# #include("level2.jl")
+# include("level3.jl")
 
 
 # LabelList
@@ -24,9 +20,11 @@ include("level3.jl")
 type LabelList
     labels::Vector{Symbol}
 end
-Base.length(l::IndexLabels)=length(l.labels)
-IndexLabels(s::String)=IndexLabels(map(symbol,map(strip(split(s,',')))))
-macro l_str(s)=IndexLabels(s)
+Base.length(l::LabelList)=length(l.labels)
+LabelList(s::String)=LabelList(map(symbol,map(strip,split(s,','))))
+macro l_str(s)
+    LabelList(s)
+end
 
 type LabelError <: Exception
     msg::String
@@ -48,23 +46,27 @@ type LabeledArray{T,N}
         new(data,l.labels)
     end
 end
-function LabeledArray{T,N}(A::StridedArray{T,N},l::LabelList)=LabeledArray{T,N}(A,l)
+LabeledArray{T,N}(A::StridedArray{T,N},l::LabelList)=LabeledArray{T,N}(A,l)
 
 eltype{T}(::LabeledArray{T})=T
 eltype{T}(::LabeledArray{T})=T
 eltype{T}(::Type{LabeledArray{T}})=T
 eltype{T,N}(::Type{LabeledArray{T,N}})=T
 
-Base.getindex(A::StridedArray,labels::LabelList)=LabeledArray(A,labels)
+Base.getindex(A::Array,labels::LabelList)=LabeledArray(A,labels)
+Base.getindex(A::SubArray,labels::LabelList)=LabeledArray(A,labels)
+Base.getindex(A::SharedArray,labels::LabelList)=LabeledArray(A,labels)
 Base.getindex(A::LabeledArray,labels::LabelList)=LabeledArray(A.data,labels)
 
-Base.setindex(A::StridedArray,B::LabeledArray,l::LabelList)=tensorcopy!(A,l.labels,B.data,B.labels)
+Base.setindex!(A::Array,B::LabeledArray,l::LabelList)=tensorcopy!(A,l.labels,B.data,B.labels)
+Base.setindex!(A::SubArray,B::LabeledArray,l::LabelList)=tensorcopy!(A,l.labels,B.data,B.labels)
+Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=tensorcopy!(A,l.labels,B.data,B.labels)
 
 # addition of arrays
 +(A::LabeledArray,B::LabeledArray)=tensoradd(A.data,A.labels,B.data,B.labels)
 
 # multiplication with scalars
-scale(A::LabeledArray,a::Number)=LabeledArray(scale(A.data,a),A.labels)
+Base.scale(A::LabeledArray,a::Number)=LabeledArray(scale(A.data,a),A.labels)
 *(t::LabeledArray,a::Number)=scale(t,a)
 *(a::Number,t::LabeledArray)=scale(t,a)
 /(t::LabeledArray,a::Number)=scale(t,one(a)/a)

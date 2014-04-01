@@ -6,8 +6,8 @@ function tensorcopy!{T1,T2,N}(C::StridedArray{T1,N},labelsC,A::StridedArray{T2,N
     if perm==collect(1:N)
         copy!(C,A)
     else
-        length(perm) == N || error("invalid label specification")
-        isperm(perm) || error("invalid label specification")
+        length(perm) == N || throw(LabelError("invalid label specification"))
+        isperm(perm) || throw(LabelError("invalid label specification"))
         (isbits(T1) && isbits(T2)) || error("only arrays of bitstypes are supported")
         for i = 1:length(perm)
             dims[i] == size(C,perm[i]) || throw(DimensionMismatch("destination tensor of incorrect size"))
@@ -23,7 +23,9 @@ end
 function tensorcopy{T,N}(labelsC,A::StridedArray{T,N},labelsA)
     dims=size(A)
     perm=indexin(labelsC,labelsA)
-    C=similar(A,dims[invperm(perm)])
+    length(perm) == N || throw(LabelError("invalid label specification"))
+    isperm(perm) || throw(LabelError("invalid label specification"))
+    C=similar(A,dims[perm])
     return tensorcopy!(C,labelsC,A,labelsA)
 end
 
@@ -117,7 +119,7 @@ end
         end)
     return C
 end
-unsafe_tensorcopy!{T1,T2,N}(C::Ptr{T1},A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int})=unsafe_tensorcopy!(C,A,stridesC,stridesA,dims,level1blockdims(dims,sizeof(T1),sizeof(T2),stridesC,stridesA))
+unsafe_tensorcopy!{T1,T2,N}(C::Ptr{T1},A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int})=unsafe_tensorcopy!(C,A,stridesC,stridesA,dims,level1blockdims(dims,sizeof(T2),sizeof(T1),stridesC,stridesA))
 
 # TENSORADD
 @ngenerate N Ptr{T} function unsafe_tensoradd!{T,N}(beta::T,C::Ptr{T},alpha::T,A::Ptr{T},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},blockdims::NTuple{N,Int})
@@ -191,7 +193,7 @@ unsafe_tensoradd!{T1,T2,N}(beta::T1,C::Ptr{T1},alpha::T1,A::Ptr{T2},stridesC::NT
             @nloops(N, inner, e->outer_{e}:min(outer_{e}+bdims_{e}-1,dims_{e}),
                 e->(ind2A_{e-1} = ind2A_{e};ind2B_{e-1}=ind2B_{e}), # PRE
                 e->(ind2A_{e} += stridesA_{e};ind2B_{e} += stridesB_{e}), # POST
-                C+=unsafe_load(A,ind2A_1)*unsafe_load(B,ind2B_1)) #BODY
+                C+=conj(unsafe_load(A,ind2A_1))*unsafe_load(B,ind2B_1)) #BODY
         end)
     return C
 end
