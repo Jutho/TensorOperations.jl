@@ -160,7 +160,7 @@ function tensorcontract!{R,S,T}(beta::Number,C::StridedArray{R},labelsC,alpha::N
         ostridesCA=stridesC[oindCA]
         ostridesCB=stridesC[oindCB]
 
-        unsafe_tensorcontract!(convert(T,beta),pointer(C),convert(T,alpha),pointer(A),pointer(B),ostridesCA,ostridesCB,ostridesA,cstridesA,ostridesB,cstridesB,odimsA,odimsB,cdimsA)
+        unsafe_tensorcontract!(convert(T,beta),pointer(C),convert(T,alpha),pointer(A),conjA,pointer(B),conjB,ostridesCA,ostridesCB,ostridesA,cstridesA,ostridesB,cstridesB,odimsA,odimsB,cdimsA)
         return C
         
     else method==:buffered
@@ -168,36 +168,41 @@ function tensorcontract!{R,S,T}(beta::Number,C::StridedArray{R},labelsC,alpha::N
     end
 end
 
-function tensorcontract{T1,T2,N}(A::StridedArray{T1},labelsA,B::StridedArray{T2},labelsB)
+function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},labelsB)
     dimsA=size(A)
     dimsB=size(A)
     labelsC=symdiff(labelsA,labelsB)
-    dimsC=Array(Int,length(labelsC))
-    for (i,l)=enumerate(labelsC)
-        ind=findfirst(labelsA,l)
-        if ind>0
-            dimsC[i]=dimsA[ind]
-        else
-            dimsC[i]=dimsB[findfirst(labelsB,l)]
+    if isempty(labelsC)
+        return tensordot(A,labelsA,B,labelsB)
+    else
+        dimsC=Array(Int,length(labelsC))
+        for (i,l)=enumerate(labelsC)
+            ind=findfirst(labelsA,l)
+            if ind>0
+                dimsC[i]=dimsA[ind]
+            else
+                dimsC[i]=dimsB[findfirst(labelsB,l)]
+            end
         end
+        T=promote_type(T1,T2)
+        C=similar(A,T,tuple(dimsC...))
+        return tensorcontract!(zero(T),C,labelsC,one(T),A,labelsA,'N',B,labelsB,'N')
     end
-    T=promote_type(T1,T2)
-    C=similar(A,T,tuple(dimsC...))
-    return tensorcontract!(zero(T),C,labelsC,one(T),A,labelsA,'N',B,labelsB,'N')
 end
-
-
 
 let _tensorcontract_defined = Dict{(Int,Int,Int), Bool}()
     global unsafe_tensorcontract!
-    function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(beta::T,C::Ptr{T},alpha::T,A::Ptr{TA},B::Ptr{TB},ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int},ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int},obdimsA::NTuple{N1,Int},obdimsB::NTuple{N2,Int},cbdims::NTuple{N3,Int})
+    function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(beta::T,C::Ptr{T},alpha::T,A::Ptr{TA},conjA::Char,B::Ptr{TB},conjB::Char,ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int},ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int},obdimsA::NTuple{N1,Int},obdimsB::NTuple{N2,Int},cbdims::NTuple{N3,Int})
         def = get(_tensorcontract_defined,(N1,N2,N3),false)
         if !def
             ex = quote
-            function _unsafe_tensorcontract!{T,TA,TB}(beta::T,C::Ptr{T},alpha::T,A::Ptr{TA},B::Ptr{TB},ostridesCA::NTuple{$N1,Int},ostridesCB::NTuple{$N2,Int},ostridesA::NTuple{$N1,Int},cstridesA::NTuple{$N3,Int},ostridesB::NTuple{$N2,Int},cstridesB::NTuple{$N3,Int},odimsA::NTuple{$N1,Int},odimsB::NTuple{$N2,Int},cdims::NTuple{$N3,Int},obdimsA::NTuple{$N1,Int},obdimsB::NTuple{$N2,Int},cbdims::NTuple{$N3,Int})
+            function _unsafe_tensorcontract!{T,TA,TB}(beta::T,C::Ptr{T},alpha::T,A::Ptr{TA},conjA::Char,B::Ptr{TB},conjB::Char,ostridesCA::NTuple{$N1,Int},ostridesCB::NTuple{$N2,Int},ostridesA::NTuple{$N1,Int},cstridesA::NTuple{$N3,Int},ostridesB::NTuple{$N2,Int},cstridesB::NTuple{$N3,Int},odimsA::NTuple{$N1,Int},odimsB::NTuple{$N2,Int},cdims::NTuple{$N3,Int},obdimsA::NTuple{$N1,Int},obdimsB::NTuple{$N2,Int},cbdims::NTuple{$N3,Int})
                 elsz=sizeof(T)
                 elszA=sizeof(TA)
                 elszB=sizeof(TB)
+                
+                conjA=='N' || conjA=='C' || throw(ArgumentError("invalid conjugation specification"))
+                conjB=='N' || conjB=='C' || throw(ArgumentError("invalid conjugation specification"))
                 
                 # calculate dims as variables
                 @nexprs $N1 d->(odimsA_{d} = odimsA[d])
@@ -251,7 +256,11 @@ let _tensorcontract_defined = Dict{(Int,Int,Int), Bool}()
                                                         @nloops($N3, innerk, c->outerk_{c}:klim_{c},
                                                             c->(indA4_{c-1} = indA4_{c};indB4_{c-1}=indB4_{c}), # PRE
                                                             c->(indA4_{c} += cstridesA_{c};indB4_{c} += cstridesB_{c}), # POST
-                                                            localC+=alpha*unsafe_load(A,indA4_1)*unsafe_load(B,indB4_1)) #BODY
+                                                            begin # BODY
+                                                                localA=(conjA=='C' ? conj(unsafe_load(A,indA4_1)) : unsafe_load(A,indA4_1))
+                                                                localB=(conjB=='C' ? conj(unsafe_load(B,indB4_1)) : unsafe_load(B,indB4_1))
+                                                                localC+=alpha*localA*localB
+                                                            end)
                                                         unsafe_store!(C,localC,indC4_1)
                                                     end)
                                             end)
@@ -265,10 +274,10 @@ let _tensorcontract_defined = Dict{(Int,Int,Int), Bool}()
             eval(current_module(),ex)
             _tensorcontract_defined[(N1,N2,N3)] = true
         end
-        @time _unsafe_tensorcontract!(beta,C,alpha,A,B,ostridesCA,ostridesCB,ostridesA,cstridesA,ostridesB,cstridesB,odimsA,odimsB,cdims,obdimsA,obdimsB,cbdims)
+        @time _unsafe_tensorcontract!(beta,C,alpha,A,conjA,B,conjB,ostridesCA,ostridesCB,ostridesA,cstridesA,ostridesB,cstridesB,odimsA,odimsB,cdims,obdimsA,obdimsB,cbdims)
     end
 end
-function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(beta::T,C::Ptr{T},alpha::T,A::Ptr{TA},B::Ptr{TB},ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int},ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int})
+function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(beta::T,C::Ptr{T},alpha::T,A::Ptr{TA},conjA::Char,B::Ptr{TB},conjB::Char,ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int},ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int})
     # Look for cache-friendly blocking strategy:
     elszC=sizeof(T)
     elszA=sizeof(TA)
@@ -316,7 +325,7 @@ function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(beta::T,C::Ptr{T},alpha::T,A::
             end
         end
     end
-    unsafe_tensorcontract!(beta,C,alpha,A,B,ostridesCA,ostridesCB,ostridesA,cstridesA,ostridesB,cstridesB,odimsA,odimsB,cdims,tuple(obdimsA...),tuple(obdimsB...),tuple(cbdims...))
+    unsafe_tensorcontract!(beta,C,alpha,A,conjA,B,conjB,ostridesCA,ostridesCB,ostridesA,cstridesA,ostridesB,cstridesB,odimsA,odimsB,cdims,tuple(obdimsA...),tuple(obdimsB...),tuple(cbdims...))
 end
 
 # const cachebuf = Array(Uint8, cachesize)

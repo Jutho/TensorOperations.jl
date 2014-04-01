@@ -49,4 +49,5 @@ Acopy=tensorcopy(p,A,1:4)
 TensorOperations.tensoradd!(0.5,B,p,1.2,A,1:4)
 @test vecnorm(B-0.5*Bcopy-1.2*Acopy)<eps()*vecnorm(B)
 Bcopy=0.5*Bcopy+1.2*Acopy
-@test_approx_eq(tensordot(B,p,A,1:4),dot(reshape(Bcopy,length(Bcopy)),reshape(Acopy,length(Acopy))))
+@test_approx_eq(tensordot(B,p,'C',A,1:4,'N'),dot(reshape(Bcopy,length(Bcopy)),reshape(Acopy,length(Acopy))))
+@test_throws tensordot(B,p,'C',A,1:4,'T')

@@ -6,8 +6,8 @@ export tensorcopy, tensoradd, tensordot, tensorproject, tensortrace, tensorcontr
 using Base.Cartesian
 include("cache.jl")
 include("level1.jl")
-# #include("level2.jl")
-# include("level3.jl")
+# include("level2.jl")
+include("level3.jl")
 
 
 # LabelList

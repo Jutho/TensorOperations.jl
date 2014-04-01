@@ -55,7 +55,7 @@ function tensoradd{T1,T2,N}(A::StridedArray{T1,N},labelsA,B::StridedArray{T2,N},
     return tensoradd!(one(T),C,labelsA,one(T),B,labelsB)
 end
 
-function tensordot{T1,T2,N}(A::StridedArray{T1,N},labelsA,B::StridedArray{T2,N},labelsB)
+function tensordot{T1,T2,N}(A::StridedArray{T1,N},labelsA,conjA::Char,B::StridedArray{T2,N},labelsB,conjB::Char)
     dims=size(B)
     perm=indexin(labelsB,labelsA)
 
@@ -69,14 +69,15 @@ function tensordot{T1,T2,N}(A::StridedArray{T1,N},labelsA,B::StridedArray{T2,N},
     stridesA=strides(A)[perm]
     stridesB=strides(B)
 
-    return unsafe_tensordot(pointer(A),pointer(B),stridesA,stridesB,dims)
+    return unsafe_tensordot(pointer(A),conjA,pointer(B),conjB,stridesA,stridesB,dims)
 end
+tensordot{T1,T2,N}(A::StridedArray{T1,N},labelsA,B::StridedArray{T2,N},labelsB)=tensordot(A,labelsA,'N',B,labelsB,'N')
 
 # TENSORCOPY
-@ngenerate N Ptr{T} function unsafe_tensorcopy!{T,N}(C::Ptr{T},A::Ptr{T},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},blockdims::NTuple{N,Int})
+@ngenerate N Ptr{T} function unsafe_tensorcopy!{T,N}(C::Ptr{T},A::Ptr{T},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},bdims::NTuple{N,Int})
     # calculate dims as variables
     @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = blockdims[d])
+    @nexprs N d->(bdims_{d} = bdims[d])
     # calculate strides as variables
     @nexprs N d->(stridesA_{d} = stridesA[d])
     @nexprs N d->(stridesC_{d} = stridesC[d])
@@ -96,10 +97,10 @@ end
         end)
     return C
 end
-@ngenerate N Ptr{T1} function unsafe_tensorcopy!{T1,T2,N}(C::Ptr{T1},A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},blockdims::NTuple{N,Int})
+@ngenerate N Ptr{T1} function unsafe_tensorcopy!{T1,T2,N}(C::Ptr{T1},A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},bdims::NTuple{N,Int})
     # calculate dims as variables
     @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = blockdims[d])
+    @nexprs N d->(bdims_{d} = bdims[d])
     # calculate strides as variables
     @nexprs N d->(stridesA_{d} = stridesA[d])
     @nexprs N d->(stridesC_{d} = stridesC[d])
@@ -122,10 +123,10 @@ end
 unsafe_tensorcopy!{T1,T2,N}(C::Ptr{T1},A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int})=unsafe_tensorcopy!(C,A,stridesC,stridesA,dims,level1blockdims(dims,sizeof(T2),sizeof(T1),stridesC,stridesA))
 
 # TENSORADD
-@ngenerate N Ptr{T} function unsafe_tensoradd!{T,N}(beta::T,C::Ptr{T},alpha::T,A::Ptr{T},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},blockdims::NTuple{N,Int})
+@ngenerate N Ptr{T} function unsafe_tensoradd!{T,N}(beta::T,C::Ptr{T},alpha::T,A::Ptr{T},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},bdims::NTuple{N,Int})
     # calculate dims as variables
     @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = blockdims[d])
+    @nexprs N d->(bdims_{d} = bdims[d])
     # calculate strides as variables
     @nexprs N d->(stridesA_{d} = stridesA[d])
     @nexprs N d->(stridesC_{d} = stridesC[d])
@@ -145,10 +146,10 @@ unsafe_tensorcopy!{T1,T2,N}(C::Ptr{T1},A::Ptr{T2},stridesC::NTuple{N,Int},stride
         end)
     return C
 end
-@ngenerate N Ptr{T1} function unsafe_tensoradd!{T1,T2,N}(beta::T1,C::Ptr{T1},alpha::T1,A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},blockdims::NTuple{N,Int})
+@ngenerate N Ptr{T1} function unsafe_tensoradd!{T1,T2,N}(beta::T1,C::Ptr{T1},alpha::T1,A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int},bdims::NTuple{N,Int})
     # calculate dims as variables
     @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = blockdims[d])
+    @nexprs N d->(bdims_{d} = bdims[d])
     # calculate strides as variables
     @nexprs N d->(stridesA_{d} = stridesA[d])
     @nexprs N d->(stridesC_{d} = stridesC[d])
@@ -171,13 +172,16 @@ end
 unsafe_tensoradd!{T1,T2,N}(beta::T1,C::Ptr{T1},alpha::T1,A::Ptr{T2},stridesC::NTuple{N,Int},stridesA::NTuple{N,Int},dims::NTuple{N,Int})=unsafe_tensoradd!(beta,C,alpha,A,stridesC,stridesA,dims,level1blockdims(dims,sizeof(T1),sizeof(T2),stridesC,stridesA))
 
 # TENSORDOT
-@ngenerate N promote_type(T1,T2) function unsafe_tensordot{T1,T2,N}(A::Ptr{T1},B::Ptr{T2},stridesA::NTuple{N,Int},stridesB::NTuple{N,Int},dims::NTuple{N,Int},blockdims::NTuple{N,Int})
+@ngenerate N promote_type(T1,T2) function unsafe_tensordot{T1,T2,N}(A::Ptr{T1},conjA::Char,B::Ptr{T2},conjB::Char,stridesA::NTuple{N,Int},stridesB::NTuple{N,Int},dims::NTuple{N,Int},bdims::NTuple{N,Int})
     # calculate dims as variables
     @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = blockdims[d])
+    @nexprs N d->(bdims_{d} = bdims[d])
     # calculate strides as variables
     @nexprs N d->(stridesA_{d} = stridesA[d])
     @nexprs N d->(stridesB_{d} = stridesB[d])
+    
+    conjA=='N' || conjA=='C' || throw(ArgumentError("invalid conjugation specification"))
+    conjB=='N' || conjB=='C' || throw(ArgumentError("invalid conjugation specification"))
     
     T=promote_type(T1,T2)
     C=zero(T)
@@ -193,11 +197,15 @@ unsafe_tensoradd!{T1,T2,N}(beta::T1,C::Ptr{T1},alpha::T1,A::Ptr{T2},stridesC::NT
             @nloops(N, inner, e->outer_{e}:min(outer_{e}+bdims_{e}-1,dims_{e}),
                 e->(ind2A_{e-1} = ind2A_{e};ind2B_{e-1}=ind2B_{e}), # PRE
                 e->(ind2A_{e} += stridesA_{e};ind2B_{e} += stridesB_{e}), # POST
-                C+=conj(unsafe_load(A,ind2A_1))*unsafe_load(B,ind2B_1)) #BODY
+                begin #BODY
+                    localA=(conjA=='C' ? conj(unsafe_load(A,ind2A_1)) : unsafe_load(A,ind2A_1))
+                    localB=(conjB=='C' ? conj(unsafe_load(B,ind2B_1)) : unsafe_load(B,ind2B_1))
+                    C+=localA*localB
+                end) #BODY
         end)
     return C
 end
-unsafe_tensordot{T1,T2,N}(A::Ptr{T1},B::Ptr{T2},stridesA::NTuple{N,Int},stridesB::NTuple{N,Int},dims::NTuple{N,Int})=unsafe_tensordot(A,B,stridesA,stridesB,dims,level1blockdims(dims,sizeof(T1),sizeof(T2),stridesA,stridesB))
+unsafe_tensordot{T1,T2,N}(A::Ptr{T1},conjA::Char,B::Ptr{T2},conjB::Char,stridesA::NTuple{N,Int},stridesB::NTuple{N,Int},dims::NTuple{N,Int})=unsafe_tensordot(A,conjA,B,conjB,stridesA,stridesB,dims,level1blockdims(dims,sizeof(T1),sizeof(T2),stridesA,stridesB))
 
 # AUXILIARY FUNCTION
 function level1blockdims{N}(dims::NTuple{N,Int},elsz1::Int,elsz2::Int,strides1::NTuple{Int},strides2::NTuple{Int})
@@ -215,16 +223,16 @@ function level1blockdims{N}(dims::NTuple{N,Int},elsz1::Int,elsz2::Int,strides1::
         # blockstep is the number of elements along that dimension that can be expected to be
         # within a single cacheline for either array 1 or 2
     end
-    blockdims=zeros(Int,N)
+    bdims=zeros(Int,N)
     cachesize1=elsz1*minimum(strides1)
     cachesize2=elsz2*minimum(strides2)
     while true
-        i=indmin(blockdims)
-        blockdims[i]+=blockstep[i]
-        if (cachesize1+cachesize2)*prod(blockdims)>effectivecachesize
-            blockdims[i]-=blockstep[i]
+        i=indmin(bdims)
+        bdims[i]+=blockstep[i]
+        if (cachesize1+cachesize2)*prod(bdims)>effectivecachesize
+            bdims[i]-=blockstep[i]
             break
         end
     end
-    return tuple(blockdims...)
+    return tuple(bdims...)
 end
