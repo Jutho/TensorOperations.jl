@@ -1,9 +1,40 @@
-# LEVEL 2: two sets of indices
+# tensorcopy.jl
+#
+# Method for tracing some of the indices of a tensor and
+# adding the result to another tensor.
 
-# In place methods
+
+# Simple method
+#---------------
+function tensortrace{T}(A::StridedArray{T},labelsA,outputlabels)
+    dimsA=size(A)
+    indCinA=indexin(outputlabels,labelsA)
+    if any(indCinA.==0)
+        throw(LabelError("invalid label specification"))
+    end
+    C=similar(A,dimsA[indCinA])
+    fill!(C,zero(T))
+    return tensortrace!(one(T),A,labelsA,zero(T),C,outputlabels)
+end
+function tensortrace(A::StridedArray,labelsA) # there is no one-line method to compute the default outputlabels
+    ulabelsA=unique(labelsA)
+    labelsC=similar(labelsA,2*length(ulabelsA)-length(labelsA))
+    i=1
+    for j=1:length(ulabelsA)
+        ind=findfirst(labelsA,ulabelsA[j])
+        if findnext(labelsA,ulabelsA[j],ind+1)==0
+            labelsC[i]=ulabelsA[j]
+            i+=1
+        end
+    end
+    tensortrace(A,labelsA,labelsC)
+end
+
+# In place method
+#-----------------
 function tensortrace!{T1,T2}(alpha::Number,A::StridedArray{T1},labelsA,beta::Number,C::StridedArray{T2},labelsC)
     if length(labelsA)!=ndims(A) || length(labelsC)!=ndims(C)
-        throw(ArgumentError("number of labels incompatible with number of tensor indices"))
+        throw(LabelError("invalid label specification"))
     end
     
     po=indexin(labelsC,labelsA)
@@ -14,7 +45,7 @@ function tensortrace!{T1,T2}(alpha::Number,A::StridedArray{T1},labelsA,beta::Num
         pc1[i]=findfirst(labelsA,clabels[i])
         pc2[i]=findnext(labelsA,clabels[i],pc1[i]+1)
     end
-    isperm(vcat(po,pc1,pc2)) || throw(ArgumentError("invalid label specification"))
+    isperm(vcat(po,pc1,pc2)) || throw(LabelError("invalid label specification"))
     
     dims=size(A)
     for i = 1:length(po)
@@ -37,101 +68,55 @@ function tensortrace!{T1,T2}(alpha::Number,A::StridedArray{T1},labelsA,beta::Num
     return C
 end
 
-# 
-# let _tensortrace_defined = Dict{(Int,Int), Bool}()
-#     global unsafe_tensortrace!
-#     function unsafe_tensortrace!{T,N1,N2}(beta::T,C::Ptr{T},alpha::T,A::Ptr{T},ostridesC::NTuple{N1,Int},ostridesA::NTuple{N1,Int},cstridesA1::NTuple{N2,Int},cstridesA2::NTuple{N2,Int},odims::NTuple{N1,Int},cdims::NTuple{N2,Int})
-#         def = get(_tensortrace_defined,(N1,N2),false)
-#         if !def
-#             ex = quote
-#             function _unsafe_tensortrace!{T}(beta::T,C::Ptr{T},alpha::T,A::Ptr{T},ostridesC::NTuple{$N1,Int},ostridesA::NTuple{$N1,Int},cstridesA1::NTuple{$N2,Int},cstridesA2::NTuple{$N2,Int},odims::NTuple{$N1,Int},cdims::NTuple{$N2,Int})
-#                 elsz = isbits(T) ? sizeof(T) : sizeof(Ptr)
-#                 cachelength = ifloor(cachesize/(elsz*1.4)) # 1.4 safety margin
-#                 
-#                 # calculates all the strides as variables
-#                 ostridesA_1 = 0
-#                 cstridesA1_1 = 0
-#                 cstridesA2_1 = 0
-#                 ostridesC_1 = 0
-#                 @nexprs $N1 d->(ostridesA_{d+1} = ostridesA[d])
-#                 @nexprs $N2 d->(cstridesA1_{d+1} = cstridesA1[d])
-#                 @nexprs $N2 d->(cstridesA2_{d+1} = cstridesA2[d])
-#                 @nexprs $N1 d->(ostridesC_{d+1} = ostridesC[d])
-#                 
-#                 @nexprs $N1 d->(odims_{d} = odims[d])
-#                 @nexprs $N2 d->(cdims_{d} = cdims[d])
-# 
-#                 if prod(odims)*(prod(cdims)*prod(cdims)+1) <= cachelength # odims*cdims^2 (for A) + odims (for C)
-#                     # creates offset, because indexing starts at 1
-#                     offsetA = 1 - sum(ostridesA) - sum(cstridesA1) - sum(cstridesA2)
-#                     offsetC = 1 - sum(ostridesC)
-#                     
-#                     # set counts_{N1+1}
-#                     @nexprs 1 d->(ocountsA_{$N1+1} = ostridesA_{$N1+1})
-#                     @nexprs 1 d->(ocountsC_{$N1+1} = ostridesC_{$N1+1})
-#                     
-#                     @nloops($N1, i, d->1:odims_{d},
-#                         d->(ocountsA_d = ostridesA_d;ocountsC_d=ostridesC_d), # PRE
-#                         d->(ocountsA_{d+1} += ostridesA_{d+1};ocountsC_{d+1} += ostridesC_{d+1}), # POST
-#                         begin # BODY
-#                             indC = sum(@ntuple $N1 n->ocountsC_{n+1})+offsetC
-#                             indA = sum(@ntuple $N1 n->ocountsA_{n+1})+offsetA
-#                             # scale C
-#                             unsafe_store!(C,beta*unsafe_load(C,indC),indC)
-#                             # set counts_{N2+1}
-#                             @nexprs 1 n->(ccountsA1_{$N2+1} = cstridesA1_{$N2+1})
-#                             @nexprs 1 n->(ccountsA2_{$N2+1} = cstridesA2_{$N2+1})
-#                             @nloops($N2, k, n->1:cdims_{n},
-#                                 n->(ccountsA1_n = cstridesA1_n;ccountsA2_n=cstridesA2_n), # PRE
-#                                 n->(ccountsA1_{n+1} += cstridesA1_{n+1};ccountsA2_{n+1} += cstridesA2_{n+1}), # POST
-#                                 begin # BODY
-#                                     indA1 = indA+sum(@ntuple $N2 m->ccountsA1_{m+1})+sum(@ntuple $N2 m->ccountsA2_{m+1})
-#                                     unsafe_store!(C,unsafe_load(C,indC)+alpha*unsafe_load(A,indA1),indC)
-#                                 end)
-#                         end)
-#                 else
-#                     dimmax=1
-#                     tobesplit=true
-#                     @nexprs $N1 d->(if odims_{d}>dimmax; dimmax=odims_{d}; end)
-#                     @nexprs $N2 d->(if cdims_{d}>dimmax; dimmax=cdims_{d}; end)
-#                     newdim1=dimmax>>1
-#                     newdim2=dimmax-newdim1
-#                     
-#                     if tobesplit && odims_1==dimmax
-#                         odims_1=newdim1
-#                         _unsafe_tensortrace!(beta,C,alpha,A,ostridesC,ostridesA,cstridesA!,cstridesA2,(@ntuple $N1 n->odims_{n}),cdims)
-#                         odims_1=newdim2
-#                         _unsafe_tensortrace!(beta,C+elsz*newdim1*ostridesC_2,alpha,A+elsz*newdim1*ostridesA_2,ostridesC,ostridesA,cstridesA1,cstridesA2,(@ntuple $N1 n->odims_{n}),cdims)
-#                         tobesplit=false
-#                     end
-#                     @nif $N1 d->(tobesplit && odims_{d+1}==dimmax) d->begin
-#                         odims_{d+1}=newdim1
-#                         _unsafe_tensortrace!(beta,C,alpha,A,ostridesC,ostridesA,cstridesA1,cstridesA2,(@ntuple $N1 n->odims_{n}),cdims)
-#                         odims_{d+1}=newdim2
-#                         _unsafe_tensortrace!(beta,C+elsz*newdim1*ostridesC_{d+2},alpha,A+elsz*newdim1*ostridesA_{d+2},ostridesC,ostridesA,cstridesA1,cstridesA2,(@ntuple $N1 n->odims_{n}),cdims)
-#                         tobesplit=false
-#                     end d->()
-#                     if tobesplit && cdims_1==dimmax
-#                         cdims_1=newdim1
-#                         _unsafe_tensortrace!(beta,C,alpha,A,ostridesC,ostridesA,cstridesA1,cstridesA2,odims,(@ntuple $N2 n->cdims_{n}))
-#                         cdims_1=newdim2
-#                         _unsafe_tensortrace!(one(T),C,alpha,A+elsz*newdim1*cstridesA1_2+elsz*newdim1*cstridesA2_2,ostridesC,ostridesA,cstridesA1,cstridesA2,odims,(@ntuple $N2 n->cdims_{n}))
-#                         tobesplit=false
-#                     end
-#                     @nif $N2 d->(tobesplit && cdims_{d+1}==dimmax) d->begin
-#                         cdims_{d+1}=newdim1
-#                         _unsafe_tensortrace!(beta,C,alpha,A,ostridesC,ostridesA,cstridesA,cstridesB,odims,(@ntuple $N2 n->cdims_{n}))
-#                         cdims_{d+1}=newdim2
-#                         _unsafe_tensortrace!(one(T),C,alpha,A+elsz*newdim1*cstridesA1_{d+2}+elsz*newdim1*cstridesA2_{d+2},ostridesC,ostridesA,cstridesA1,cstridesA2,odims,(@ntuple $N2 n->cdims_{n}))
-#                         tobesplit=false
-#                     end d->()
-#                 end
-#                 return C
-#             end
-#         end
-#         eval(current_module(),ex)
-#         _tensortrace_defined[(N1,N2)] = true
-#     end
-#     _unsafe_tensortrace!(beta,C,alpha,A,ostridesC,ostridesA,cstridesA1,cstridesA2,odims,cdims)
-# end
-# end
+# Low-level method
+#------------------
+let _tensortrace_defined=Dict{(Int,Int), Bool}()
+    global unsafe_tensortrace!
+    function unsafe_tensortrace!{T,TA,N1,N2}(odims::NTuple{N1,Int},cdims::NTuple{N2,Int},alpha::T,A::Ptr{TA},ostridesA::NTuple{N1,Int},cstridesA1::NTuple{N2,Int},cstridesA2::NTuple{N2,Int},beta::T,C::Ptr{T},ostridesC::NTuple{N1,Int},obdims::NTuple{N1,Int}=blockdims1(odims,sizeof(TA),ostridesA,sizeof(T),ostridesC))
+        def=get(_tensortrace_defined,(N1,N2),false)
+        if !def
+            ex=quote
+            function _unsafe_tensortrace!{T,TA}(odims::NTuple{$N1,Int},cdims::NTuple{$N2,Int},alpha::T,A::Ptr{TA},ostridesA::NTuple{$N1,Int},cstridesA1::NTuple{$N2,Int},cstridesA2::NTuple{$N2,Int},beta::T,C::Ptr{T},ostridesC::NTuple{$N1,Int},obdims::NTuple{$N1,Int})
+                # calculate dims as variables
+                @nexprs $N1 d->(odims_{d}=odims[d])
+                @nexprs $N2 d->(cdims_{d}=cdims[d])
+                @nexprs $N1 d->(obdims_{d}=obdims[d])
+                # calculate strides as variables
+                @nexprs $N1 d->(ostridesA_{d}=ostridesA[d])
+                @nexprs $N1 d->(ostridesC_{d}=ostridesC[d])
+                @nexprs $N2 d->(cstridesA1_{d}=cstridesA1[d])
+                @nexprs $N2 d->(cstridesA2_{d}=cstridesA2[d])
+    
+                @nexprs 1 d->(indA1_{$N2}=1)
+                @nloops($N2,j,d->1:cdims_{d},
+                    d->(indA1_{d-1}=indA1_{d}), # PRE
+                    d->(indA1_{d}+=cstridesA1_{d}+cstridesA2_{d}), # POST
+                    begin
+                        @nexprs 1 e->(indA2_{$N1}=indA1_0)
+                        @nexprs 1 e->(indC1_{$N1}=1)
+                        @nloops($N1, outeri, e->1:obdims_{e}:odims_{e},
+                            e->(indA2_{e-1}=indA2_{e};indC1_{e-1}=indC1_{e};ilim_{e}=min(outeri_{e}+obdims_{e}-1,odims_{e})), # PRE
+                            e->(indA2_{e}+=obdims_{e}*ostridesA_{e};indC1_{e}+=obdims_{e}*ostridesC_{e}), # POST
+                            begin
+                                @nexprs 1 f->(indA3_{$N1}=indA2_0)
+                                @nexprs 1 f->(indC2_{$N1}=indC1_0)
+                                @nloops($N1, inneri, f->outeri_{f}:ilim_{f},
+                                    f->(indA3_{f-1}=indA3_{f};indC2_{f-1}=indC2_{f}), # PRE
+                                    f->(indA3_{f}+=ostridesA_{f};indC2_{f}+=ostridesC_{f}), # POST
+                                    begin
+                                        localC::T=beta*unsafe_load(C,indC2_0)
+                                        localC+=alpha*unsafe_load(A,indA3_0) # BODY
+                                        unsafe_store!(C,localC,indC2_0)
+                                    end)
+                            end)
+                        beta=one(T)
+                    end)
+                return C
+            end
+            end
+            eval(ex)
+            _tensortrace_defined[(N1,N2)]=true
+        end
+        _unsafe_tensortrace!(odims,cdims,alpha,A,ostridesA,cstridesA1,cstridesA2,beta,C,ostridesC,obdims)
+    end
+end

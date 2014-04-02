@@ -180,6 +180,8 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
     end
 end
 
+# Low-level method
+#------------------
 let _tensorcontract_defined=Dict{(Int,Int,Int), Bool}()
     global unsafe_tensorcontract!
     function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int},alpha::T,A::Ptr{TA},conjA::Char,ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},B::Ptr{TB},conjB::Char,ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},beta::T,C::Ptr{T},ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int},obdimsA::NTuple{N1,Int},obdimsB::NTuple{N2,Int},cbdims::NTuple{N3,Int})
@@ -187,10 +189,7 @@ let _tensorcontract_defined=Dict{(Int,Int,Int), Bool}()
         if !def
             ex=quote
             function _unsafe_tensorcontract!{T,TA,TB}(odimsA::NTuple{$N1,Int},odimsB::NTuple{$N2,Int},cdims::NTuple{$N3,Int},alpha::T,A::Ptr{TA},conjA::Char,ostridesA::NTuple{$N1,Int},cstridesA::NTuple{$N3,Int},B::Ptr{TB},conjB::Char,ostridesB::NTuple{$N2,Int},cstridesB::NTuple{$N3,Int},beta::T,C::Ptr{T},ostridesCA::NTuple{$N1,Int},ostridesCB::NTuple{$N2,Int},obdimsA::NTuple{$N1,Int},obdimsB::NTuple{$N2,Int},cbdims::NTuple{$N3,Int})
-                elsz=sizeof(T)
-                elszA=sizeof(TA)
-                elszB=sizeof(TB)
-                
+                # check conjugation input
                 conjA=='N' || conjA=='C' || throw(ArgumentError("invalid conjugation specification"))
                 conjB=='N' || conjB=='C' || throw(ArgumentError("invalid conjugation specification"))
                 
