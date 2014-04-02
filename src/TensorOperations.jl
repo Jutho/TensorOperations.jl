@@ -1,14 +1,15 @@
 module TensorOperations
 
 export @l_str
-export tensorcopy, tensoradd, tensordot, tensorproject, tensortrace, tensorcontract
+export tensorcopy, tensoradd, tensortrace, tensorcontract
 
 using Base.Cartesian
 include("cache.jl")
-include("level1.jl")
-# include("level2.jl")
-include("level3.jl")
-
+include("blockdims.jl")
+include("tensorcopy.jl")
+include("tensoradd.jl")
+# include("tensortrace.jl")
+include("tensorcontract.jl")
 
 # LabelList
 #-------------
@@ -48,10 +49,10 @@ type LabeledArray{T,N}
 end
 LabeledArray{T,N}(A::StridedArray{T,N},l::LabelList)=LabeledArray{T,N}(A,l)
 
-eltype{T}(::LabeledArray{T})=T
-eltype{T}(::LabeledArray{T})=T
-eltype{T}(::Type{LabeledArray{T}})=T
-eltype{T,N}(::Type{LabeledArray{T,N}})=T
+Base.eltype{T}(::LabeledArray{T})=T
+Base.eltype{T}(::LabeledArray{T})=T
+Base.eltype{T}(::Type{LabeledArray{T}})=T
+Base.eltype{T,N}(::Type{LabeledArray{T,N}})=T
 
 Base.getindex(A::Array,labels::LabelList)=LabeledArray(A,labels)
 Base.getindex(A::SubArray,labels::LabelList)=LabeledArray(A,labels)
