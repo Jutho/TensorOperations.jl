@@ -25,6 +25,6 @@ include("tensorcontract.jl")
 
 # Index Notation
 #----------------
-#include("indexnotation.jl")
+include("indexnotation.jl")
 
 end # module
