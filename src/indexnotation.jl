@@ -40,13 +40,14 @@ function LabeledArray{T}(data::StridedArray{T},labels::Vector{Symbol})
     end
     ulabels=unique(labels)
     if length(ulabels)!=ndims(data) # there are some internal traces
-        newlabels=similar(ulabels,2*length(ulabels)-length(l))
-        i=1
+        newlabels=similar(ulabels,0)
         for j=1:length(ulabels)
-            ind=findfirst(l,ulabels[j])
-            if findnext(labels,ulabelsA[j],ind+1)==0
-                newlabels[i]=ulabels[j]
-                i+=1
+            ind=findfirst(labels,ulabels[j])
+            ind2=findnext(labels,ulabels[j],ind+1)
+            if ind2==0
+                push!(newlabels,ulabels[j])
+            elseif findnext(labels,ulabels[j],ind2+1)!=0
+                throw(LabelError("Label can appear at most twice in a single array"))
             end
         end
         newdata=tensortrace(data,labels,newlabels)
