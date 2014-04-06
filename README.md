@@ -1,4 +1,4 @@
-# TensorOperations.jl
+# TensorOperations.jl [![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl)
 
 Fast tensor operations using a convenient index notation or via memory friendly in-place methods.
 
