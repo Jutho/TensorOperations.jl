@@ -1,7 +1,7 @@
 module TensorOperations
 
 export @l_str
-export tensorcopy, tensoradd, tensortrace, tensorcontract
+export tensorcopy, tensoradd, tensortrace, tensorcontract, scalar
 
 # LabelError
 #------------
@@ -26,5 +26,9 @@ include("tensorcontract.jl")
 # Index Notation
 #----------------
 include("indexnotation.jl")
+
+# Scalar
+#--------
+scalar{T}(C::StridedArray{T,0})=C[1]
 
 end # module
