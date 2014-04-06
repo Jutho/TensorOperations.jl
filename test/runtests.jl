@@ -75,22 +75,22 @@ D[l"d,f,h"]=A[l"a,c,f,a,e,b,b,g"]*B[l"c,h,g,e,d"]+0.5*C[l"d,h,f"]
 #-----------------------
 # test different versions of in-place methods,
 # with changing element type and with nontrivial strides
-Abig=randn((30,30,30,30))
-A=sub(Abig,1:3:30,2:2:15,5:4:30,4:3:30)
-p=[3,1,4,2]
-Bbig=zeros(Complex128,(50,50,50,50))
-B=sub(Bbig,13:19,11:4:50,15:4:50,4:3:24)
-Acopy=tensorcopy(1:4,A,1:4)
-Bcopy=tensorcopy(1:4,B,1:4)
-TensorOperations.tensorcopy!(B,p,A,1:4)
-TensorOperations.tensorcopy!(Bcopy,p,Acopy,1:4)
-@test vecnorm(B-Bcopy)<eps()*vecnorm(B)
-Bbig=rand(Complex128,(50,50,50,50))
-B=sub(Bbig,13:19,11:4:50,15:4:50,4:3:24)
-Bcopy=tensorcopy(1:4,B,1:4)
-Acopy=tensorcopy(p,A,1:4)
-TensorOperations.tensoradd!(0.5,B,p,1.2,A,1:4)
-@test vecnorm(B-0.5*Bcopy-1.2*Acopy)<eps()*vecnorm(B)
-Bcopy=0.5*Bcopy+1.2*Acopy
-@test_approx_eq(tensordot(B,p,'C',A,1:4,'N'),dot(reshape(Bcopy,length(Bcopy)),reshape(Acopy,length(Acopy))))
-@test_throws tensordot(B,p,'C',A,1:4,'T')
+# Abig=randn((30,30,30,30))
+# A=sub(Abig,1:3:30,2:2:15,5:4:30,4:3:30)
+# p=[3,1,4,2]
+# Bbig=zeros(Complex128,(50,50,50,50))
+# B=sub(Bbig,13:19,11:4:50,15:4:50,4:3:24)
+# Acopy=tensorcopy(1:4,A,1:4)
+# Bcopy=tensorcopy(1:4,B,1:4)
+# TensorOperations.tensorcopy!(B,p,A,1:4)
+# TensorOperations.tensorcopy!(Bcopy,p,Acopy,1:4)
+# @test vecnorm(B-Bcopy)<eps()*vecnorm(B)
+# Bbig=rand(Complex128,(50,50,50,50))
+# B=sub(Bbig,13:19,11:4:50,15:4:50,4:3:24)
+# Bcopy=tensorcopy(1:4,B,1:4)
+# Acopy=tensorcopy(p,A,1:4)
+# TensorOperations.tensoradd!(0.5,B,p,1.2,A,1:4)
+# @test vecnorm(B-0.5*Bcopy-1.2*Acopy)<eps()*vecnorm(B)
+# Bcopy=0.5*Bcopy+1.2*Acopy
+# @test_approx_eq(tensordot(B,p,'C',A,1:4,'N'),dot(reshape(Bcopy,length(Bcopy)),reshape(Acopy,length(Acopy))))
+# @test_throws tensordot(B,p,'C',A,1:4,'T')
