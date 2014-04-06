@@ -1,13 +1,13 @@
 # TensorOperations.jl
----
+
 Fast tensor operations using a convenient index notation or via memory friendly in-place methods.
 
 ##Installation
----
+
 Install with the package manager, currently `Pkg.clone("git://github.com/Jutho/TensorOperations.jl.git")` until this is registered as an official package.
 
 ## Philosophy
----
+
 The TensorOperations.jl package works with arbitrary StridedArray elements, i.e. dense arrays whose data is layed out in memory in a strided fashion. In particular, TensorOperations.jl deals with Julia's built-in Array and SubArray type. It can can easily be extened to custom user defined types, as explained below.
 
 ### Tensor operations
@@ -41,7 +41,7 @@ The use of an `l`-prefixed string creates an instance of the type `LabelList`, w
 While convenient, the index notation creates a new temporary for every operation and might therefore not be the most efficient approach for large arrays. The mutating methods discussed below might be more appropriate in that case.
 
 ##Methods
----
+
 
 There are two types of methods. The non-mutating methods are not typed and thus accept arbitrary input. They expect that arrays support the methods `similar` and `size` to create appropriate output arrays to store the result of the computation. They then call the corresponding mutating method supplying the newly created output array. Only the non-mutating methods are exported.
 
@@ -116,7 +116,7 @@ Internally, the mutating methods call corresponding methods which are prefixed b
 Special care is given to cache-friendliness of the implementations by operating on small blocks that fit into cache and simultaneously acting on all data in a single cacheline. These parameters can be tuned in "cache.jl". The methods for computing the block size can be found in "blockdims.jl".
 
 ##Planned features
----
+
 
 The following features seem like interesting additions to the TensorOperations.jl package, and might therefore appear in the future (not necessarily in this order)
 
