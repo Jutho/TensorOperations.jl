@@ -125,6 +125,10 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
         if conjA=='C'
             Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
             tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
+        elseif conjA=='N' && conjB=='C' # temporary fix untill At_mul_Bc! is implemented
+            conjA='N'
+            Anew=similar(A,eltype(C),tuple(odimsA...,cdimsA...))
+            tensorcopy!(A,labelsA,Anew,vcat(olabelsA,clabels))
         elseif conjA=='N'
             conjA='T' # it is more efficient to compute At*B
             Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
@@ -154,8 +158,8 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
             At_mul_B!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalcdims,totalodimsB)))
         elseif conjA=='C' && conjB=='N'
             Ac_mul_B!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalcdims,totalodimsB)))
-        elseif conjA=='T' && conjB=='C'
-            At_mul_Bc!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalodimsB,totalcdims)))
+        elseif conjA=='N' && conjB=='C'
+            A_mul_Bc!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalodimsA,totalcdims)),reshape(Bnew,(totalodimsB,totalcdims)))
         else
             Ac_mul_Bc!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalodimsB,totalcdims)))
         end
@@ -172,7 +176,7 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
         ostridesCA=stridesC[oindCA]
         ostridesCB=stridesC[oindCB]
 
-        unsafe_tensorcontract!(odimsA,odimsB,cdimsA,convert(T,alpha),pointer(A),conjA,ostridesA,cstridesA,pointer(B),conjB,ostridesB,cstridesB,convert(T,beta),pointer(C),ostridesCA,ostridesCB)
+        unsafe_tensorcontract!(odimsA,odimsB,cdimsA,convert(R,alpha),pointer(A),conjA,ostridesA,cstridesA,pointer(B),conjB,ostridesB,cstridesB,convert(R,beta),pointer(C),ostridesCA,ostridesCB)
         return C
         
     else method==:buffered

@@ -76,6 +76,9 @@ Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B
 # addition of arrays
 +(A::LabeledArray,B::LabeledArray)=LabeledArray(tensoradd(A.data,A.labels,B.data,B.labels,A.labels),A.labels)
 
+# complex conjugation
+Base.conj(A::LabeledArray)=LabeledArray(conj(A.data),A.labels)
+
 # multiplication with scalars
 Base.scale(A::LabeledArray,a::Number)=LabeledArray(scale(A.data,a),A.labels)
 *(t::LabeledArray,a::Number)=scale(t,a)

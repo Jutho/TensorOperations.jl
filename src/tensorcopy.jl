@@ -21,6 +21,7 @@ function tensorcopy!{T1,T2,N}(A::StridedArray{T1,N},labelsA,C::StridedArray{T2,N
     dims=size(A)
     perm=indexin(labelsA,labelsC)
     if perm==collect(1:N)
+        dims==size(C) || throw(DimensionMismatch("destination tensor of incorrect size"))
         copy!(C,A)
     else
         length(perm) == N || throw(LabelError("invalid label specification"))

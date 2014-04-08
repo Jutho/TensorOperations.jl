@@ -30,5 +30,6 @@ include("indexnotation.jl")
 # Scalar
 #--------
 scalar{T}(C::StridedArray{T,0})=C[1]
+scalar{T}(C::LabeledArray{T,0})=C.data[1]
 
 end # module
