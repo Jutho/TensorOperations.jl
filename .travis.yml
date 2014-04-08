@@ -5,7 +5,7 @@ notifications:
   email: false
 env:
   matrix:
-    - JULIAVERSION="juliareleases"
+#    - JULIAVERSION="juliareleases"
     - JULIAVERSION="julianightlies"
 before_install:
   - sudo add-apt-repository ppa:staticfloat/julia-deps -y
@@ -13,4 +13,5 @@ before_install:
   - sudo apt-get update -qq -y
   - sudo apt-get install libpcre3-dev julia -y
 script:
-  - julia -e 'Pkg.init(); Pkg.clone(pwd()); Pkg.test("TensorOperations")'
+  - julia -e 'Pkg.init(); run(`ln -s $(pwd()) $(Pkg.dir("TensorOperations"))`); Pkg.pin("TensorOperations"); Pkg.resolve()'
+  - julia test/runtests.jl
