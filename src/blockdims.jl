@@ -14,8 +14,17 @@ function blockdims1{N}(dims::NTuple{N,Int},elszA::Int,stridesA::NTuple{N,Int},el
     if N==0
         return ()
     else
-        # Cache-friendly blocking strategy:
+        # determine cache
         effectivecachesize=ifloor(cachesize/1.2) # 1.2 safety margin
+        cachesizeA=elszA*minimum(stridesA)
+        cachesizeB=elszB*minimum(stridesB)
+        
+        # check if complete data fits into cache:
+        if (cachesizeA+cachesizeB)*prod(dims)<=effectivecachesize
+            return dims
+        end
+        
+        # cache-friendly blocking strategy:
         bstep=ones(Int,N)
         for i=1:N
             bstep[i]=max(1,div(cacheline,elszA*stridesA[i]),div(cacheline,elszB*stridesB[i]))
@@ -24,16 +33,15 @@ function blockdims1{N}(dims::NTuple{N,Int},elszA::Int,stridesA::NTuple{N,Int},el
         end
         bdims=zeros(Int,N)
         bdimscopy=zeros(Int,N) # copy where entries will be put very large once they are larger then corresponding dims
-        cachesizeA=elszA*minimum(stridesA)
-        cachesizeB=elszB*minimum(stridesB)
         while true
             i=indmin(bdimscopy)
             bdims[i]+=bstep[i]
             bdimscopy[i]+=bstep[i]
             if bdimscopy[i]>=dims[i]
+                bdims[i]=dims[i]
                 bdimscopy[i]=typemax(Int)
             end
-            if (cachesizeA+cachesizeB)*prod(bdims)>effectivecachesize
+            if (cachesizeA+cachesizeB)*prod(bdims)>effectivecachesize # this must become true at some point
                 bdims[i]-=bstep[i]
                 break
             end
@@ -53,8 +61,14 @@ function blockdims2{N1,N2}(dims1::NTuple{N1,Int},dims2::NTuple{N2,Int},elszA::In
     elseif N2==0
         return blockdims1(dims1,elszA,stridesA1,elszB,stridesB1), ()
     else
-        # Cache-friendly blocking strategy:
         effectivecachesize=ifloor(cachesize/1.2) # 1.2 safety margin
+        cachesizeA=elszA*min(minimum(stridesA1),minimum(stridesA2))
+        cachesizeB=elszB*minimum(stridesB1)
+        cachesizeC=elszC*minimum(stridesC2)
+        if cachesizeA*prod(dims1)*prod(dims2)+cachesizeB*prod(dims1)+cachesizeC*prod(dims2)<=effectivecachesize
+            return dims1,dims2
+        end
+        # cache-friendly blocking strategy:
         bstep1=ones(Int,N1)
         for i=1:N1
             bstep1[i]=max(1,div(cacheline,elszA*stridesA1[i]),div(cacheline,elszB*stridesB1[i]))
@@ -67,9 +81,6 @@ function blockdims2{N1,N2}(dims1::NTuple{N1,Int},dims2::NTuple{N2,Int},elszA::In
         bdims1copy=zeros(Int,N1)
         bdims2=zeros(Int,N2)
         bdims2copy=zeros(Int,N2)
-        cachesizeA=elszA*min(minimum(stridesA1),minimum(stridesA2))
-        cachesizeB=elszB*minimum(stridesB1)
-        cachesizeC=elszC*minimum(stridesC2)
         while true
             i=indmin(bdims1copy)
             j=indmin(bdims2copy)
@@ -118,6 +129,12 @@ function blockdims3{N1,N2,N3}(dims1::NTuple{N1,Int},dims2::NTuple{N2,Int},dims3:
     else
         # Cache-friendly blocking strategy:
         effectivecachesize=ifloor(cachesize/1.2) # 1.2 safety margin
+        cachesizeA=elszA*min(minimum(stridesA1),minimum(stridesA2))
+        cachesizeB=elszB*min(minimum(stridesB1),minimum(stridesB3))
+        cachesizeC=elszC*min(minimum(stridesC2),minimum(stridesC3))
+        if cachesizeA*prod(dims1)*prod(dims2)+cachesizeB*prod(dims1)*prod(dims3)+cachesizeC*prod(dims2)*prod(dims3)<=effectivecachesize
+            return dims1,dims2,dims3
+        end
         bstep1=ones(Int,N1)
         for i=1:N1
             bstep1[i]=max(1,div(cacheline,elszA*stridesA1[i]),div(cacheline,elszB*stridesB1[i]))
@@ -136,9 +153,6 @@ function blockdims3{N1,N2,N3}(dims1::NTuple{N1,Int},dims2::NTuple{N2,Int},dims3:
         bdims2copy=zeros(Int,N2)
         bdims3=zeros(Int,N3)
         bdims3copy=zeros(Int,N3)
-        cachesizeA=elszA*min(minimum(stridesA1),minimum(stridesA2))
-        cachesizeB=elszB*min(minimum(stridesB1),minimum(stridesB3))
-        cachesizeC=elszC*min(minimum(stridesC2),minimum(stridesC3))
         while true
             i=indmin(bdims1copy)
             j=indmin(bdims2copy)
