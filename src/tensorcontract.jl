@@ -26,7 +26,8 @@ function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},l
     T=promote_type(T1,T2)
     C=similar(A,T,tuple(dimsC...))
     fill!(C,zero(T))
-    return tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method)
+    tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method)
+    return C
 end
 
 # In-place method
@@ -102,10 +103,10 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
         cdimsA[i]==cdimsB[i] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
     end
     for i=1:numopenA
-        odimsA[i]==dimC[oindCA[i]] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
+        odimsA[i]==dimC[oindCA[i]] || throw(DimensionMismatch("dimension mismatch for label $(olabelsA[i])"))
     end
     for i=1:numopenB
-        odimsB[i]==dimC[oindCB[i]] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
+        odimsB[i]==dimC[oindCB[i]] || throw(DimensionMismatch("dimension mismatch for label $(olabelsB[i])"))
     end
     
     # Perform contraction
@@ -123,27 +124,49 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
     if method==:BLAS
         # permute A
         if conjA=='C'
-            Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
-            tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
+            if vcat(clabels,olabelsA)==labelsA[1:NA]
+                Anew=A
+            else
+                Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
+                tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
+            end
         elseif conjA=='N' && conjB=='C' # temporary fix untill At_mul_Bc! is implemented
-            conjA='N'
-            Anew=similar(A,eltype(C),tuple(odimsA...,cdimsA...))
-            tensorcopy!(A,labelsA,Anew,vcat(olabelsA,clabels))
+            if vcat(olabelsA,clabels)==labelsA[1:NA]
+                Anew=A
+            else
+                Anew=similar(A,eltype(C),tuple(odimsA...,cdimsA...))
+                tensorcopy!(A,labelsA,Anew,vcat(olabelsA,clabels))
+            end
         elseif conjA=='N'
-            conjA='T' # it is more efficient to compute At*B
-            Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
-            tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
+            if vcat(olabelsA,clabels)==labelsA[1:NA]
+                Anew=A
+            elseif vcat(clabels,olabelsA)==labels[1:NA]
+                conjA='T'
+                Anew=A
+            else
+                conjA='T' # it is more efficient to compute At*B
+                Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
+                tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
+            end
         else
             throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
         end
 
         # permute B
         if conjB=='C'
-            Bnew=similar(B,eltype(C),tuple(odimsB...,cdimsB...))
-            tensorcopy!(B,labelsB,Bnew,vcat(olabelsB,clabels))
+            if vcat(olabelsB,clabels)==labelsB[1:NB]
+                Bnew=B
+            else
+                Bnew=similar(B,eltype(C),tuple(odimsB...,cdimsB...))
+                tensorcopy!(B,labelsB,Bnew,vcat(olabelsB,clabels))
+            end
         elseif conjB=='N'
-            Bnew=similar(B,eltype(C),tuple(cdimsB...,odimsB...))
-            tensorcopy!(B,labelsB,Bnew,vcat(clabels,olabelsB))
+            if vcat(clabels,olabelsB)==labelsB[1:NB]
+                Bnew=B
+            else
+                Bnew=similar(B,eltype(C),tuple(cdimsB...,odimsB...))
+                tensorcopy!(B,labelsB,Bnew,vcat(clabels,olabelsB))
+            end
         else
             throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
         end
@@ -164,7 +187,6 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
             Ac_mul_Bc!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalodimsB,totalcdims)))
         end
         tensoradd!(alpha,Cnew,vcat(olabelsA,olabelsB),beta,C,labelsC)
-        return C
     elseif method==:native
         stridesA=strides(A)
         stridesB=strides(B)
@@ -177,11 +199,12 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
         ostridesCB=stridesC[oindCB]
 
         unsafe_tensorcontract!(odimsA,odimsB,cdimsA,convert(R,alpha),pointer(A),conjA,ostridesA,cstridesA,pointer(B),conjB,ostridesB,cstridesB,convert(R,beta),pointer(C),ostridesCA,ostridesCB)
-        return C
-        
-    else method==:buffered
+    else
+        throw(ArgumentError("unknown contraction method"))
+#    elseif method==:buffered
         # to be written: allocate a fixed buffer, that can be used as temporary space for BLAS
     end
+    return C
 end
 
 # Low-level method
@@ -196,6 +219,25 @@ let _tensorcontract_defined=Dict{(Int,Int,Int), Bool}()
                 # check conjugation input
                 conjA=='N' || conjA=='C' || throw(ArgumentError("invalid conjugation specification"))
                 conjB=='N' || conjB=='C' || throw(ArgumentError("invalid conjugation specification"))
+                
+                # calculate optimal contraction order for inner loops
+                order=0
+                if minimum(ostridesA)<minimum(cstridesA)
+                    order+=1
+                end
+                if minimum(ostridesB)<minimum(cstridesB)
+                    order+=2
+                end
+                if minimum(ostridesA)<minimum(ostridesB)
+                    order+=4
+                end
+                # i,j,k: order==0
+                # i,k,j: order==2 || order==6
+                # j,i,k: order==4
+                # j,k,i: order==5 || order==1
+                # k,i,j: order==3
+                # k,j,i: order==7
+                # 1 and 6 are the frustrated cases where no optimal order exists
                 
                 # calculate dims as variables
                 @nexprs $N1 d->(odimsA_{d}=odimsA[d])
@@ -231,34 +273,119 @@ let _tensorcontract_defined=Dict{(Int,Int,Int), Bool}()
                                     f->(indA2_{f-1}=indA2_{f};indB2_{f-1}=indB2_{f};klim_{f}=min(outerk_{f}+cbdims_{f}-1,cdims_{f})), # PRE
                                     f->(indA2_{f}+=cbdims_{f}*cstridesA_{f};indB2_{f}+=cbdims_{f}*cstridesB_{f}), # POST
                                     begin # BODY
-                                        @nexprs 1 b->(indB3_{$N2}=indB2_0)
-                                        @nexprs 1 b->(indC3_{$N2}=indC2_0)
-                                        @nloops($N2, innerj, b->outerj_{b}:jlim_{b},
-                                            b->(indB3_{b-1}=indB3_{b};indC3_{b-1}=indC3_{b}), # PRE
-                                            b->(indB3_{b}+=ostridesB_{b};indC3_{b}+=ostridesCB_{b}), # POST
-                                            begin # BODY
-                                                @nexprs 1 c->(indA3_{$N3}=indA2_0)
-                                                @nexprs 1 c->(indB4_{$N3}=indB3_0)
-                                                delta=gamma # for the first iteration of innerk delta=gamma, afterwards delta=1
-                                                @nloops($N3, innerk, c->outerk_{c}:klim_{c},
-                                                    c->(indA3_{c-1}=indA3_{c};indB4_{c-1}=indB4_{c}), # PRE
-                                                    c->(indA3_{c}+=cstridesA_{c};indB4_{c}+=cstridesB_{c}), # POST
+                                        if order==0
+                                            @nexprs 1 a->(indA3_{$N1}=indA2_0)
+                                            @nexprs 1 a->(indC3_{$N1}=indC2_0)
+                                            @nloops($N1, inneri, a->outeri_{a}:ilim_{a},
+                                                a->(indA3_{a-1}=indA3_{a};indC3_{a-1}=indC3_{a}), # PRE
+                                                a->(indA3_{a}+=ostridesA_{a};indC3_{a}+=ostridesCA_{a}), # POST
+                                                begin # BODY
+                                                    @nexprs 1 b->(indB3_{$N2}=indB2_0)
+                                                    @nexprs 1 b->(indC4_{$N2}=indC3_0)
+                                                    @nloops($N2, innerj, b->outerj_{b}:jlim_{b},
+                                                        b->(indB3_{b-1}=indB3_{b};indC4_{b-1}=indC4_{b}), # PRE
+                                                        b->(indB3_{b}+=ostridesB_{b};indC4_{b}+=ostridesCB_{b}), # POST
+                                                        begin # BODY
+                                                            localC::T=gamma*unsafe_load(C,indC4_0)
+                                                            @nexprs 1 c->(indA4_{$N3}=indA3_0)
+                                                            @nexprs 1 c->(indB4_{$N3}=indB3_0)
+                                                            @nloops($N3, innerk, c->outerk_{c}:klim_{c},
+                                                                c->(indA4_{c-1}=indA4_{c};indB4_{c-1}=indB4_{c}), # PRE
+                                                                c->(indA4_{c}+=cstridesA_{c};indB4_{c}+=cstridesB_{c}), # POST
+                                                                begin # BODY
+                                                                    localA=(conjA=='C' ? conj(unsafe_load(A,indA4_0)) : unsafe_load(A,indA4_0))
+                                                                    localB=(conjB=='C' ? conj(unsafe_load(B,indB4_0)) : unsafe_load(B,indB4_0))
+                                                                    localC+=alpha*localA*localB
+                                                                end)
+                                                            unsafe_store!(C,localC,indC4_0)
+                                                        end)
+                                                end)
+                                            elseif order==2 || order==6
+                                                @nexprs 1 a->(indA3_{$N1}=indA2_0)
+                                                @nexprs 1 a->(indC3_{$N1}=indC2_0)
+                                                @nloops($N1, inneri, a->outeri_{a}:ilim_{a},
+                                                    a->(indA3_{a-1}=indA3_{a};indC3_{a-1}=indC4_{a}), # PRE
+                                                    a->(indA3_{a}+=ostridesA_{a};indC3_{a}+=ostridesCA_{a}), # POST
                                                     begin # BODY
-                                                        localB=(conjB=='C' ? conj(unsafe_load(B,indB4_0)) : unsafe_load(B,indB4_0))
-                                                        @nexprs 1 a->(indA4_{$N1}=indA3_0)
+                                                        @nexprs 1 c->(indA4_{$N3}=indA3_0)
+                                                        @nexprs 1 c->(indB3_{$N3}=indB2_0)
+                                                        delta=gamma
+                                                        @nloops($N3, innerk, c->outerk_{c}:klim_{c},
+                                                            c->(indA4_{c-1}=indA4_{c};indB3_{c-1}=indB3_{c}), # PRE
+                                                            c->(indA4_{c}+=cstridesA_{c};indB3_{c}+=cstridesB_{c}), # POST
+                                                            begin
+                                                                localA=(conjA=='C' ? conj(unsafe_load(A,indA4_0)) : unsafe_load(A,indA4_0))
+                                                                @nexprs 1 b->(indB4_{$N2}=indB3_0)
+                                                                @nexprs 1 b->(indC4_{$N2}=indC3_0)
+                                                                @nloops($N2, innerj, b->outerj_{b}:jlim_{b},
+                                                                    b->(indB4_{b-1}=indB4_{b};indC4_{b-1}=indC4_{b}), # PRE
+                                                                    b->(indB4_{b}+=ostridesB_{b};indC4_{b}+=ostridesCB_{b}), # POST
+                                                                    begin # BODY
+                                                                        localC::T=delta*unsafe_load(C,indC4_0)
+                                                                        localB=(conjB=='C' ? conj(unsafe_load(B,indB4_0)) : unsafe_load(B,indB4_0))
+                                                                        localC+=alpha*localA*localB
+                                                                        unsafe_store!(C,localC,indC4_0)
+                                                                    end)
+                                                                delta=one(T)
+                                                            end)
+                                                    end)
+                                            elseif order==4
+                                                @nexprs 1 b->(indB3_{$N2}=indB2_0)
+                                                @nexprs 1 b->(indC3_{$N2}=indC2_0)
+                                                @nloops($N2, innerj, b->outerj_{b}:jlim_{b},
+                                                    b->(indB3_{b-1}=indB3_{b};indC3_{b-1}=indC3_{b}), # PRE
+                                                    b->(indB3_{b}+=ostridesB_{b};indC3_{b}+=ostridesCB_{b}), # POST
+                                                    begin # BODY
+                                                        @nexprs 1 a->(indA3_{$N1}=indA2_0)
                                                         @nexprs 1 a->(indC4_{$N1}=indC3_0)
                                                         @nloops($N1, inneri, a->outeri_{a}:ilim_{a},
-                                                            a->(indA4_{a-1}=indA4_{a};indC4_{a-1}=indC4_{a}), # PRE
-                                                            a->(indA4_{a}+=ostridesA_{a};indC4_{a}+=ostridesCA_{a}), # POST
+                                                            a->(indA3_{a-1}=indA3_{a};indC4_{a-1}=indC4_{a}), # PRE
+                                                            a->(indA3_{a}+=ostridesA_{a};indC4_{a}+=ostridesCA_{a}), # POST
                                                             begin # BODY
-                                                                localA=(conjA=='C' ? conj(unsafe_load(A,indA4_0)) : unsafe_load(A,indA4_0))
-                                                                localC::T=delta*unsafe_load(C,indC4_0)
-                                                                localC+=alpha*localA*localB
+                                                                localC::T=gamma*unsafe_load(C,indC4_0)
+                                                                @nexprs 1 c->(indA4_{$N3}=indA3_0)
+                                                                @nexprs 1 c->(indB4_{$N3}=indB3_0)
+                                                                @nloops($N3, innerk, c->outerk_{c}:klim_{c},
+                                                                    c->(indA4_{c-1}=indA4_{c};indB4_{c-1}=indB4_{c}), # PRE
+                                                                    c->(indA4_{c}+=cstridesA_{c};indB4_{c}+=cstridesB_{c}), # POST
+                                                                    begin # BODY
+                                                                        localA=(conjA=='C' ? conj(unsafe_load(A,indA4_0)) : unsafe_load(A,indA4_0))
+                                                                        localB=(conjB=='C' ? conj(unsafe_load(B,indB4_0)) : unsafe_load(B,indB4_0))
+                                                                        localC+=alpha*localA*localB
+                                                                    end)
                                                                 unsafe_store!(C,localC,indC4_0)
                                                             end)
-                                                        delta=one(T)
                                                     end)
-                                            end)
+                                            elseif order==5 || order==1
+                                                @nexprs 1 b->(indB3_{$N2}=indB2_0)
+                                                @nexprs 1 b->(indC3_{$N2}=indC2_0)
+                                                @nloops($N2, innerj, b->outerj_{b}:jlim_{b},
+                                                    b->(indB3_{b-1}=indB3_{b};indC3_{b-1}=indC3_{b}), # PRE
+                                                    b->(indB3_{b}+=ostridesB_{b};indC3_{b}+=ostridesCB_{b}), # POST
+                                                    begin # BODY
+                                                        @nexprs 1 c->(indA3_{$N3}=indA2_0)
+                                                        @nexprs 1 c->(indB4_{$N3}=indB4_0)
+                                                        delta=gamma
+                                                        @nloops($N3, innerk, c->outerk_{c}:klim_{c},
+                                                            c->(indA4_{c-1}=indA4_{c};indB3_{c-1}=indB3_{c}), # PRE
+                                                            c->(indA4_{c}+=cstridesA_{c};indB3_{c}+=cstridesB_{c}), # POST
+                                                            begin
+                                                                localA=(conjA=='C' ? conj(unsafe_load(A,indA4_0)) : unsafe_load(A,indA4_0))
+                                                                @nexprs 1 a->(indA3_{$N1}=indA2_0)
+                                                                @nexprs 1 a->(indC3_{$N1}=indC2_0)
+                                                                @nloops($N1, inneri, a->outeri_{a}:ilim_{a},
+                                                                    a->(indA3_{a-1}=indA3_{a};indC3_{a-1}=indC4_{a}), # PRE
+                                                                    a->(indA3_{a}+=ostridesA_{a};indC3_{a}+=ostridesCA_{a}), # POST
+                                                                    begin # BODY
+                                                                        localC::T=delta*unsafe_load(C,indC4_0)
+                                                                        localB=(conjB=='C' ? conj(unsafe_load(B,indB4_0)) : unsafe_load(B,indB4_0))
+                                                                        localC+=alpha*localA*localB
+                                                                        unsafe_store!(C,localC,indC4_0)
+                                                                    end)
+                                                                delta=one(T)
+                                                            end)
+                                                    end)
+                                            end
                                         gamma=one(T)
                                     end)
                             end)

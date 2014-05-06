@@ -14,7 +14,8 @@ function tensoradd(A,labelsA,B,labelsB,outputlabels=labelsA)
     isperm(perm) || throw(LabelError("invalid label specification"))
     C=similar(A,T,dims[perm])
     tensorcopy!(A,labelsA,C,outputlabels)
-    return tensoradd!(one(T),B,labelsB,one(T),C,outputlabels)
+    tensoradd!(one(T),B,labelsB,one(T),C,outputlabels)
+    return C
 end
 
 # In-place method
@@ -34,7 +35,6 @@ function tensoradd!{T1,T2,N}(alpha::Number,A::StridedArray{T1,N},labelsA,beta::N
     stridesA=strides(A)
 
     unsafe_tensoradd!(dims,convert(T2,alpha),pointer(A),stridesA,convert(T2,beta),pointer(C),stridesC)
-
     return C
 end
 

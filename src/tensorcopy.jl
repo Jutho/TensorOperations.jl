@@ -12,7 +12,8 @@ function tensorcopy(A,labelsA,outputlabels=labelsA)
     length(perm) == ndims(A) || throw(LabelError("invalid label specification"))
     isperm(perm) || throw(LabelError("invalid label specification"))
     C=similar(A,dims[perm])
-    return tensorcopy!(A,labelsA,C,outputlabels)
+    tensorcopy!(A,labelsA,C,outputlabels)
+    return C
 end
 
 # In-place method
