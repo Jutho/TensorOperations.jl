@@ -18,74 +18,128 @@ end
 
 # In-place method
 #-----------------
-function tensorcopy!{T1,T2,N}(A::StridedArray{T1,N},labelsA,C::StridedArray{T2,N},labelsC)
-    dims=size(A)
-    perm=indexin(labelsA,labelsC)
-    if perm==collect(1:N)
-        dims==size(C) || throw(DimensionMismatch("destination tensor of incorrect size"))
+@ngenerate N typeof(C) [1,2,3,4,5,6,7,8] function tensorcopy!{TA,TC,N}(A::StridedArray{TA,N},labelsA,C::StridedArray{TC,N},labelsC,basesize::Int=1024)
+    iperm=indexin(labelsC,labelsA)
+    length(iperm) == N || error("expected permutation of size $N, but length(perm)=$(length(perm))")
+    isperm(iperm) || error("input is not a permutation")
+    for i = 1:N
+        size(A,iperm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
+    end
+    N==0 && (C[1]=A[1]; return C)
+    if iperm==collect(1:N)
         copy!(C,A)
-    else
-        length(perm) == N || throw(LabelError("invalid label specification"))
-        isperm(perm) || throw(LabelError("invalid label specification"))
-        (isbits(T1) && isbits(T2)) || error("only arrays of bitstypes are supported")
-        for i = 1:length(perm)
-            dims[i] == size(C,perm[i]) || throw(DimensionMismatch("destination tensor of incorrect size"))
-        end
-
-        stridesC=strides(C)[perm]
-        stridesA=strides(A)
+    end
+      
+    @nexprs N d->(stridesA_{d} = stride(A,iperm[d]))
+    @nexprs N d->(stridesC_{d} = stride(C,d))
+    @nexprs N d->(dims_{d} = size(C,d))
     
-        unsafe_tensorcopy!(dims,pointer(A),stridesA,pointer(C),stridesC)
+    startA = 1
+    local Alinear::Array{TA,N}
+    if isa(A, SubArray)
+        startA = A.first_index
+        Alinear = A.parent
+    else
+        Alinear = A
+    end
+    startC = 1
+    local Clinear::Array{TC,N}
+    if isa(C, SubArray)
+        startC = C.first_index
+        Clinear = C.parent
+    else
+        Clinear = C
+    end
+
+    if length(C)<=4*PERMUTEBASELENGTH
+        @stridedloops(N, i, dims, indA, startA, stridesA, indC, startC, stridesC, @inbounds Clinear[indC]=Alinear[indA])
+    else
+        @nexprs N d->(minstrides_{d} = min(stridesA_{d},stridesC_{d}))
+
+        # build recursive stack
+        depth=iceil(log2(length(C)/PERMUTEBASELENGTH))+2 # 2 levels safety margin
+        level=1 # level of recursion
+        stackstep=zeros(Int,depth) # record step of algorithm at the different recursion level
+        stackstep[level]=0
+        stackblength=zeros(Int,depth)
+        stackblength[level]=length(C)
+        @nexprs N d->begin
+            stackbdims_{d} = zeros(Int,depth)
+            stackbdims_{d}[level] = dims_{d}
+        end
+        stackbstartA=zeros(Int,depth)
+        stackbstartA[level]=startA
+        stackbstartC=zeros(Int,depth)
+        stackbstartC[level]=startC
+        
+        stackdC=zeros(Int,depth)
+        stackdA=zeros(Int,depth)
+        stackdmax=zeros(Int,depth)
+        stacknewdim=zeros(Int,depth)
+        stackolddim=zeros(Int,depth)
+        
+        while level>0
+            step=stackstep[level]
+            blength=stackblength[level]
+            @nexprs N d->(bdims_{d} = stackbdims_{d}[level])
+            bstartA=stackbstartA[level]
+            bstartC=stackbstartC[level]
+            
+            if blength<=PERMUTEBASELENGTH || level==depth # base case
+                @stridedloops(N, i, bdims, indA, bstartA, stridesA, indC, bstartC, stridesC, @inbounds Clinear[indC]=Alinear[indA])
+                level-=1
+            elseif step==0
+                # find which dimension to divide
+                dmax=0
+                maxval=0
+                newdim=0
+                olddim=0
+                dC=0
+                dA=0
+                @nexprs N d->begin
+                    newmax=bdims_{d}*minstrides_{d}
+                    if bdims_{d}>1 && newmax>maxval
+                        dmax=d
+                        olddim=bdims_{d}
+                        newdim=olddim>>1
+                        dC=stridesC_{d}
+                        dA=stridesA_{d}
+                        maxval=newmax
+                    end
+                end
+                stackolddim[level]=olddim
+                stacknewdim[level]=newdim
+                stackdmax[level]=dmax
+                stackdC[level]=dC
+                stackdA[level]=dA
+                
+                stackstep[level+1]=0
+                @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? newdim : bdims_{d}))
+                stackblength[level+1]=div(blength,olddim)*newdim
+                stackbstartA[level+1]=bstartA
+                stackbstartC[level+1]=bstartC
+
+                stackstep[level]+=1
+                level+=1
+            elseif step==1
+                olddim=stackolddim[level]
+                newdim=stacknewdim[level]
+                dmax=stackdmax[level]
+                dC=stackdC[level]
+                dA=stackdA[level]
+
+                stackstep[level+1]=0
+                @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? olddim-newdim : bdims_{d}))
+                stackblength[level+1]=div(blength,olddim)*(olddim-newdim)
+                stackbstartA[level+1]=bstartA+dA*newdim
+                stackbstartC[level+1]=bstartC+dC*newdim
+
+                stackstep[level]+=1
+                level+=1
+            else
+                level-=1
+            end
+        end
     end
     return C
 end
-
-# Low-level method
-#------------------
-@ngenerate N Ptr{T} function unsafe_tensorcopy!{T,N}(dims::NTuple{N,Int},A::Ptr{T},stridesA::NTuple{N,Int},C::Ptr{T},stridesC::NTuple{N,Int},bdims::NTuple{N,Int})
-    # calculate dims as variables
-    @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = bdims[d])
-    # calculate strides as variables
-    @nexprs N d->(stridesA_{d} = stridesA[d])
-    @nexprs N d->(stridesC_{d} = stridesC[d])
-    
-    @nexprs 1 d->(indA_{N} = 1)
-    @nexprs 1 d->(indC_{N} = 1)
-    @nloops(N, outer, d->1:bdims_{d}:dims_{d},
-        d->(indA_{d-1} = indA_{d};indC_{d-1}=indC_{d}), # PRE
-        d->(indA_{d} += bdims_{d}*stridesA_{d};indC_{d} += bdims_{d}*stridesC_{d}), # POST
-        begin # BODY
-            @nexprs 1 e->(ind2A_{N} = indA_0)
-            @nexprs 1 e->(ind2C_{N} = indC_0)
-            @nloops(N, inner, e->outer_{e}:min(outer_{e}+bdims_{e}-1,dims_{e}),
-                e->(ind2A_{e-1} = ind2A_{e};ind2C_{e-1}=ind2C_{e}), # PRE
-                e->(ind2A_{e} += stridesA_{e};ind2C_{e} += stridesC_{e}), # POST
-                unsafe_store!(C,unsafe_load(A,ind2A_0),ind2C_0)) #BODY
-        end)
-    return C
-end
-@ngenerate N Ptr{T2} function unsafe_tensorcopy!{T1,T2,N}(dims::NTuple{N,Int},A::Ptr{T1},stridesA::NTuple{N,Int},C::Ptr{T2},stridesC::NTuple{N,Int},bdims::NTuple{N,Int})
-    # calculate dims as variables
-    @nexprs N d->(dims_{d} = dims[d])
-    @nexprs N d->(bdims_{d} = bdims[d])
-    # calculate strides as variables
-    @nexprs N d->(stridesA_{d} = stridesA[d])
-    @nexprs N d->(stridesC_{d} = stridesC[d])
-    
-    @nexprs 1 d->(indA_{N} = 1)
-    @nexprs 1 d->(indC_{N} = 1)
-    @nloops(N, outer, d->1:bdims_{d}:dims_{d},
-        d->(indA_{d-1} = indA_{d};indC_{d-1}=indC_{d}), # PRE
-        d->(indA_{d} += bdims_{d}*stridesA_{d};indC_{d} += bdims_{d}*stridesC_{d}), # POST
-        begin # BODY
-            @nexprs 1 e->(ind2A_{N} = indA_0)
-            @nexprs 1 e->(ind2C_{N} = indC_0)
-            @nloops(N, inner, e->outer_{e}:min(outer_{e}+bdims_{e}-1,dims_{e}),
-                e->(ind2A_{e-1} = ind2A_{e};ind2C_{e-1}=ind2C_{e}), # PRE
-                e->(ind2A_{e} += stridesA_{e};ind2C_{e} += stridesC_{e}), # POST
-                unsafe_store!(C,convert(T2,unsafe_load(A,ind2A_0)),ind2C_0)) #BODY
-        end)
-    return C
-end
-unsafe_tensorcopy!{T1,T2,N}(dims::NTuple{N,Int},A::Ptr{T1},stridesA::NTuple{N,Int},C::Ptr{T2},stridesC::NTuple{N,Int})=unsafe_tensorcopy!(dims,A,stridesA,C,stridesC,blockdims1(dims,sizeof(T1),stridesA,sizeof(T2),stridesC))
