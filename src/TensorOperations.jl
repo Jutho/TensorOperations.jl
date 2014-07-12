@@ -1,6 +1,6 @@
 module TensorOperations
 
-export @l_str, LabelError
+export LabelError
 export tensorcopy, tensoradd, tensortrace, tensorcontract, scalar
 
 # LabelError
@@ -24,17 +24,16 @@ const PERMUTEBASELENGTH=1024
 include("cartesian.jl")
 include("tensorcopy.jl")
 include("tensoradd.jl")
-# include("tensortrace.jl")
+include("tensortrace.jl")
 include("tensorcontract.jl")
 
 # Scalar
 #--------
 scalar{T}(C::StridedArray{T,0})=C[1]
-# scalar{T}(C::LabeledArray{T,0})=C.data[1]
 
-
-# # Index Notation
-# #----------------
-# include("indexnotation.jl")
 
 end # module
+
+# Index Notation
+#----------------
+include("indexnotation.jl")

@@ -1,4 +1,4 @@
-using TensorOperations
+using TensorOperations, IndexNotation
 using Base.Test  
 
 # test simple methods
@@ -18,7 +18,7 @@ p=[3,1,4,2]
 C1=tensoradd(A,p,B,1:4)
 C2=A+permutedims(B,p)
 @test_approx_eq(vecnorm(C1-C2),0)
-@test_throws tensoradd(A,1:4,B,1:4)
+@test_throws DimensionMismatch tensoradd(A,1:4,B,1:4)
 
 # test tensortrace
 A=randn(50,100,100)
@@ -46,8 +46,8 @@ B=randn(5,6,20,3)
 C1=tensorcontract(A,[:a,:b,:c,:d,:e],B,[:c,:f,:b,:g],[:a,:g,:e,:d,:f];method=:BLAS)
 C2=tensorcontract(A,[:a,:b,:c,:d,:e],B,[:c,:f,:b,:g],[:a,:g,:e,:d,:f];method=:native)
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
-@test_throws tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
-@test_throws tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
+@test_throws LabelError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
+@test_throws LabelError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
 
 # test index notation
 #---------------------
@@ -65,9 +65,9 @@ C=rand(Complex128,(Dd,Dh,Df))
 D=rand(Complex128,(Dd,Df,Dh))
 D[l"d,f,h"]=A[l"a,c,f,a,e,b,b,g"]*B[l"c,h,g,e,d"]+0.5*C[l"d,h,f"]
 @test_approx_eq(vecnorm(D),sqrt(abs(scalar(D[l"d,f,h"]*conj(D[l"d,f,h"])))))
-@test_throws D[l"a,a,a"]
-@test_throws D[l"a,b,c,d"]
-@test_throws D[l"a,b"]
+@test_throws LabelError D[l"a,a,a"]
+@test_throws LabelError D[l"a,b,c,d"]
+@test_throws LabelError D[l"a,b"]
 
 # test in-place methods
 #-----------------------
@@ -85,9 +85,9 @@ Ccopy=tensorcopy(C,1:4,1:4)
 TensorOperations.tensorcopy!(A,1:4,C,p)
 TensorOperations.tensorcopy!(Acopy,1:4,Ccopy,p)
 @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
-@test_throws TensorOperations.tensorcopy!(A,1:3,C,p)
-@test_throws TensorOperations.tensorcopy!(A,p,C,p)
-@test_throws TensorOperations.tensorcopy!(A,1:4,C,[1,1,2,3])
+@test_throws ErrorException TensorOperations.tensorcopy!(A,1:3,C,p)
+@test_throws DimensionMismatch TensorOperations.tensorcopy!(A,p,C,p)
+@test_throws ErrorException TensorOperations.tensorcopy!(A,1:4,C,[1,1,2,3])
 
 # tensoradd!
 Cbig=zeros(Complex128,(50,50,50,50))
@@ -99,10 +99,9 @@ beta=randn()
 TensorOperations.tensoradd!(alpha,A,1:4,beta,C,p)
 Ccopy=beta*Ccopy+alpha*Acopy
 @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
-@test_throws TensorOperations.tensoradd!(1.2,A,1:3,0.5,C,p)
-@test_throws TensorOperations.tensoradd!(1.2,A,p,0.5,C,p)
-@test_throws TensorOperations.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
-
+@test_throws ErrorException TensorOperations.tensoradd!(1.2,A,1:3,0.5,C,p)
+@test_throws DimensionMismatch TensorOperations.tensoradd!(1.2,A,p,0.5,C,p)
+@test_throws ErrorException TensorOperations.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
 
 # tensortrace!
 Abig=rand((30,30,30,30))
@@ -119,10 +118,10 @@ for i=1+(0:8)
     Bcopy+=alpha*slice(A,i,:,:,i)
 end
 @test vecnorm(B-Bcopy)<eps()*vecnorm(B+Bcopy)*sqrt(length(B))
-@test_throws TensorOperations.tensortrace!(alpha,A,[:a,:b,:c],beta,B,[:b,:c])
-@test_throws TensorOperations.tensortrace!(alpha,A,[:a,:b,:c,:a],beta,B,[:c,:b])
-@test_throws TensorOperations.tensortrace!(alpha,A,[:a,:b,:a,:a],beta,B,[:c,:b])
-@test_throws TensorOperations.tensortrace!(alpha,A,[:a,:b,:a,:c],beta,B,[:c,:b])
+@test_throws LabelError TensorOperations.tensortrace!(alpha,A,[:a,:b,:c],beta,B,[:b,:c])
+@test_throws DimensionMismatch TensorOperations.tensortrace!(alpha,A,[:a,:b,:c,:a],beta,B,[:c,:b])
+@test_throws LabelError TensorOperations.tensortrace!(alpha,A,[:a,:b,:a,:a],beta,B,[:c,:b])
+@test_throws DimensionMismatch TensorOperations.tensortrace!(alpha,A,[:a,:b,:a,:c],beta,B,[:c,:b])
 
 # tensorcontract!
 Abig=rand((30,30,30,30))
@@ -155,7 +154,7 @@ for d=1+(0:8),a=1+(0:8),e=1+(0:7)
 end
 TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',beta,C,[:d,:a,:e];method=:native)
 @test vecnorm(C-Ccopy)<eps(Float32)*vecnorm(C+Ccopy)*sqrt(length(C))
-@test_throws TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:a],'N',B,[:c,:e,:b],'N',beta,C,[:d,:a,:e])
-@test_throws TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',beta,C,[:d,:a,:e])
-@test_throws TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',beta,C,[:d,:e])
-@test_throws TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',beta,C,[:d,:e,:a])
+@test_throws LabelError TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:a],'N',B,[:c,:e,:b],'N',beta,C,[:d,:a,:e])
+@test_throws LabelError TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',beta,C,[:d,:a,:e])
+@test_throws LabelError TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',beta,C,[:d,:e])
+@test_throws DimensionMismatch TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',beta,C,[:d,:e,:a])

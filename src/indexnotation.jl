@@ -1,3 +1,9 @@
+module IndexNotation
+
+export @l_str
+
+using TensorOperations
+
 # LabelList
 #-----------
 # Wrapper for a list of labels in the form of a Vector{Symbol}, so
@@ -69,12 +75,12 @@ Base.getindex(A::SubArray,l::LabelList)=LabeledArray(A,l.labels)
 Base.getindex(A::SharedArray,l::LabelList)=LabeledArray(A,l.labels)
 Base.getindex(A::LabeledArray,l::LabelList)=LabeledArray(A.data,l.labels)
 
-Base.setindex!(A::Array,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B.labels,A,l.labels)
-Base.setindex!(A::SubArray,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B.labels,A,l.labels)
-Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B.labels,A,l.labels)
+Base.setindex!(A::Array,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+Base.setindex!(A::SubArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
 
 # addition of arrays
-+(A::LabeledArray,B::LabeledArray)=LabeledArray(tensoradd(A.data,A.labels,B.data,B.labels,A.labels),A.labels)
++(A::LabeledArray,B::LabeledArray)=LabeledArray(TensorOperations.tensoradd(A.data,A.labels,B.data,B.labels,A.labels),A.labels)
 
 # complex conjugation
 Base.conj(A::LabeledArray)=LabeledArray(conj(A.data),A.labels)
@@ -87,4 +93,8 @@ Base.scale(A::LabeledArray,a::Number)=LabeledArray(scale(A.data,a),A.labels)
 \(a::Number,t::LabeledArray)=scale(t,one(a)/a)
 
 # general contraction
-*(A::LabeledArray,B::LabeledArray)=LabeledArray(tensorcontract(A.data,A.labels,B.data,B.labels),symdiff(A.labels,B.labels))
+*(A::LabeledArray,B::LabeledArray)=LabeledArray(TensorOperations.tensorcontract(A.data,A.labels,B.data,B.labels),symdiff(A.labels,B.labels))
+
+TensorOperations.scalar{T}(C::LabeledArray{T,0})=C.data[1]
+
+end

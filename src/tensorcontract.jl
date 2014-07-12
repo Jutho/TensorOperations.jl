@@ -2,7 +2,6 @@
 #
 # Method for contracting two tensors and adding the result
 # to a third tensor, according to the specified labels.
-using Debug
 
 # Simple method
 #---------------
