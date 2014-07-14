@@ -10,10 +10,15 @@ using TensorOperations
 # that we do not have to overload the getindex and setindex! methods
 # of Array on a generic Vector{Symbol} argument, which might conflict
 # with other packages or user definitions...
-
-immutable LabelList <: DenseArray{Symbol,1}
-    labels::Vector{Symbol}
-end
+if VERSION.minor < 3
+    immutable LabelList <: AbstractArray{Symbol,1}
+        labels::Vector{Symbol}
+    end
+else
+    immutable LabelList <: DenseArray{Symbol,1}
+        labels::Vector{Symbol}
+    end
+end    
 LabelList(s::String)=LabelList(map(symbol,map(strip,split(s,','))))
 
 # minimal methods for being an immutable DenseArray
@@ -72,12 +77,16 @@ Base.eltype{T,N}(::Type{LabeledArray{T,N}})=T
 
 Base.getindex(A::Array,l::LabelList)=LabeledArray(A,l.labels)
 Base.getindex(A::SubArray,l::LabelList)=LabeledArray(A,l.labels)
-Base.getindex(A::SharedArray,l::LabelList)=LabeledArray(A,l.labels)
+# if VERSION.minor >= 3
+#     Base.getindex(A::SharedArray,l::LabelList)=LabeledArray(A,l.labels)
+# end
 Base.getindex(A::LabeledArray,l::LabelList)=LabeledArray(A.data,l.labels)
 
 Base.setindex!(A::Array,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
 Base.setindex!(A::SubArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
-Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+# if VERSION.minor >= 3
+#     Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+# end
 
 # addition of arrays
 +(A::LabeledArray,B::LabeledArray)=LabeledArray(TensorOperations.tensoradd(A.data,A.labels,B.data,B.labels,A.labels),A.labels)

@@ -248,34 +248,7 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
 (4,4,2),
 (4,4,0)]
 
-macro gencontractkernel(N1,N2,N3,order,alpha,A,conjA,B,conjB,beta,C,startA,startB,startC,odimsA,odimsB,cdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
-    _gencontractkernel(N1,N2,N3,order,alpha,A,conjA,B,conjB,beta,C,startA,startB,startC,odimsA,odimsB,cdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
-end
-function _gencontractkernel(N1::Int,N2::Int,N3::Int,order::Symbol,
-    alpha::Symbol,A::Symbol,conjA::Symbol,B::Symbol,conjB::Symbol,beta::Symbol,C::Symbol,
-    startA::Symbol,startB::Symbol,startC::Symbol,odimsA::Symbol,odimsB::Symbol,cdims::Symbol,
-    ostridesA::Symbol,cstridesA::Symbol,ostridesB::Symbol,cstridesB::Symbol,ostridesCA::Symbol,ostridesCB::Symbol)
-    ex=quote
-        local indA1, indA2, indB1, indB2, indC1, indC2
-        # we still have to implement other orders
-#        if $(esc(order))==0 # i,j,k
-            @stridedloops($N1, i, $(esc(odimsA)), indA1, $(esc(startA)), $(esc(ostridesA)), indC1, $(esc(startC)), $(esc(ostridesCA)), begin
-                @stridedloops($N2, j, $(esc(odimsB)), indB1, $(esc(startB)), $(esc(ostridesB)), indC2, indC1, $(esc(ostridesCB)), begin
-                    @inbounds localC=$(esc(beta))*$(esc(C))[indC2]
-                    @stridedloops($N3, k, $(esc(cdims)), indA2, indA1, $(esc(cstridesA)), indB2, indB1, $(esc(cstridesB)), begin
-                        @inbounds localA=($(esc(conjA))=='C' ? conj($(esc(A))[indA2]) : $(esc(A))[indA2])
-                        @inbounds localB=($(esc(conjB))=='C' ? conj($(esc(B))[indB2]) : $(esc(B))[indB2])
-                        localC+=$(esc(alpha))*localA*localB
-                    end)
-                    @inbounds $(esc(C))[indC2]=localC
-                end)
-            end)
-#        end
-    end
-    ex
-end
-
-@mnpgenerate NA NB NC typeof(C) [(2,2,2)] function tensorcontract_native!{TA,TB,TC,NA,NB,NC}(alpha::Number,A::StridedArray{TA,NA},conjA::Char,B::StridedArray{TB,NB},conjB::Char,beta::Number,C::StridedArray{TC,NC},oindA,cindA,oindB,cindB,oindCA,oindCB)
+@eval @ngenerate (NA,NB,NC) typeof(C) $CONTRACTGENERATE function tensorcontract_native!{TA,NA,TB,NB,TC,NC}(alpha::Number,A::StridedArray{TA,NA},conjA::Char,B::StridedArray{TB,NB},conjB::Char,beta::Number,C::StridedArray{TC,NC},oindA,cindA,oindB,cindB,oindCA,oindCB)
     # only basic checking, this function is not expected to be called directly
     length(oindA)==length(oindCA) || throw(DimensionMismatch("invalid contraction pattern"))
     length(oindB)==length(oindCB) || throw(DimensionMismatch("invalid contraction pattern"))
@@ -371,8 +344,8 @@ end
         # build recursive stack
         depth=iceil(log2(olengthA/OBASELENGTH))+iceil(log2(olengthB/OBASELENGTH))+iceil(log2(clength/CBASELENGTH))+4 # 4 levels safety margin
         level=1 # level of recursion
-        stackstep=zeros(Int,depth) # record step of algorithm at the different recursion level
-        stackstep[level]=0
+        stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
+        stackpos[level]=0
         stackoblengthA=zeros(Int,depth)
         stackoblengthA[level]=olengthA
         stackoblengthB=zeros(Int,depth)
@@ -409,7 +382,7 @@ end
         stackolddim=zeros(Int,depth)
 
         while level>0
-            step=stackstep[level]
+            pos=stackpos[level]
             oblengthA=stackoblengthA[level]
             oblengthB=stackoblengthB[level]
             cblength=stackcblength[level]
@@ -424,7 +397,7 @@ end
             if (oblengthA<=OBASELENGTH && oblengthB<=OBASELENGTH && cblength<=CBASELENGTH) || level==depth # base case
                 @gencontractkernel(NA-div(NA+NB-NC,2),NB-div(NA+NB-NC,2),div(NA+NB-NC,2),order,alpha,Alinear,conjA,Blinear,conjB,gamma,Clinear,bstartA,bstartB,bstartC,obdimsA,obdimsB,cbdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
                 level-=1
-            elseif step==0
+            elseif pos==0
                 # find which dimension to divide
                 dmax=0
                 whichd=0
@@ -485,7 +458,7 @@ end
                 stackdB[level]=dB
                 stackdC[level]=dC
 
-                stackstep[level+1]=0
+                stackpos[level+1]=0
                 stackoblengthA[level+1]= (whichd==1 ? div(oblengthA,olddim)*newdim : oblengthA)
                 stackoblengthB[level+1]= (whichd==2 ? div(oblengthB,olddim)*newdim : oblengthB)
                 stackcblength[level+1]= (whichd==3 ? div(cblength,olddim)*newdim : cblength)
@@ -497,9 +470,9 @@ end
                 stackbstartC[level+1]=bstartC
                 stackgamma[level+1]=gamma
 
-                stackstep[level]+=1
+                stackpos[level]+=1
                 level+=1
-            elseif step==1
+            elseif pos==1
                 dmax=stackdmax[level]
                 whichd=stackwhichd[level]
                 olddim=stackolddim[level]
@@ -508,7 +481,7 @@ end
                 dB=stackdB[level]
                 dC=stackdC[level]
 
-                stackstep[level+1]=0
+                stackpos[level+1]=0
                 stackoblengthA[level+1]= (whichd==1 ? div(oblengthA,olddim)*(olddim-newdim) : oblengthA)
                 stackoblengthB[level+1]= (whichd==2 ? div(oblengthB,olddim)*(olddim-newdim) : oblengthB)
                 stackcblength[level+1]= (whichd==3 ? div(cblength,olddim)*(olddim-newdim) : cblength)
@@ -520,7 +493,7 @@ end
                 stackbstartC[level+1]=bstartC+dC*newdim
                 stackgamma[level+1]=(whichd==1 || whichd==2 ? gamma : one(gamma))
 
-                stackstep[level]+=1
+                stackpos[level]+=1
                 level+=1
             else
                 level-=1

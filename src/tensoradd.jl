@@ -20,7 +20,7 @@ end
 
 # In-place method
 #-----------------
-@ngenerate N typeof(C) [1,2,3,4,5,6] function tensoradd!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},labelsA,beta::Number,C::StridedArray{TC,N},labelsC)
+@eval @ngenerate N typeof(C) $PERMUTEGENERATE function tensoradd!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},labelsA,beta::Number,C::StridedArray{TC,N},labelsC)
     iperm=indexin(labelsC,labelsA)
     length(iperm) == N || error("expected permutation of size $N, but length(perm)=$(length(perm))")
     isperm(iperm) || error("input is not a permutation")
@@ -62,8 +62,8 @@ end
         # build recursive stack
         depth=iceil(log2(length(C)/PERMUTEBASELENGTH))+2 # 2 levels safety margin
         level=1 # level of recursion
-        stackstep=zeros(Int,depth) # record step of algorithm at the different recursion level
-        stackstep[level]=0
+        stackpos=zeros(Int,depth) # record pos of algorithm at the different recursion level
+        stackpos[level]=0
         stackblength=zeros(Int,depth)
         stackblength[level]=length(C)
         @nexprs N d->begin
@@ -82,7 +82,7 @@ end
         stackolddim=zeros(Int,depth)
         
         while level>0
-            step=stackstep[level]
+            pos=stackpos[level]
             blength=stackblength[level]
             @nexprs N d->(bdims_{d} = stackbdims_{d}[level])
             bstartA=stackbstartA[level]
@@ -91,7 +91,7 @@ end
             if blength<=PERMUTEBASELENGTH || level==depth # base case
                 @stridedloops(N, i, bdims, indA, bstartA, stridesA, indC, bstartC, stridesC, @inbounds Clinear[indC]=beta*Clinear[indC]+alpha*Alinear[indA])
                 level-=1
-            elseif step==0
+            elseif pos==0
                 # find which dimension to divide
                 dmax=0
                 maxval=0
@@ -116,28 +116,28 @@ end
                 stackdC[level]=dC
                 stackdA[level]=dA
                 
-                stackstep[level+1]=0
+                stackpos[level+1]=0
                 @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? newdim : bdims_{d}))
                 stackblength[level+1]=div(blength,olddim)*newdim
                 stackbstartA[level+1]=bstartA
                 stackbstartC[level+1]=bstartC
 
-                stackstep[level]+=1
+                stackpos[level]+=1
                 level+=1
-            elseif step==1
+            elseif pos==1
                 olddim=stackolddim[level]
                 newdim=stacknewdim[level]
                 dmax=stackdmax[level]
                 dC=stackdC[level]
                 dA=stackdA[level]
 
-                stackstep[level+1]=0
+                stackpos[level+1]=0
                 @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? olddim-newdim : bdims_{d}))
                 stackblength[level+1]=div(blength,olddim)*(olddim-newdim)
                 stackbstartA[level+1]=bstartA+dA*newdim
                 stackbstartC[level+1]=bstartC+dC*newdim
 
-                stackstep[level]+=1
+                stackpos[level]+=1
                 level+=1
             else
                 level-=1

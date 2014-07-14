@@ -21,7 +21,9 @@ const PERMUTEBASELENGTH=1024
 
 # Tensor Operations
 #-------------------
-include("cartesian.jl")
+using Cartesian
+
+include("kernels.jl")
 include("tensorcopy.jl")
 include("tensoradd.jl")
 include("tensortrace.jl")
