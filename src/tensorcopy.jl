@@ -6,7 +6,7 @@
 
 # Simple method
 # --------------
-function tensorcopy(A,labelsA,outputlabels=labelsA)
+function tensorcopy(A::StridedArray,labelsA,outputlabels=labelsA)
     dims=size(A)
     perm=indexin(outputlabels,labelsA)
     length(perm) == ndims(A) || throw(LabelError("invalid label specification"))

@@ -5,7 +5,7 @@
 
 # Simple method
 #---------------
-function tensortrace(A::StridedArray,labelsA,outputlabels;basesize::Int=1024)
+function tensortrace(A::StridedArray,labelsA,outputlabels)
     T=eltype(A)
     dimsA=size(A)
     indCinA=indexin(outputlabels,labelsA)
@@ -14,9 +14,9 @@ function tensortrace(A::StridedArray,labelsA,outputlabels;basesize::Int=1024)
     end
     C=similar(A,dimsA[indCinA])
     fill!(C,zero(T))
-    return tensortrace!(one(T),A,labelsA,zero(T),C,outputlabels,basesize)
+    return tensortrace!(one(T),A,labelsA,zero(T),C,outputlabels)
 end
-function tensortrace(A::StridedArray,labelsA;basesize::Int=1024) # there is no one-line method to compute the default outputlabels
+function tensortrace(A::StridedArray,labelsA) # there is no one-line method to compute the default outputlabels
     ulabelsA=unique(labelsA)
     labelsC=similar(labelsA,0)
     sizehint(labelsC,length(labelsA))
@@ -26,16 +26,16 @@ function tensortrace(A::StridedArray,labelsA;basesize::Int=1024) # there is no o
             push!(labelsC,ulabelsA[j])
         end
     end
-    tensortrace(A,labelsA,labelsC;basesize=basesize)
+    tensortrace(A,labelsA,labelsC)
 end
 
 # In place method
 #-----------------
 const TRACEGENERATE={(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)}
 
-@eval @ngenerate (NA,NC) typeof(C) $TRACEGENERATE function tensortrace!{TA,NA,TC,NC}(alpha::Number,A::StridedArray{TA,NA},labelsA,beta::Number,C::StridedArray{TC,NC},labelsC,basesize::Int=1024)
+@eval @ngenerate (NA,NC) typeof(C) $TRACEGENERATE function tensortrace!{TA,NA,TC,NC}(alpha::Number,A::StridedArray{TA,NA},labelsA,beta::Number,C::StridedArray{TC,NC},labelsC)
     (length(labelsA)==NA && length(labelsC)==NC) || throw(LabelError("invalid label specification"))
-    NA==NC && return tensoradd!(alpha,A,labelsA,beta,C,labelsC,basesize) # nothing to trace
+    NA==NC && return tensoradd!(alpha,A,labelsA,beta,C,labelsC) # nothing to trace
     
     po=indexin(labelsC,labelsA)
     clabels=unique(setdiff(labelsA,labelsC))

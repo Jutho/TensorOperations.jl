@@ -6,7 +6,7 @@
 
 # Simple method
 # --------------
-function tensoradd(A,labelsA,B,labelsB,outputlabels=labelsA)
+function tensoradd{TA,TB,N}(A::StridedArray{TA,N},labelsA,B::StridedArray{TB,N},labelsB,outputlabels=labelsA)
     dims=size(A)
     T=promote_type(eltype(A),eltype(B))
     perm=indexin(outputlabels,labelsA)

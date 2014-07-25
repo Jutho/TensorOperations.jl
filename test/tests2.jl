@@ -6,8 +6,8 @@ p=randperm(4)
 C1=permutedims(A,p)
 C2=tensorcopy(A,1:4,p)
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
-@test_throws tensorcopy(1:3,A,1:4)
-@test_throws tensorcopy([1,2,2,4],A,1:4)
+@test_throws tensorcopy(A,1:3,1:4)
+@test_throws tensorcopy(A,[1,2,2,4],1:4)
 
 # test tensoradd
 B=randn((5,6,3,4))
