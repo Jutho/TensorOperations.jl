@@ -31,7 +31,7 @@ These details of these operations are specified by assigning labels to the diffe
 These operations can be applied by calling the corresponding methods, as explained below, or using a convenient index notation format. This can most easily be explained using a simple example:
 
 ```
-using TensorOperations
+using TensorOperations, IndexNotation
 alpha=randn()
 A=randn(5,5,5,5,5,5)
 B=randn(5,5,5)
