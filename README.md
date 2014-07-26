@@ -1,4 +1,6 @@
-# TensorOperations.jl [![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl)
+# TensorOperations.jl
+
+[![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg)](https://travis-ci.org/Jutho/TensorOperations.jl) [![Coverage Status](https://img.shields.io/coveralls/Jutho/TensorOperations.jl.svg)](https://coveralls.io/r/Jutho/TensorOperations.jl)
 
 Fast tensor operations using a convenient index notation or via memory friendly in-place methods.
 
