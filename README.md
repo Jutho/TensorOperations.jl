@@ -1,10 +1,16 @@
-# TensorOperations.jl [![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl)
+# TensorOperations.jl
+
+[![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg)](https://travis-ci.org/Jutho/TensorOperations.jl) [![Coverage Status](https://img.shields.io/coveralls/Jutho/TensorOperations.jl.svg)](https://coveralls.io/r/Jutho/TensorOperations.jl)
 
 Fast tensor operations using a convenient index notation or via memory friendly in-place methods.
 
+## What's new
+* Switched from cache aware to cache oblivious algorithms (divide and conquer).
+* To use index notation, one now has to explicitly state `using TensorOperations, IndexNotation`
+
 ##Installation
 
-Install with the package manager, currently `Pkg.clone("git://github.com/Jutho/TensorOperations.jl.git")` until this is registered as an official package.
+Install with the package manager, `Pkg.add("TensorOperations")`
 
 ## Philosophy
 
@@ -25,7 +31,7 @@ These details of these operations are specified by assigning labels to the diffe
 These operations can be applied by calling the corresponding methods, as explained below, or using a convenient index notation format. This can most easily be explained using a simple example:
 
 ```
-using TensorOperations
+using TensorOperations, IndexNotation
 alpha=randn()
 A=randn(5,5,5,5,5,5)
 B=randn(5,5,5)
@@ -111,19 +117,17 @@ For the mutating methods, the argument order resembles some of the BLAS function
   
 ### Internal methods
 
-Internally, the mutating methods call corresponding methods which are prefixed by `unsafe_` and which act at the level of pointers and strides. They run through several loops, the number of which depend on the number of open indices and the number of contraction indices. This is implemented using the `Base.Cartesian` functionality. The first time a tensor operation is run, the corresponding method probably needs to be generated and some extra overhead is required.
-
-Special care is given to cache-friendliness of the implementations by operating on small blocks that fit into cache and simultaneously acting on all data in a single cacheline. These parameters can be tuned in "cache.jl". The methods for computing the block size can be found in "blockdims.jl".
+The mutating methods are implemented using a lot of metaprogramming corresponding to Julia's powerfull macro system and the extremely useful package `Cartesian.jl` by Tim Holy. Special care is given to cache-friendliness of the implementations by using cache-oblivious divide-and-conquer strategies. The parameters that determine the size of the base case are defined as constants in `TensorOperations.jl` and further tuning can improve the performance. The kernels for the base cases are seperately defined in kernels.jl (as macros) and can thus easily be replaced if better implementations would exist (e.g. when more SIMD features become available).
 
 ##Planned features
 
 
 The following features seem like interesting additions to the TensorOperations.jl package, and might therefore appear in the future (not necessarily in this order)
 
-* Further optimize cache-friendliness by changing the loop order depending such that the inner loops run over the array dimensions with the smallest strides. Further efficiency increase can also be obtained by differentiating between a number of different tensor operations that are all handled by `tensorcontract(!)`. To use BLAS terminology, depending on the `labelsA` and `labelsB` the result of `tensorcontract` can be a level 1 operation [a dot product (no open indices) or a tensor product (no contraction indices)], a level 2 operation [no open indices in one of the two input arrays] or a level 3 operation [a genuine contraction with open and contraction indices in both input arrays]. 
+* Further optimize cache-friendliness by changing the loop order in the contraction kernel depending such that the inner loops run over the array dimensions with the smallest strides. Further efficiency increase can also be obtained by differentiating between a number of different tensor operations that are all handled by `tensorcontract(!)`. To use BLAS terminology, depending on the `labelsA` and `labelsB` the result of `tensorcontract` can be a level 1 operation [a dot product (no open indices) or a tensor product (no contraction indices)], a level 2 operation [no open indices in one of the two input arrays] or a level 3 operation [a genuine contraction with open and contraction indices in both input arrays]. 
 
-* Implementation of a a `:buffered` method for `tensorcontract(!)`, that can use a memory buffer in order to apply standard matrix multiplication on smaller subblocks of the input arrays without having to allocate new memory. Also methods to manage the memory buffer (e.g. grow and shrink) should be provided.
+* Implementation of a a `:buffered` method for `tensorcontract(!)`, that can use a memory buffer in order to apply standard matrix multiplication on smaller subblocks of the input arrays without having to allocate new memory.
 
 * Functionality to contract a large set of tensors, also called a tensor network, including a method to optimize over the contraction order along the lines of [arXiv:1304.6112v3](http://arxiv.org/abs/1304.6112v3).
 
-* Implementation of a `@lazy` macro, that delays the evaluation of an index expression and computes the whole expression using an optimal strategy with a minimal number of temporaries, e.g. by using some of the other features such as finding an optimal contraction order and using a single buffer to store the required temporary arrays.
+* Implementation of a `@lazy` macro, that delays the evaluation of an index expression and computes the whole expression using an optimal strategy with a minimal number of temporaries, e.g. using a single buffer to store the required temporary arrays.

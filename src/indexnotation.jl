@@ -1,13 +1,24 @@
+module IndexNotation
+
+export @l_str
+
+using TensorOperations
+
 # LabelList
 #-----------
 # Wrapper for a list of labels in the form of a Vector{Symbol}, so
 # that we do not have to overload the getindex and setindex! methods
 # of Array on a generic Vector{Symbol} argument, which might conflict
 # with other packages or user definitions...
-
-immutable LabelList <: DenseArray{Symbol,1}
-    labels::Vector{Symbol}
-end
+if VERSION.minor < 3
+    immutable LabelList <: AbstractArray{Symbol,1}
+        labels::Vector{Symbol}
+    end
+else
+    immutable LabelList <: DenseArray{Symbol,1}
+        labels::Vector{Symbol}
+    end
+end    
 LabelList(s::String)=LabelList(map(symbol,map(strip,split(s,','))))
 
 # minimal methods for being an immutable DenseArray
@@ -66,15 +77,19 @@ Base.eltype{T,N}(::Type{LabeledArray{T,N}})=T
 
 Base.getindex(A::Array,l::LabelList)=LabeledArray(A,l.labels)
 Base.getindex(A::SubArray,l::LabelList)=LabeledArray(A,l.labels)
-Base.getindex(A::SharedArray,l::LabelList)=LabeledArray(A,l.labels)
+# if VERSION.minor >= 3
+#     Base.getindex(A::SharedArray,l::LabelList)=LabeledArray(A,l.labels)
+# end
 Base.getindex(A::LabeledArray,l::LabelList)=LabeledArray(A.data,l.labels)
 
-Base.setindex!(A::Array,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B.labels,A,l.labels)
-Base.setindex!(A::SubArray,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B.labels,A,l.labels)
-Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=tensorcopy!(B.data,B.labels,A,l.labels)
+Base.setindex!(A::Array,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+Base.setindex!(A::SubArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+# if VERSION.minor >= 3
+#     Base.setindex!(A::SharedArray,B::LabeledArray,l::LabelList)=TensorOperations.tensorcopy!(B.data,B.labels,A,l.labels)
+# end
 
 # addition of arrays
-+(A::LabeledArray,B::LabeledArray)=LabeledArray(tensoradd(A.data,A.labels,B.data,B.labels,A.labels),A.labels)
++(A::LabeledArray,B::LabeledArray)=LabeledArray(TensorOperations.tensoradd(A.data,A.labels,B.data,B.labels,A.labels),A.labels)
 
 # complex conjugation
 Base.conj(A::LabeledArray)=LabeledArray(conj(A.data),A.labels)
@@ -87,4 +102,8 @@ Base.scale(A::LabeledArray,a::Number)=LabeledArray(scale(A.data,a),A.labels)
 \(a::Number,t::LabeledArray)=scale(t,one(a)/a)
 
 # general contraction
-*(A::LabeledArray,B::LabeledArray)=LabeledArray(tensorcontract(A.data,A.labels,B.data,B.labels),symdiff(A.labels,B.labels))
+*(A::LabeledArray,B::LabeledArray)=LabeledArray(TensorOperations.tensorcontract(A.data,A.labels,B.data,B.labels),symdiff(A.labels,B.labels))
+
+TensorOperations.scalar{T}(C::LabeledArray{T,0})=C.data[1]
+
+end

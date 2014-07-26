@@ -26,12 +26,13 @@ function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},l
     T=promote_type(T1,T2)
     C=similar(A,T,tuple(dimsC...))
     fill!(C,zero(T))
-    return tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method)
+    tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method)
+    return C
 end
 
 # In-place method
 #-----------------
-function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::Char,B::StridedArray{T},labelsB,conjB::Char,beta::Number,C::StridedArray{R},labelsC;method::Symbol=:BLAS)
+function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,conjA::Char,B::StridedArray{TB},labelsB,conjB::Char,beta::Number,C::StridedArray{TC},labelsC;method::Symbol=:BLAS)
     # Updates C as beta*C+alpha*contract(A,B), whereby the contraction pattern
     # is specified by labelsA, labelsB and labelsC. The iterables labelsA(B,C)
     # should contain a unique label for every index of array A(B,C), such that
@@ -70,9 +71,9 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
 
     clabels=intersect(ulabelsA,ulabelsB)
     numcontract=length(clabels)
-    olabelsA=intersect(ulabelsA,ulabelsC)
+    olabelsA=intersect(ulabelsC,ulabelsA)
     numopenA=length(olabelsA)
-    olabelsB=intersect(ulabelsB,ulabelsC)
+    olabelsB=intersect(ulabelsC,ulabelsB)
     numopenB=length(olabelsB)
     
     if numcontract+numopenA!=NA || numcontract+numopenB!=NB || numopenA+numopenB!=NC
@@ -102,10 +103,10 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
         cdimsA[i]==cdimsB[i] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
     end
     for i=1:numopenA
-        odimsA[i]==dimC[oindCA[i]] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
+        odimsA[i]==dimC[oindCA[i]] || throw(DimensionMismatch("dimension mismatch for label $(olabelsA[i])"))
     end
     for i=1:numopenB
-        odimsB[i]==dimC[oindCB[i]] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
+        odimsB[i]==dimC[oindCB[i]] || throw(DimensionMismatch("dimension mismatch for label $(olabelsB[i])"))
     end
     
     # Perform contraction
@@ -121,29 +122,71 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
     # the memory allocation and copying also impacts the computation time.
     
     if method==:BLAS
+        # try to change extra allocation as much as possible
+        if vcat(olabelsB,olabelsA)==labelsC[1:NC] # better to change role of A and B
+            labelsA,labelsB=labelsB,labelsA
+            olabelsA,olabelsB=olabelsB,olabelsA
+            odimsA,odimsB=odimsB,odimsA
+            cdimsA,cdimsB=cdimsB,cdimsA
+            A,B=B,A
+            NA,NB=NB,NA
+        end
+
+        olengthA=prod(odimsA)
+        olengthB=prod(odimsB)
+        clength=prod(cdimsA)
+        
         # permute A
         if conjA=='C'
-            Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
-            tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
-        elseif conjA=='N' && conjB=='C' # temporary fix untill At_mul_Bc! is implemented
-            conjA='N'
-            Anew=similar(A,eltype(C),tuple(odimsA...,cdimsA...))
-            tensorcopy!(A,labelsA,Anew,vcat(olabelsA,clabels))
+            if vcat(clabels,olabelsA)==labelsA[1:NA] && TA==TC && isa(A,Array)
+                Amat=A
+                Amat=reshape(Amat,(clength,olengthA))
+            else
+                Amat=similar(A,TC,tuple(cdimsA...,odimsA...))
+                tensorcopy!(A,labelsA,Amat,vcat(clabels,olabelsA))
+                Amat=reshape(Amat,(clength,olengthA))
+            end
         elseif conjA=='N'
-            conjA='T' # it is more efficient to compute At*B
-            Anew=similar(A,eltype(C),tuple(cdimsA...,odimsA...))
-            tensorcopy!(A,labelsA,Anew,vcat(clabels,olabelsA))
+            if vcat(olabelsA,clabels)==labelsA[1:NA] && TA==TC && isa(A,Array)
+                Amat=A
+                Amat=reshape(Amat,(olengthA,clength))
+            elseif vcat(clabels,olabelsA)==labelsA[1:NA] && TA==TC && isa(A,Array)
+                conjA='T'
+                Amat=A
+                Amat=reshape(Amat,(clength,olengthA))
+            else
+                conjA='T' # it is more efficient to compute At*B
+                Amat=similar(A,TC,tuple(cdimsA...,odimsA...))
+                tensorcopy!(A,labelsA,Amat,vcat(clabels,olabelsA))
+                Amat=reshape(Amat,(clength,olengthA))
+            end
         else
             throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
         end
 
         # permute B
         if conjB=='C'
-            Bnew=similar(B,eltype(C),tuple(odimsB...,cdimsB...))
-            tensorcopy!(B,labelsB,Bnew,vcat(olabelsB,clabels))
+            if vcat(olabelsB,clabels)==labelsB[1:NB] && TB==TC && isa(B,Array)
+                Bmat=B
+                Bmat=reshape(Bmat,(olengthB,clength))
+            else
+                Bmat=similar(B,TC,tuple(odimsB...,cdimsB...))
+                tensorcopy!(B,labelsB,Bmat,vcat(olabelsB,clabels))
+                Bmat=reshape(Bmat,(olengthB,clength))
+            end
         elseif conjB=='N'
-            Bnew=similar(B,eltype(C),tuple(cdimsB...,odimsB...))
-            tensorcopy!(B,labelsB,Bnew,vcat(clabels,olabelsB))
+            if vcat(clabels,olabelsB)==labelsB[1:NB] && TB==TC && isa(B,Array)
+                Bmat=B
+                Bmat=reshape(Bmat,(clength,olengthB))
+            elseif vcat(olabelsB,clabels)==labelsB[1:NB] && TB==TC && isa(B,Array)
+                conjB='T'
+                Bmat=B
+                Bmat=reshape(Bmat,(olengthB,clength))
+            else
+                Bmat=similar(B,TC,tuple(cdimsB...,odimsB...))
+                tensorcopy!(B,labelsB,Bmat,vcat(clabels,olabelsB))
+                Bmat=reshape(Bmat,(clength,olengthB))
+            end
         else
             throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
         end
@@ -153,126 +196,309 @@ function tensorcontract!{R,S,T}(alpha::Number,A::StridedArray{S},labelsA,conjA::
         totalodimsB=prod(odimsB)
         totalcdims=prod(cdimsA)
         
-        Cnew=similar(C,tuple(odimsA...,odimsB...))
-        if conjA=='T' && conjB=='N'
-            At_mul_B!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalcdims,totalodimsB)))
-        elseif conjA=='C' && conjB=='N'
-            Ac_mul_B!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalcdims,totalodimsB)))
-        elseif conjA=='N' && conjB=='C'
-            A_mul_Bc!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalodimsA,totalcdims)),reshape(Bnew,(totalodimsB,totalcdims)))
+        if vcat(olabelsA,olabelsB)==labelsC[1:NC] && isa(C,Array)
+            Cmat=reshape(C,(olengthA,olengthB))
+            Base.LinAlg.BLAS.gemm!(conjA,conjB,convert(TC,alpha),Amat,Bmat,convert(TC,beta),Cmat)
         else
-            Ac_mul_Bc!(reshape(Cnew,(totalodimsA,totalodimsB)),reshape(Anew,(totalcdims,totalodimsA)),reshape(Bnew,(totalodimsB,totalcdims)))
+            Cmat=zeros(TC,(olengthA,olengthB))
+            Base.LinAlg.BLAS.gemm!(conjA,conjB,one(TC),Amat,Bmat,zero(TC),Cmat)
+            Cmat=reshape(Cmat,tuple(odimsA...,odimsB...))
+            tensoradd!(alpha,Cmat,vcat(olabelsA,olabelsB),beta,C,labelsC)
         end
-        tensoradd!(alpha,Cnew,vcat(olabelsA,olabelsB),beta,C,labelsC)
-        return C
     elseif method==:native
-        stridesA=strides(A)
-        stridesB=strides(B)
-        stridesC=strides(C)
-        ostridesA=stridesA[oindA]
-        cstridesA=stridesA[cindA]
-        ostridesB=stridesB[oindB]
-        cstridesB=stridesB[cindB]
-        ostridesCA=stridesC[oindCA]
-        ostridesCB=stridesC[oindCB]
-
-        unsafe_tensorcontract!(odimsA,odimsB,cdimsA,convert(R,alpha),pointer(A),conjA,ostridesA,cstridesA,pointer(B),conjB,ostridesB,cstridesB,convert(R,beta),pointer(C),ostridesCA,ostridesCB)
-        return C
-        
-    else method==:buffered
-        # to be written: allocate a fixed buffer, that can be used as temporary space for BLAS
-    end
-end
-
-# Low-level method
-#------------------
-let _tensorcontract_defined=Dict{(Int,Int,Int), Bool}()
-    global unsafe_tensorcontract!
-    function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int},alpha::T,A::Ptr{TA},conjA::Char,ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},B::Ptr{TB},conjB::Char,ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},beta::T,C::Ptr{T},ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int},obdimsA::NTuple{N1,Int},obdimsB::NTuple{N2,Int},cbdims::NTuple{N3,Int})
-        def=get(_tensorcontract_defined,(N1,N2,N3),false)
-        if !def
-            ex=quote
-            function _unsafe_tensorcontract!{T,TA,TB}(odimsA::NTuple{$N1,Int},odimsB::NTuple{$N2,Int},cdims::NTuple{$N3,Int},alpha::T,A::Ptr{TA},conjA::Char,ostridesA::NTuple{$N1,Int},cstridesA::NTuple{$N3,Int},B::Ptr{TB},conjB::Char,ostridesB::NTuple{$N2,Int},cstridesB::NTuple{$N3,Int},beta::T,C::Ptr{T},ostridesCA::NTuple{$N1,Int},ostridesCB::NTuple{$N2,Int},obdimsA::NTuple{$N1,Int},obdimsB::NTuple{$N2,Int},cbdims::NTuple{$N3,Int})
-                # check conjugation input
-                conjA=='N' || conjA=='C' || throw(ArgumentError("invalid conjugation specification"))
-                conjB=='N' || conjB=='C' || throw(ArgumentError("invalid conjugation specification"))
-                
-                # calculate dims as variables
-                @nexprs $N1 d->(odimsA_{d}=odimsA[d])
-                @nexprs $N2 d->(odimsB_{d}=odimsB[d])
-                @nexprs $N3 d->(cdims_{d}=cdims[d])
-                @nexprs $N1 d->(obdimsA_{d}=obdimsA[d])
-                @nexprs $N2 d->(obdimsB_{d}=obdimsB[d])
-                @nexprs $N3 d->(cbdims_{d}=cbdims[d])
-                # calculate strides as variables
-                @nexprs $N1 d->(ostridesA_{d}=ostridesA[d])
-                @nexprs $N3 d->(cstridesA_{d}=cstridesA[d])
-                @nexprs $N2 d->(ostridesB_{d}=ostridesB[d])
-                @nexprs $N3 d->(cstridesB_{d}=cstridesB[d])
-                @nexprs $N1 d->(ostridesCA_{d}=ostridesCA[d])
-                @nexprs $N2 d->(ostridesCB_{d}=ostridesCB[d])
-    
-                @nexprs 1 d->(indA1_{$N1}=1)
-                @nexprs 1 d->(indC1_{$N1}=1)
-                @nloops($N1, outeri, d->1:obdimsA_{d}:odimsA_{d},
-                    d->(indA1_{d-1}=indA1_{d};indC1_{d-1}=indC1_{d};ilim_{d}=min(outeri_{d}+obdimsA_{d}-1,odimsA_{d})), # PRE
-                    d->(indA1_{d}+=obdimsA_{d}*ostridesA_{d};indC1_{d}+=obdimsA_{d}*ostridesCA_{d}), # POST
-                    begin # BODY
-                        @nexprs 1 e->(indC2_{$N2}=indC1_0)
-                        @nexprs 1 e->(indB1_{$N2}=1)
-                        @nloops($N2, outerj, e->1:obdimsB_{e}:odimsB_{e},
-                            e->(indC2_{e-1}=indC2_{e};indB1_{e-1}=indB1_{e};jlim_{e}=min(outerj_{e}+obdimsB_{e}-1,odimsB_{e})), # PRE
-                            e->(indC2_{e}+=obdimsB_{e}*ostridesCB_{e};indB1_{e}+=obdimsB_{e}*ostridesB_{e}), # POST
-                            begin # BODY
-                                @nexprs 1 f->(indA2_{$N3}=indA1_0)
-                                @nexprs 1 f->(indB2_{$N3}=indB1_0)
-                                gamma=beta # for the first value of outerk gamma=beta, afterwards gamma=1
-                                @nloops($N3, outerk, f->1:cbdims_{f}:cdims_{f},
-                                    f->(indA2_{f-1}=indA2_{f};indB2_{f-1}=indB2_{f};klim_{f}=min(outerk_{f}+cbdims_{f}-1,cdims_{f})), # PRE
-                                    f->(indA2_{f}+=cbdims_{f}*cstridesA_{f};indB2_{f}+=cbdims_{f}*cstridesB_{f}), # POST
-                                    begin # BODY
-                                        @nexprs 1 b->(indB3_{$N2}=indB2_0)
-                                        @nexprs 1 b->(indC3_{$N2}=indC2_0)
-                                        @nloops($N2, innerj, b->outerj_{b}:jlim_{b},
-                                            b->(indB3_{b-1}=indB3_{b};indC3_{b-1}=indC3_{b}), # PRE
-                                            b->(indB3_{b}+=ostridesB_{b};indC3_{b}+=ostridesCB_{b}), # POST
-                                            begin # BODY
-                                                @nexprs 1 c->(indA3_{$N3}=indA2_0)
-                                                @nexprs 1 c->(indB4_{$N3}=indB3_0)
-                                                delta=gamma # for the first iteration of innerk delta=gamma, afterwards delta=1
-                                                @nloops($N3, innerk, c->outerk_{c}:klim_{c},
-                                                    c->(indA3_{c-1}=indA3_{c};indB4_{c-1}=indB4_{c}), # PRE
-                                                    c->(indA3_{c}+=cstridesA_{c};indB4_{c}+=cstridesB_{c}), # POST
-                                                    begin # BODY
-                                                        localB=(conjB=='C' ? conj(unsafe_load(B,indB4_0)) : unsafe_load(B,indB4_0))
-                                                        @nexprs 1 a->(indA4_{$N1}=indA3_0)
-                                                        @nexprs 1 a->(indC4_{$N1}=indC3_0)
-                                                        @nloops($N1, inneri, a->outeri_{a}:ilim_{a},
-                                                            a->(indA4_{a-1}=indA4_{a};indC4_{a-1}=indC4_{a}), # PRE
-                                                            a->(indA4_{a}+=ostridesA_{a};indC4_{a}+=ostridesCA_{a}), # POST
-                                                            begin # BODY
-                                                                localA=(conjA=='C' ? conj(unsafe_load(A,indA4_0)) : unsafe_load(A,indA4_0))
-                                                                localC::T=delta*unsafe_load(C,indC4_0)
-                                                                localC+=alpha*localA*localB
-                                                                unsafe_store!(C,localC,indC4_0)
-                                                            end)
-                                                        delta=one(T)
-                                                    end)
-                                            end)
-                                        gamma=one(T)
-                                    end)
-                            end)
-                    end)
-                return C
-            end
-            end
-            eval(ex)
-            _tensorcontract_defined[(N1,N2,N3)]=true
+        if NA>=NB # allows to generate less method definitions
+            tensorcontract_native!(alpha,A,conjA,B,conjB,beta,C,oindA,cindA,oindB,cindB,oindCA,oindCB)
+        else
+            tensorcontract_native!(alpha,B,conjB,A,conjA,beta,C,oindB,cindB,oindA,cindA,oindCB,oindCA)
         end
-        _unsafe_tensorcontract!(odimsA,odimsB,cdims,alpha,A,conjA,ostridesA,cstridesA,B,conjB,ostridesB,cstridesB,beta,C,ostridesCA,ostridesCB,obdimsA,obdimsB,cbdims)
+   # elseif method==:buffered
+   #      # to be written: allocate a fixed buffer, that can be used as temporary space for BLAS
+    else
+        throw(ArgumentError("unknown contraction method"))
     end
+    return C
 end
-function unsafe_tensorcontract!{T,TA,TB,N1,N2,N3}(odimsA::NTuple{N1,Int},odimsB::NTuple{N2,Int},cdims::NTuple{N3,Int},alpha::T,A::Ptr{TA},conjA::Char,ostridesA::NTuple{N1,Int},cstridesA::NTuple{N3,Int},B::Ptr{TB},conjB::Char,ostridesB::NTuple{N2,Int},cstridesB::NTuple{N3,Int},beta::T,C::Ptr{T},ostridesCA::NTuple{N1,Int},ostridesCB::NTuple{N2,Int})
-    obdimsA,obdimsB,cbdims=blockdims3(odimsA,odimsB,cdims,sizeof(T),ostridesCA,ostridesCB,sizeof(TA),ostridesA,cstridesA,sizeof(TB),ostridesB,cstridesB)
-    return unsafe_tensorcontract!(odimsA,odimsB,cdims,alpha,A,conjA,ostridesA,cstridesA,B,conjB,ostridesB,cstridesB,beta,C,ostridesCA,ostridesCB,obdimsA,obdimsB,cbdims)
+
+const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
+(1,1,0), # scalar product of 2 vectors
+(2,1,1), # mat vec multiplication
+(1,2,1), # vec mat multiplication
+(2,2,4), # mat mat outer product
+(2,2,2), # mat mat multiplication
+(2,2,0), # mat mat scalar product
+(3,1,4),
+(3,1,2),
+(3,2,5),
+(3,2,3),
+(3,2,1),
+(3,3,6),
+(3,3,4),
+(3,3,2),
+(3,3,0),
+(4,1,5),
+(4,1,3),
+(4,2,6),
+(4,2,4),
+(4,2,2),
+(4,3,5), # restrict to outputs with NC<=6
+(4,3,3),
+(4,3,1),
+(4,4,6),
+(4,4,4),
+(4,4,2),
+(4,4,0)]
+
+@eval @ngenerate (NA,NB,NC) typeof(C) $CONTRACTGENERATE function tensorcontract_native!{TA,NA,TB,NB,TC,NC}(alpha::Number,A::StridedArray{TA,NA},conjA::Char,B::StridedArray{TB,NB},conjB::Char,beta::Number,C::StridedArray{TC,NC},oindA,cindA,oindB,cindB,oindCA,oindCB)
+    # only basic checking, this function is not expected to be called directly
+    length(oindA)==length(oindCA) || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindB)==length(oindCB) || throw(DimensionMismatch("invalid contraction pattern"))
+    length(cindA)==length(cindB)==div(NA+NB-NC,2) || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindA)+length(cindA)==NA || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindB)+length(cindB)==NB || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindCA)+length(oindCB)==NC || throw(DimensionMismatch("invalid contraction pattern"))
+    
+    ostridesA=Int[stride(A,i) for i in oindA]
+    cstridesA=Int[stride(A,i) for i in cindA]
+    ostridesB=Int[stride(B,i) for i in oindB]
+    cstridesB=Int[stride(B,i) for i in cindB]
+    ostridesCA=Int[stride(C,i) for i in oindCA]
+    ostridesCB=Int[stride(C,i) for i in oindCB]
+    
+    # calculate optimal contraction order for inner loops
+    order=0
+    if NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(cstridesA)
+        order+=1 # k after i
+    end
+    if NB-div(NA+NB-NC,2)>0 && minimum(ostridesB)<minimum(cstridesB)
+        order+=2 # k after j
+    end
+    if NB-div(NA+NB-NC,2)==0 || (NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(ostridesB))
+        order+=4 # j after i
+    end
+    # more to left = later
+    # i,j,k: order==0
+    # i,k,j: order==2 || order==6
+    # j,i,k: order==4
+    # j,k,i: order==5 || order==1
+    # k,i,j: order==3
+    # k,j,i: order==7
+    # 1 and 6 are the frustrated cases where no optimal order exists
+    
+    # calculate dims as variables
+    olengthA=1
+    olengthB=1
+    clength=1
+    @nexprs NA-div(NA+NB-NC,2) d->(odimsA_{d}=size(A,oindA[d]);olengthA*=odimsA_{d})
+    @nexprs NB-div(NA+NB-NC,2) d->(odimsB_{d}=size(B,oindB[d]);olengthB*=odimsB_{d})
+    @nexprs div(NA+NB-NC,2) d->(cdims_{d}=size(A,cindA[d]);clength*=cdims_{d})
+
+    # calculate strides as variables
+    @nexprs NA-div(NA+NB-NC,2) d->(begin
+        ostridesA_{d}=ostridesA[d]
+        ostridesCA_{d}=ostridesCA[d]
+        minostridesA_{d}=min(ostridesA_{d},ostridesCA_{d})
+    end)
+    @nexprs NB-div(NA+NB-NC,2) d->(begin
+        ostridesB_{d}=ostridesB[d]
+        ostridesCB_{d}=ostridesCB[d]
+        minostridesB_{d}=min(ostridesB_{d},ostridesCB_{d})
+    end)
+    @nexprs div(NA+NB-NC,2) d->(begin
+        cstridesA_{d}=cstridesA[d]
+        cstridesB_{d}=cstridesB[d]
+        mincstrides_{d}=min(cstridesA_{d},cstridesB_{d})
+    end)
+    
+    if beta==zero(beta)
+        fill!(C,zero(TC))
+    end
+    
+    startA=1
+    local Alinear::Array{TA,NA}
+    if isa(A, SubArray)
+        startA = A.first_index
+        Alinear = A.parent
+    else
+        Alinear = A
+    end
+    startB=1
+    local Blinear::Array{TB,NB}
+    if isa(B, SubArray)
+        startB = B.first_index
+        Blinear = B.parent
+    else
+        Blinear = B
+    end
+    startC=1
+    local Clinear::Array{TC,NC}
+    if isa(C, SubArray)
+        startC = C.first_index
+        Clinear = C.parent
+    else
+        Clinear = C
+    end
+    
+    if olengthA<=2*OBASELENGTH && olengthB<=2*OBASELENGTH && clength<=2*CBASELENGTH
+        @gencontractkernel(NA-div(NA+NB-NC,2),NB-div(NA+NB-NC,2),div(NA+NB-NC,2),order,alpha,Alinear,conjA,Blinear,conjB,beta,Clinear,startA,startB,startC,odimsA,odimsB,cdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
+    else
+        # build recursive stack
+        depth=iceil(log2(olengthA/OBASELENGTH))+iceil(log2(olengthB/OBASELENGTH))+iceil(log2(clength/CBASELENGTH))+4 # 4 levels safety margin
+        level=1 # level of recursion
+        stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
+        stackpos[level]=0
+        stackoblengthA=zeros(Int,depth)
+        stackoblengthA[level]=olengthA
+        stackoblengthB=zeros(Int,depth)
+        stackoblengthB[level]=olengthB
+        stackcblength=zeros(Int,depth)
+        stackcblength[level]=clength
+        @nexprs NA-div(NA+NB-NC,2) d->begin
+            stackobdimsA_{d} = zeros(Int,depth)
+            stackobdimsA_{d}[level] = odimsA_{d}
+        end
+        @nexprs NB-div(NA+NB-NC,2) d->begin
+            stackobdimsB_{d} = zeros(Int,depth)
+            stackobdimsB_{d}[level] = odimsB_{d}
+        end
+        @nexprs div(NA+NB-NC,2) d->begin
+            stackcbdims_{d} = zeros(Int,depth)
+            stackcbdims_{d}[level] = cdims_{d}
+        end
+        stackbstartA=zeros(Int,depth)
+        stackbstartA[level]=startA
+        stackbstartB=zeros(Int,depth)
+        stackbstartB[level]=startB
+        stackbstartC=zeros(Int,depth)
+        stackbstartC[level]=startC
+        stackgamma=zeros(typeof(beta),depth)
+        stackgamma[level]=beta
+
+        stackdA=zeros(Int,depth)
+        stackdB=zeros(Int,depth)
+        stackdC=zeros(Int,depth)
+        stackdmax=zeros(Int,depth)
+        stackwhichd=zeros(Int,depth)
+        stacknewdim=zeros(Int,depth)
+        stackolddim=zeros(Int,depth)
+
+        while level>0
+            pos=stackpos[level]
+            oblengthA=stackoblengthA[level]
+            oblengthB=stackoblengthB[level]
+            cblength=stackcblength[level]
+            @nexprs NA-div(NA+NB-NC,2) d->(obdimsA_{d} = stackobdimsA_{d}[level])
+            @nexprs NB-div(NA+NB-NC,2) d->(obdimsB_{d} = stackobdimsB_{d}[level])
+            @nexprs div(NA+NB-NC,2) d->(cbdims_{d} = stackcbdims_{d}[level])
+            bstartA=stackbstartA[level]
+            bstartB=stackbstartB[level]
+            bstartC=stackbstartC[level]
+            gamma=stackgamma[level]
+
+            if (oblengthA<=OBASELENGTH && oblengthB<=OBASELENGTH && cblength<=CBASELENGTH) || level==depth # base case
+                @gencontractkernel(NA-div(NA+NB-NC,2),NB-div(NA+NB-NC,2),div(NA+NB-NC,2),order,alpha,Alinear,conjA,Blinear,conjB,gamma,Clinear,bstartA,bstartB,bstartC,obdimsA,obdimsB,cbdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
+                level-=1
+            elseif pos==0
+                # find which dimension to divide
+                dmax=0
+                whichd=0
+                maxval=0
+                newdim=0
+                olddim=0
+                dA=0
+                dB=0
+                dC=0
+                if oblengthA>=oblengthB && oblengthA*CBASELENGTH>=cblength*OBASELENGTH
+                    whichd=1
+                    @nexprs NA-div(NA+NB-NC,2) d->begin
+                        newmax=obdimsA_{d}*minostridesA_{d}
+                        if obdimsA_{d}>1 && newmax>maxval
+                            dmax=d
+                            olddim=obdimsA_{d}
+                            newdim=olddim>>1
+                            dA=ostridesA_{d}
+                            dB=0
+                            dC=ostridesCA_{d}
+                            maxval=newmax
+                        end
+                    end
+                elseif oblengthB>=oblengthA && oblengthB*CBASELENGTH>=cblength*OBASELENGTH
+                    whichd=2
+                    @nexprs NB-div(NA+NB-NC,2) d->begin
+                        newmax=obdimsB_{d}*minostridesB_{d}
+                        if obdimsB_{d}>1 && newmax>maxval
+                            dmax=d
+                            olddim=obdimsB_{d}
+                            newdim=olddim>>1
+                            dA=0
+                            dB=ostridesB_{d}
+                            dC=ostridesCB_{d}
+                            maxval=newmax
+                        end
+                    end
+                else
+                    whichd=3
+                    @nexprs div(NA+NB-NC,2) d->begin
+                        newmax=cbdims_{d}*mincstrides_{d}
+                        if cbdims_{d}>1 && newmax>maxval
+                            dmax=d
+                            olddim=cbdims_{d}
+                            newdim=olddim>>1
+                            dA=cstridesA_{d}
+                            dB=cstridesB_{d}
+                            dC=0
+                            maxval=newmax
+                        end
+                    end
+                end
+                stackolddim[level]=olddim
+                stacknewdim[level]=newdim
+                stackdmax[level]=dmax
+                stackwhichd[level]=whichd
+                stackdA[level]=dA
+                stackdB[level]=dB
+                stackdC[level]=dC
+
+                stackpos[level+1]=0
+                stackoblengthA[level+1]= (whichd==1 ? div(oblengthA,olddim)*newdim : oblengthA)
+                stackoblengthB[level+1]= (whichd==2 ? div(oblengthB,olddim)*newdim : oblengthB)
+                stackcblength[level+1]= (whichd==3 ? div(cblength,olddim)*newdim : cblength)
+                @nexprs NA-div(NA+NB-NC,2) d->(stackobdimsA_{d}[level+1] = (d==dmax && whichd==1 ? newdim : obdimsA_{d}))
+                @nexprs NB-div(NA+NB-NC,2) d->(stackobdimsB_{d}[level+1] = (d==dmax && whichd==2 ? newdim : obdimsB_{d}))
+                @nexprs div(NA+NB-NC,2) d->(stackcbdims_{d}[level+1] = (d==dmax && whichd==3 ? newdim : cbdims_{d}))
+                stackbstartA[level+1]=bstartA
+                stackbstartB[level+1]=bstartB
+                stackbstartC[level+1]=bstartC
+                stackgamma[level+1]=gamma
+
+                stackpos[level]+=1
+                level+=1
+            elseif pos==1
+                dmax=stackdmax[level]
+                whichd=stackwhichd[level]
+                olddim=stackolddim[level]
+                newdim=stacknewdim[level]
+                dA=stackdA[level]
+                dB=stackdB[level]
+                dC=stackdC[level]
+
+                stackpos[level+1]=0
+                stackoblengthA[level+1]= (whichd==1 ? div(oblengthA,olddim)*(olddim-newdim) : oblengthA)
+                stackoblengthB[level+1]= (whichd==2 ? div(oblengthB,olddim)*(olddim-newdim) : oblengthB)
+                stackcblength[level+1]= (whichd==3 ? div(cblength,olddim)*(olddim-newdim) : cblength)
+                @nexprs NA-div(NA+NB-NC,2) d->(stackobdimsA_{d}[level+1] = (d==dmax && whichd==1 ? olddim-newdim : obdimsA_{d}))
+                @nexprs NB-div(NA+NB-NC,2) d->(stackobdimsB_{d}[level+1] = (d==dmax && whichd==2 ? olddim-newdim : obdimsB_{d}))
+                @nexprs div(NA+NB-NC,2) d->(stackcbdims_{d}[level+1] = (d==dmax && whichd==3 ? olddim-newdim : cbdims_{d}))
+                stackbstartA[level+1]=bstartA+dA*newdim
+                stackbstartB[level+1]=bstartB+dB*newdim
+                stackbstartC[level+1]=bstartC+dC*newdim
+                stackgamma[level+1]=(whichd==1 || whichd==2 ? gamma : one(gamma))
+
+                stackpos[level]+=1
+                level+=1
+            else
+                level-=1
+            end
+        end
+    end
+    return C
 end
