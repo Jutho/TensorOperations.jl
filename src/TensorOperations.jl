@@ -14,10 +14,14 @@ end
 
 # Constants that define base case in recursive algorithms
 #---------------------------------------------------------
-const OBASELENGTH=16 # square root of total size of all open dimensions
-const CBASELENGTH=24 # total size of all contraction dimensions
-const PERMUTEBASELENGTH=1024
+# for tensorcopy, tensoradd and tensortrace
+const TBASELENGTH=512
+# note: total number elements involved = 2*512 = 1024
 
+# for tensorcontract
+const OBASELENGTH=16 # total size of all open dimensions in one of the two contraction partners
+const CBASELENGTH=24 # total size of all contraction dimensions
+# note: total number elements involved = 16*24*2+16*16 = 1024
 
 # Tensor Operations
 #-------------------

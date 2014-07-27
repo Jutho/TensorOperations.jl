@@ -53,13 +53,13 @@ const PERMUTEGENERATE=[1,2,3,4,5,6,7,8]
         Clinear = C
     end
 
-    if length(C)<=4*PERMUTEBASELENGTH
+    if length(C)<=4*TBASELENGTH
         @stridedloops(N, i, dims, indA, startA, stridesA, indC, startC, stridesC, @inbounds Clinear[indC]=Alinear[indA])
     else
         @nexprs N d->(minstrides_{d} = min(stridesA_{d},stridesC_{d}))
 
         # build recursive stack
-        depth=iceil(log2(length(C)/PERMUTEBASELENGTH))+2 # 2 levels safety margin
+        depth=iceil(log2(length(C)/TBASELENGTH))+2 # 2 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
         stackpos[level]=0
@@ -87,7 +87,7 @@ const PERMUTEGENERATE=[1,2,3,4,5,6,7,8]
             bstartA=stackbstartA[level]
             bstartC=stackbstartC[level]
 
-            if blength<=PERMUTEBASELENGTH || level==depth # base case
+            if blength<=TBASELENGTH || level==depth # base case
                 @stridedloops(N, i, bdims, indA, bstartA, stridesA, indC, bstartC, stridesC, @inbounds Clinear[indC]=Alinear[indA])
                 level-=1
             elseif pos==0

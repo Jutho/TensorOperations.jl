@@ -100,13 +100,13 @@ const TRACEGENERATE={(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)}
         Clinear = C
     end
     
-    if olength*(clength+1)<=8*PERMUTEBASELENGTH
+    if olength*(clength+1)<=8*TBASELENGTH
         @gentracekernel(div(NA-NC,2),NC,order,alpha,Alinear,beta,Clinear,startA,startC,odims,cdims,ostridesA,cstridesA,ostridesC)
     else
         @nexprs NC d->(minostrides_{d} = min(ostridesA_{d},ostridesC_{d}))
 
         # build recursive stack
-        depth=iceil(log2(olength*(clength+1)/2/PERMUTEBASELENGTH))+2 # 2 levels safety margin
+        depth=iceil(log2(olength*(clength+1)/2/TBASELENGTH))+2 # 2 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
         stackpos[level]=0
@@ -146,7 +146,7 @@ const TRACEGENERATE={(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)}
             bstartC=stackbstartC[level]
             gamma=stackgamma[level]
 
-            if oblength*(cblength+1)<=2*PERMUTEBASELENGTH || level==depth # base case
+            if oblength*(cblength+1)<=2*TBASELENGTH || level==depth # base case
                 @gentracekernel(div(NA-NC,2),NC,order,alpha,Alinear,gamma,Clinear,bstartA,bstartC,obdims,cbdims,ostridesA,cstridesA,ostridesC)
                 level-=1
             elseif pos==0
