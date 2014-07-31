@@ -266,10 +266,10 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
     
     # calculate optimal contraction order for inner loops
     order=0
-    if NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(cstridesA)
+    if div(NA+NB-NC,2)==0 || ( NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(cstridesA) )
         order+=1 # k after i
     end
-    if NB-div(NA+NB-NC,2)>0 && minimum(ostridesB)<minimum(cstridesB)
+    if div(NA+NB-NC,2)==0 || ( NB-div(NA+NB-NC,2)>0 && minimum(ostridesB)<minimum(cstridesB) )
         order+=2 # k after j
     end
     if NB-div(NA+NB-NC,2)==0 || (NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(ostridesB))
