@@ -46,8 +46,17 @@ C2=tensorcontract(A,[:a,:b,:c,:d,:e],B,[:c,:f,:b,:g],[:a,:g,:e,:d,:f];method=:na
 @test_throws LabelError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
 @test_throws LabelError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
 
-# # test index notation
-# #---------------------
+# test tensorproduct
+A=randn(5,5,5,5)
+B=rand(Complex128,(5,5,5,5))
+C1=reshape(tensorproduct(A,[1,2,3,4],B,[5,6,7,8],[1,2,5,6,3,4,7,8]),(5*5*5*5,5*5*5*5))
+C2=kron(reshape(B,(25,25)),reshape(A,(25,25)))
+@test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+@test_throws LabelError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
+@test_throws LabelError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
+
+# test index notation
+#---------------------
 Da=10
 Db=15
 Dc=4
