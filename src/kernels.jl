@@ -83,11 +83,24 @@ function _gencontractkernel(N1::Int,N2::Int,N3::Int,order::Symbol,
     startA::Symbol,startB::Symbol,startC::Symbol,odimsA::Symbol,odimsB::Symbol,cdims::Symbol,
     ostridesA::Symbol,cstridesA::Symbol,ostridesB::Symbol,cstridesB::Symbol,ostridesCA::Symbol,ostridesCB::Symbol)
     ex=quote
-        local indA1, indA2, indB1, indB2, indC1, indC2
+        local indA1, indA2, indB1, indB2, indC1, indC2, gamma
         # we still have to implement other orders
-#        if $(esc(order))==0 # i,j,k
-            @stridedloops($N1, i, $(esc(odimsA)), indA1, $(esc(startA)), $(esc(ostridesA)), indC1, $(esc(startC)), $(esc(ostridesCA)), begin
-                @stridedloops($N2, j, $(esc(odimsB)), indB1, $(esc(startB)), $(esc(ostridesB)), indC2, indC1, $(esc(ostridesCB)), begin
+        if $(esc(order))==3 # k,j,i
+            @stridedloops($N3, k, $(esc(cdims)), indA1, $(esc(startA)), $(esc(cstridesA)), indB1, $(esc(startB)), $(esc(cstridesB)), begin
+                gamma=$(esc(beta))
+                @stridedloops($N2, j, $(esc(odimsB)), indB2, indB1, $(esc(ostridesB)), indC1, $(esc(startC)), $(esc(ostridesCB)), begin
+                    @inbounds localB=($(esc(conjB))=='C' ? conj($(esc(B))[indB2]) : $(esc(B))[indB2])
+                    @stridedloops($N1, i, $(esc(odimsA)), indA2, indA1, $(esc(ostridesA)), indC2, indC1, $(esc(ostridesCA)), begin
+                        @inbounds localA=($(esc(conjA))=='C' ? conj($(esc(A))[indA2]) : $(esc(A))[indA2])
+                        @inbounds localC=gamma*$(esc(C))[indC2]
+                        @inbounds $(esc(C))[indC2]=localC+$(esc(alpha))*localA*localB
+                    end)
+                end)
+                gamma=one($(esc(beta)))
+            end)
+        else # j,i,k
+            @stridedloops($N2, j, $(esc(odimsB)), indB1, $(esc(startB)), $(esc(ostridesB)), indC1, $(esc(startC)), $(esc(ostridesCB)), begin
+                @stridedloops($N1, i, $(esc(odimsA)), indA1, $(esc(startA)), $(esc(ostridesA)), indC2, indC1, $(esc(ostridesCA)), begin
                     @inbounds localC=$(esc(beta))*$(esc(C))[indC2]
                     @stridedloops($N3, k, $(esc(cdims)), indA2, indA1, $(esc(cstridesA)), indB2, indB1, $(esc(cstridesB)), begin
                         @inbounds localA=($(esc(conjA))=='C' ? conj($(esc(A))[indA2]) : $(esc(A))[indA2])
@@ -97,7 +110,7 @@ function _gencontractkernel(N1::Int,N2::Int,N3::Int,order::Symbol,
                     @inbounds $(esc(C))[indC2]=localC
                 end)
             end)
-#        end
+        end
     end
     ex
 end

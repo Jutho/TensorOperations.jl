@@ -32,6 +32,7 @@ include("tensorcopy.jl")
 include("tensoradd.jl")
 include("tensortrace.jl")
 include("tensorcontract.jl")
+include("tensorproduct.jl")
 
 # Scalar
 #--------

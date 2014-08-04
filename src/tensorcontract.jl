@@ -272,17 +272,17 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
     if div(NA+NB-NC,2)==0 || ( NB-div(NA+NB-NC,2)>0 && minimum(ostridesB)<minimum(cstridesB) )
         order+=2 # k after j
     end
-    if NB-div(NA+NB-NC,2)==0 || (NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(ostridesB))
-        order+=4 # j after i
+    if NA-div(NA+NB-NC,2)==0 || (NB-div(NA+NB-NC,2)>0 && minimum(ostridesB)<minimum(ostridesA))
+        order+=4 # i after j
     end
     # more to left = later
-    # i,j,k: order==0
-    # i,k,j: order==2 || order==6
-    # j,i,k: order==4
-    # j,k,i: order==5 || order==1
-    # k,i,j: order==3
-    # k,j,i: order==7
-    # 1 and 6 are the frustrated cases where no optimal order exists
+    # j,i,k: order==0
+    # j,k,i: order==1 || order==6
+    # i,j,k: order==4
+    # i,k,j: order==5 || order==2
+    # k,j,i: order==3
+    # k,i,j: order==7
+    # 2 and 6 are the frustrated cases where no optimal order exists
     
     # calculate dims as variables
     olengthA=1
