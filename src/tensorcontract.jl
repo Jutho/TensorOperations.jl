@@ -51,7 +51,7 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     #                   calls built-in (typically BLAS) multiplication
     # -> method=:native : memory-free native julia tensor contraction
     # -> method=:buffered : uses memory buffer (not implemented yet)
-    
+
     # Get properties of input arrays
     NA=ndims(A)
     NB=ndims(B)
@@ -75,11 +75,11 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     numopenA=length(olabelsA)
     olabelsB=intersect(ulabelsC,ulabelsB)
     numopenB=length(olabelsB)
-    
+
     if numcontract+numopenA!=NA || numcontract+numopenB!=NB || numopenA+numopenB!=NC
         throw(LabelError("invalid contraction pattern"))
     end
-    
+
     # Compute and contraction indices and check size compatibility
     #--------------------------------------------------------------
     cindA=indexin(clabels,ulabelsA)
@@ -98,7 +98,7 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     cdimsB=dimB[cindB]
     odimsA=dimA[oindA]
     odimsB=dimB[oindB]
-    
+
     for i=1:numcontract
         cdimsA[i]==cdimsB[i] || throw(DimensionMismatch("dimension mismatch for label $(clabels[i])"))
     end
@@ -108,9 +108,9 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     for i=1:numopenB
         odimsB[i]==dimC[oindCB[i]] || throw(DimensionMismatch("dimension mismatch for label $(olabelsB[i])"))
     end
-    
+
     # Perform contraction
-    
+
     # The :BLAS method specification permutes A and B such that indopen and
     # indcontract are grouped, reshape them to matrices with all indopen on one
     # side and all indcontract on the other. Compute the data for C from
@@ -120,7 +120,7 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     # multiplication, it needs three temporary arrays containing the
     # permuted copies of A, B and C. Memorywise this is far from optimal, and
     # the memory allocation and copying also impacts the computation time.
-    
+
     if method==:BLAS
         # try to change extra allocation as much as possible
         if vcat(olabelsB,olabelsA)==labelsC[1:NC] # better to change role of A and B
@@ -135,10 +135,10 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
         olengthA=prod(odimsA)
         olengthB=prod(odimsB)
         clength=prod(cdimsA)
-        
+
         # permute A
         if conjA=='C'
-            if vcat(clabels,olabelsA)==labelsA[1:NA] && TA==TC && isa(A,Array)
+            if vcat(clabels,olabelsA)==ulabelsA && TA==TC && isa(A,Array)
                 Amat=A
                 Amat=reshape(Amat,(clength,olengthA))
             else
@@ -147,10 +147,10 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
                 Amat=reshape(Amat,(clength,olengthA))
             end
         elseif conjA=='N'
-            if vcat(olabelsA,clabels)==labelsA[1:NA] && TA==TC && isa(A,Array)
+            if vcat(olabelsA,clabels)==ulabelsA && TA==TC && isa(A,Array)
                 Amat=A
                 Amat=reshape(Amat,(olengthA,clength))
-            elseif vcat(clabels,olabelsA)==labelsA[1:NA] && TA==TC && isa(A,Array)
+            elseif vcat(clabels,olabelsA)==ulabelsA && TA==TC && isa(A,Array)
                 conjA='T'
                 Amat=A
                 Amat=reshape(Amat,(clength,olengthA))
@@ -166,7 +166,7 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
 
         # permute B
         if conjB=='C'
-            if vcat(olabelsB,clabels)==labelsB[1:NB] && TB==TC && isa(B,Array)
+            if vcat(olabelsB,clabels)==ulabelsB && TB==TC && isa(B,Array)
                 Bmat=B
                 Bmat=reshape(Bmat,(olengthB,clength))
             else
@@ -175,7 +175,7 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
                 Bmat=reshape(Bmat,(olengthB,clength))
             end
         elseif conjB=='N'
-            if vcat(clabels,olabelsB)==labelsB[1:NB] && TB==TC && isa(B,Array)
+            if vcat(clabels,olabelsB)==ulabelsB && TB==TC && isa(B,Array)
                 Bmat=B
                 Bmat=reshape(Bmat,(clength,olengthB))
             elseif vcat(olabelsB,clabels)==labelsB[1:NB] && TB==TC && isa(B,Array)
@@ -190,13 +190,13 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
         else
             throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
         end
-        
+
         # calculate C
         totalodimsA=prod(odimsA)
         totalodimsB=prod(odimsB)
         totalcdims=prod(cdimsA)
-        
-        if vcat(olabelsA,olabelsB)==labelsC[1:NC] && isa(C,Array)
+
+        if vcat(olabelsA,olabelsB)==ulabelsC && isa(C,Array)
             Cmat=reshape(C,(olengthA,olengthB))
             Base.LinAlg.BLAS.gemm!(conjA,conjB,convert(TC,alpha),Amat,Bmat,convert(TC,beta),Cmat)
         else
@@ -256,14 +256,14 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
     length(oindA)+length(cindA)==NA || throw(DimensionMismatch("invalid contraction pattern"))
     length(oindB)+length(cindB)==NB || throw(DimensionMismatch("invalid contraction pattern"))
     length(oindCA)+length(oindCB)==NC || throw(DimensionMismatch("invalid contraction pattern"))
-    
+
     ostridesA=Int[stride(A,i) for i in oindA]
     cstridesA=Int[stride(A,i) for i in cindA]
     ostridesB=Int[stride(B,i) for i in oindB]
     cstridesB=Int[stride(B,i) for i in cindB]
     ostridesCA=Int[stride(C,i) for i in oindCA]
     ostridesCB=Int[stride(C,i) for i in oindCB]
-    
+
     # calculate optimal contraction order for inner loops
     order=0
     if div(NA+NB-NC,2)==0 || ( NA-div(NA+NB-NC,2)>0 && minimum(ostridesA)<minimum(cstridesA) )
@@ -283,7 +283,7 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
     # k,j,i: order==3
     # k,i,j: order==7
     # 2 and 6 are the frustrated cases where no optimal order exists
-    
+
     # calculate dims as variables
     olengthA=1
     olengthB=1
@@ -308,11 +308,11 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
         cstridesB_{d}=cstridesB[d]
         mincstrides_{d}=min(cstridesA_{d},cstridesB_{d})
     end)
-    
+
     if beta==zero(beta)
         fill!(C,zero(TC))
     end
-    
+
     startA=1
     local Alinear::Array{TA,NA}
     if isa(A, SubArray)
@@ -337,7 +337,7 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
     else
         Clinear = C
     end
-    
+
     if olengthA<=2*OBASELENGTH && olengthB<=2*OBASELENGTH && clength<=2*CBASELENGTH
         @gencontractkernel(NA-div(NA+NB-NC,2),NB-div(NA+NB-NC,2),div(NA+NB-NC,2),order,alpha,Alinear,conjA,Blinear,conjB,beta,Clinear,startA,startB,startC,odimsA,odimsB,cdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
     else
