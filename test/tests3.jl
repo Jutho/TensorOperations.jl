@@ -6,8 +6,8 @@ p=randperm(4)
 C1=permutedims(A,p)
 C2=tensorcopy(A,1:4,p)
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
-@test_throws LabelError tensorcopy(A,1:3,1:4)
-@test_throws LabelError tensorcopy(A,[1,2,2,4],1:4)
+@test_throws BoundsError tensorcopy(A,1:3,1:4)
+@test_throws BoundsError tensorcopy(A,[1,2,2,4],1:4)
 
 # test tensoradd
 B=randn((5,6,3,4))
@@ -53,7 +53,7 @@ C1=reshape(tensorproduct(A,[1,2,3,4],B,[5,6,7,8],[1,2,5,6,3,4,7,8]),(5*5*5*5,5*5
 C2=kron(reshape(B,(25,25)),reshape(A,(25,25)))
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws LabelError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
-@test_throws LabelError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
+@test_throws BoundsError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
 
 # test index notation
 #---------------------

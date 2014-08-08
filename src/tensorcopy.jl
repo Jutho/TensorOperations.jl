@@ -7,17 +7,13 @@
 # Simple method
 # --------------
 function tensorcopy(A::StridedArray,labelsA,outputlabels=labelsA)
-    NA=ndims(A)
     dims=size(A)
-    perm=indexin(outputlabels,labelsA)
-    length(perm) == NA || throw(LabelError("invalid label specification"))
-    isperm(perm) || throw(LabelError("labels do not specify a valid permutation"))
-    C=similar(A,dims[perm])
-    NA==0 && (C[1]=A[1]; return C)
-    perm==[1:NA] && return copy!(C,A)
-    return tensorcopy_native!(A,C,perm)
+    C=similar(A,dims[indexin(outputlabels,labelsA)])
+    tensorcopy!(A,labelsA,C,outputlabels)
 end
 
+# In-place method
+#-----------------
 function tensorcopy!(A::StridedArray,labelsA,C::StridedArray,labelsC)
     NA=ndims(A)
     perm=indexin(labelsC,labelsA)
@@ -28,11 +24,11 @@ function tensorcopy!(A::StridedArray,labelsA,C::StridedArray,labelsC)
     end
     NA==0 && (C[1]=A[1]; return C)
     perm==[1:NA] && return copy!(C,A)
-    return tensorcopy_native!(A,C,perm)
+    tensorcopy_native!(A,C,perm)
 end
 
-# In-place method
-#-----------------
+# Implementation
+#----------------
 const PERMUTEGENERATE=[1,2,3,4,5,6,7,8] 
 
 @ngenerate N typeof(C) function tensorcopy_native!{TA,TC,N}(A::StridedArray{TA,N},C::StridedArray{TC,N},perm)

@@ -4,34 +4,19 @@
 
 # Simple method
 #---------------
-function tensorproduct{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},labelsB,outputlabels=vcat(labelsA,labelsB))
+function tensorproduct(A::StridedArray,labelsA,B::StridedArray,labelsB,outputlabels=vcat(labelsA,labelsB))
     dimsA=size(A)
     dimsB=size(B)
-
-    dimsC=Array(Int,length(outputlabels))
-    for (i,l)=enumerate(outputlabels)
-        ind=findfirst(labelsA,l)
-        if ind>0
-            dimsC[i]=dimsA[ind]
-        else
-            ind=findfirst(labelsB,l)
-            if ind>0
-                dimsC[i]=dimsB[ind]
-            else
-                throw(LabelError("invalid label specification"))
-            end
-        end
-    end
-    T=promote_type(T1,T2)
-    C=similar(A,T,tuple(dimsC...))
-    fill!(C,zero(T))
+    dimsC=tuple(dimsA...,dimsB...)
+    dimsC=dimsC[indexin(outputlabels,vcat(labelsA,labelsB))]
+    T=promote_type(eltype(A),eltype(B))
+    C=similar(A,T,dimsC)
     tensorproduct!(one(T),A,labelsA,B,labelsB,zero(T),C,outputlabels)
-    return C
 end
 
 # In-place method
 #-----------------
-function tensorproduct!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,B::StridedArray{TB},labelsB,beta::Number,C::StridedArray{TC},labelsC)
+function tensorproduct!(alpha::Number,A::StridedArray,labelsA,B::StridedArray,labelsB,beta::Number,C::StridedArray,labelsC)
     # Updates C as beta*C+alpha*tensorproduct(A,B), whereby the order of indices
     # in A, B and C are specified by the labels.
 
@@ -41,7 +26,6 @@ function tensorproduct!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,B::S
     NC=ndims(C)
 
     # Process labels, do some error checking and analyse problem structure
-    #----------------------------------------------------------------------
     if NA!=length(labelsA) || NB!=length(labelsB) || NC!=length(labelsC)
         throw(LabelError("invalid label specification"))
     end

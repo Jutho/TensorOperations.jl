@@ -6,20 +6,17 @@
 
 # Simple method
 # --------------
-function tensoradd{TA,TB,N}(A::StridedArray{TA,N},labelsA,B::StridedArray{TB,N},labelsB,outputlabels=labelsA)
-    NA=ndims(A)
+function tensoradd(A::StridedArray,labelsA,B::StridedArray,labelsB,outputlabels=labelsA)
     dims=size(A)
     T=promote_type(eltype(A),eltype(B))
-    perm=indexin(outputlabels,labelsA)
-    length(perm) == NA || throw(LabelError("invalid label specification"))
-    isperm(perm) || throw(LabelError("labels do not specify a valid permutation"))
-    C=similar(A,T,dims[perm])
-    perm==[1:NA] ? copy!(C,A) : tensorcopy_native!(A,C,perm)
-    tensoradd!(one(T),B,labelsB,one(T),C,outputlabels)
-    return C
+    C=similar(A,T,dims[indexin(outputlabels,labelsA)])
+    tensorcopy!(A,labelsA,C,outputlabels)
+    tensoradd!(1,B,labelsB,1,C,outputlabels)
 end
 
-function tensoradd!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},labelsA,beta::Number,C::StridedArray{TC,N},labelsC)
+# In-place method
+#-----------------
+function tensoradd!(alpha::Number,A::StridedArray,labelsA,beta::Number,C::StridedArray,labelsC)
     NA=ndims(A)
     perm=indexin(labelsC,labelsA)
     length(perm) == NA || throw(LabelError("invalid label specification"))
@@ -27,19 +24,20 @@ function tensoradd!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},labelsA,beta::N
     for i = 1:NA
         size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
     end
-    N==0 && (C[1]=beta*C[1]+alpha*A[1]; return C)
-    perm==[1:NA] && (beta==0 ? fill!(C,zero(TC)) : scale!(C,beta); Base.axpy!(alpha,A,C); return C)
-    return tensoradd_native!(alpha,A,beta,C,perm)
+    NA==0 && (C[1]=beta*C[1]+alpha*A[1]; return C)
+    perm==[1:NA] && return (beta==0 ? scale!(copy!(C,A),alpha) : Base.LinAlg.axpy!(alpha,A,scale!(C,beta)))
+    beta==0 && return scale!(tensorcopy_native!(A,C,perm),alpha)
+    tensoradd_native!(alpha,A,beta,C,perm)
 end
 
-# In-place method
+# Implementation
 #-----------------
 @eval @ngenerate N typeof(C) $PERMUTEGENERATE function tensoradd_native!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},beta::Number,C::StridedArray{TC,N},perm)
     @nexprs N d->(stridesA_{d} = stride(A,perm[d]))
     @nexprs N d->(stridesC_{d} = stride(C,d))
     @nexprs N d->(dims_{d} = size(C,d))
   
-    if beta==zero(beta)
+    if beta==0
         fill!(C,zero(TC))
     end
     

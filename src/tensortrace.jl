@@ -6,20 +6,14 @@
 # Simple method
 #---------------
 function tensortrace(A::StridedArray,labelsA,outputlabels)
-    T=eltype(A)
     dimsA=size(A)
-    indCinA=indexin(outputlabels,labelsA)
-    if any(indCinA.==0)
-        throw(LabelError("invalid label specification"))
-    end
-    C=similar(A,dimsA[indCinA])
-    fill!(C,zero(T))
-    return tensortrace!(one(T),A,labelsA,zero(T),C,outputlabels)
+    C=similar(A,dimsA[indexin(outputlabels,labelsA)])
+    tensortrace!(1,A,labelsA,0,C,outputlabels)
 end
 function tensortrace(A::StridedArray,labelsA) # there is no one-line method to compute the default outputlabels
     ulabelsA=unique(labelsA)
     labelsC=similar(labelsA,0)
-    sizehint(labelsC,length(labelsA))
+    sizehint(labelsC,length(ulabelsA))
     for j=1:length(ulabelsA)
         ind=findfirst(labelsA,ulabelsA[j])
         if findnext(labelsA,ulabelsA[j],ind+1)==0
@@ -29,41 +23,45 @@ function tensortrace(A::StridedArray,labelsA) # there is no one-line method to c
     tensortrace(A,labelsA,labelsC)
 end
 
+
+function tensortrace!(alpha::Number,A::StridedArray,labelsA,beta::Number,C::StridedArray,labelsC)
+    NA=ndims(A)
+    NC=ndims(C)
+    (length(labelsA)==NA && length(labelsC)==NC) || throw(LabelError("invalid label specification"))
+    NA==NC && return tensoradd!(alpha,A,labelsA,beta,C,labelsC) # nothing to trace
+
+    oindA=indexin(labelsC,labelsA)
+    clabels=unique(setdiff(labelsA,labelsC))
+    NA==NC+2*length(clabels) || throw(LabelError("invalid label specification"))
+
+    cindA1=Array(Int,length(clabels))
+    cindA2=Array(Int,length(clabels))
+    for i=1:length(clabels)
+        cindA1[i]=findfirst(labelsA,clabels[i])
+        cindA2[i]=findnext(labelsA,clabels[i],cindA1[i]+1)
+    end
+    isperm(vcat(oindA,cindA1,cindA2)) || throw(LabelError("invalid label specification"))
+
+    for i = 1:NC
+        size(A,oindA[i]) == size(C,i) || throw(DimensionMismatch("tensor sizes incompatible"))
+    end
+    for i = 1:div(NA-NC,2)
+        size(A,cindA1[i]) == size(A,cindA2[i]) || throw(DimensionMismatch("tensor sizes incompatible"))
+    end
+    tensortrace_native!(alpha,A,beta,C,oindA,cindA1,cindA2)
+end
+
+
 # In place method
 #-----------------
 const TRACEGENERATE={(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)}
 
-@eval @ngenerate (NA,NC) typeof(C) $TRACEGENERATE function tensortrace!{TA,NA,TC,NC}(alpha::Number,A::StridedArray{TA,NA},labelsA,beta::Number,C::StridedArray{TC,NC},labelsC)
-    (length(labelsA)==NA && length(labelsC)==NC) || throw(LabelError("invalid label specification"))
-    NA==NC && return tensoradd!(alpha,A,labelsA,beta,C,labelsC) # nothing to trace
-    
-    po=indexin(labelsC,labelsA)
-    clabels=unique(setdiff(labelsA,labelsC))
-    NA==NC+2*length(clabels) || throw(LabelError("invalid label specification"))
-    
-    pc1=Array(Int,length(clabels))
-    pc2=Array(Int,length(clabels))
-    for i=1:length(clabels)
-        pc1[i]=findfirst(labelsA,clabels[i])
-        pc2[i]=findnext(labelsA,clabels[i],pc1[i]+1)
-    end
-    isperm(vcat(po,pc1,pc2)) || throw(LabelError("invalid label specification"))
-    
-    for i = 1:NC
-        size(A,po[i]) == size(C,i) || throw(DimensionMismatch("tensor sizes incompatible"))
-    end
-    olength=length(C)
-    clength=1
-    for i = 1:div(NA-NC,2)
-        clength*=size(A,pc2[i])
-        size(A,pc1[i]) == size(A,pc2[i]) || throw(DimensionMismatch("tensor sizes incompatible"))
-    end
-    
+@eval @ngenerate (NA,NC) typeof(C) $TRACEGENERATE function tensortrace_native!{TA,NA,TC,NC}(alpha::Number,A::StridedArray{TA,NA},beta::Number,C::StridedArray{TC,NC},oindA,cindA1,cindA2)
     stridesA=collect(strides(A))
-    cstridesA=stridesA[pc1]+stridesA[pc2]
-    ostridesA=stridesA[po]
+    cstridesA=stridesA[cindA1]+stridesA[cindA2]
+    ostridesA=stridesA[oindA]
     p=sortperm(cstridesA)
-    pc1=pc1[p]
+    cindA1=cindA1[p]
     cstridesA=cstridesA[p]
     
     order=0
@@ -71,15 +69,17 @@ const TRACEGENERATE={(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)}
         order=1
     end
     
-    @nexprs NC d->(odims_{d} = size(C,d))
+    olength=1
+    @nexprs NC d->(odims_{d} = size(C,d);olength*=odims_{d})
     @nexprs NC d->(ostridesC_{d} = stride(C,d))
     @nexprs NC d->(ostridesA_{d} = ostridesA[d])
     
-    @nexprs div(NA-NC,2) d->(cdims_{d} = size(A,pc1[d]))
+    clength=1
+    @nexprs div(NA-NC,2) d->(cdims_{d} = size(A,cindA1[d]);clength*=cdims_{d})
     @nexprs div(NA-NC,2) d->(cstridesA_{d} = cstridesA[d])
     
     # initialize to zero
-    if beta==zero(beta)
+    if beta==0
       fill!(C,zero(TC))
     end
     

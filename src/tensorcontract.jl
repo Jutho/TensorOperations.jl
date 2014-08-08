@@ -15,34 +15,19 @@ const defaultcontractbuffer=TCBuffer(Array(Uint8, 1<<13),Array(Uint8, 1<<13),Arr
 
 # Simple method
 #---------------
-function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},labelsB,outputlabels=symdiff(labelsA,labelsB);method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
+function tensorcontract(A::StridedArray,labelsA,B::StridedArray,labelsB,outputlabels=symdiff(labelsA,labelsB);method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
     dimsA=size(A)
     dimsB=size(B)
-
-    dimsC=Array(Int,length(outputlabels))
-    for (i,l)=enumerate(outputlabels)
-        ind=findfirst(labelsA,l)
-        if ind>0
-            dimsC[i]=dimsA[ind]
-        else
-            ind=findfirst(labelsB,l)
-            if ind>0
-                dimsC[i]=dimsB[ind]
-            else
-                throw(LabelError("invalid label specification"))
-            end
-        end
-    end
-    T=promote_type(T1,T2)
-    C=similar(A,T,tuple(dimsC...))
-    fill!(C,zero(T))
-    tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method,buffer=buffer)
-    return C
+    dimsC=tuple(dimsA...,dimsB...)
+    dimsC=dimsC[indexin(outputlabels,vcat(labelsA,labelsB))]
+    T=promote_type(eltype(A),eltype(B))
+    C=similar(A,T,dimsC)
+    tensorcontract!(1,A,labelsA,'N',B,labelsB,'N',0,C,outputlabels;method=method,buffer=buffer)
 end
 
 # In-place method
 #-----------------
-function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,conjA::Char,B::StridedArray{TB},labelsB,conjB::Char,beta::Number,C::StridedArray{TC},labelsC;method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
+function tensorcontract!(alpha::Number,A::StridedArray,labelsA,conjA::Char,B::StridedArray,labelsB,conjB::Char,beta::Number,C::StridedArray,labelsC;method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
     # Updates C as beta*C+alpha*contract(A,B), whereby the contraction pattern
     # is specified by labelsA, labelsB and labelsC. The iterables labelsA(B,C)
     # should contain a unique label for every index of array A(B,C), such that
@@ -68,7 +53,6 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     NC=ndims(C)
 
     # Process labels, do some error checking and analyse problem structure
-    #----------------------------------------------------------------------
     if NA!=length(labelsA) || NB!=length(labelsB) || NC!=length(labelsC)
         throw(LabelError("invalid label specification"))
     end
@@ -91,7 +75,6 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     end
 
     # Compute and contraction indices and check size compatibility
-    #--------------------------------------------------------------
     cindA=indexin(clabels,ulabelsA)
     oindA=indexin(olabelsA,ulabelsA)
     oindCA=indexin(olabelsA,ulabelsC)
@@ -99,7 +82,6 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     oindB=indexin(olabelsB,ulabelsB)
     oindCB=indexin(olabelsB,ulabelsC)
 
-    # check size compatibility
     dimA=size(A)
     dimB=size(B)
     dimC=size(C)
@@ -120,32 +102,23 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     end
 
     # Perform contraction
+    method==:BLAS && return tensorcontract_blas!(alpha,A,conjA,B,conjB,beta,C,buffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
+    method==:native && return NA>=NB ? 
+        tensorcontract_native!(alpha,A,conjA,B,conjB,beta,C,oindA,cindA,oindB,cindB,oindCA,oindCB) :
+        tensorcontract_native!(alpha,B,conjB,A,conjA,beta,C,oindB,cindB,oindA,cindA,oindCB,oindCA)
 
+    throw(ArgumentError("unknown contraction method"))
+end
+
+# Implementations
+#-----------------
+function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::StridedArray,conjB::Char,beta::Number,C::StridedArray,buffer::TCBuffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
     # The :BLAS method specification permutes A and B such that indopen and
     # indcontract are grouped, reshape them to matrices with all indopen on one
     # side and all indcontract on the other. Compute the data for C from
     # multiplying these matrices. Permute again to bring indices in requested
     # order.
-    # While this can potentially use the highly optimized BLAS matrix
-    # multiplication, it needs three temporary arrays containing the
-    # permuted copies of A, B and C. Memorywise this is far from optimal, and
-    # the memory allocation and copying also impacts the computation time.
-
-    if method==:BLAS
-        tensorcontract_blas!(alpha,A,conjA,B,conjB,beta,C,buffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
-    elseif method==:native
-        if NA>=NB # allows to generate less method definitions
-            tensorcontract_native!(alpha,A,conjA,B,conjB,beta,C,oindA,cindA,oindB,cindB,oindCA,oindCB)
-        else
-            tensorcontract_native!(alpha,B,conjB,A,conjA,beta,C,oindB,cindB,oindA,cindA,oindCB,oindCA)
-        end
-    else
-        throw(ArgumentError("unknown contraction method"))
-    end
-    return C
-end
-
-function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::StridedArray,conjB::Char,beta::Number,C::StridedArray,buffer::TCBuffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
+    
     NA=ndims(A)
     NB=ndims(B)
     NC=ndims(C)
@@ -256,6 +229,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
         Cmat=reshape(Cmat,tuple(odimsA...,odimsB...))
         tensoradd_native!(alpha,Cmat,beta,C,invperm(pC))
     end
+    return C
 end
 
 
@@ -349,7 +323,7 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
         mincstrides_{d}=min(cstridesA_{d},cstridesB_{d})
     end)
 
-    if beta==zero(beta)
+    if beta==0
         fill!(C,zero(TC))
     end
 
