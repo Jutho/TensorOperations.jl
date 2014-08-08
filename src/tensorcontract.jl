@@ -3,9 +3,19 @@
 # Method for contracting two tensors and adding the result
 # to a third tensor, according to the specified labels.
 
+# Buffer
+#--------
+immutable TCBuffer
+    Abuf::Vector{Uint8}
+    Bbuf::Vector{Uint8}
+    Cbuf::Vector{Uint8}
+end
+
+const defaultcontractbuffer=TCBuffer(Array(Uint8, 1<<13),Array(Uint8, 1<<13),Array(Uint8, 1<<13))
+
 # Simple method
 #---------------
-function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},labelsB,outputlabels=symdiff(labelsA,labelsB);method::Symbol=:BLAS)
+function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},labelsB,outputlabels=symdiff(labelsA,labelsB);method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
     dimsA=size(A)
     dimsB=size(B)
 
@@ -26,13 +36,13 @@ function tensorcontract{T1,T2}(A::StridedArray{T1},labelsA,B::StridedArray{T2},l
     T=promote_type(T1,T2)
     C=similar(A,T,tuple(dimsC...))
     fill!(C,zero(T))
-    tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method)
+    tensorcontract!(one(T),A,labelsA,'N',B,labelsB,'N',zero(T),C,outputlabels;method=method,buffer=buffer)
     return C
 end
 
 # In-place method
 #-----------------
-function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,conjA::Char,B::StridedArray{TB},labelsB,conjB::Char,beta::Number,C::StridedArray{TC},labelsC;method::Symbol=:BLAS)
+function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,conjA::Char,B::StridedArray{TB},labelsB,conjB::Char,beta::Number,C::StridedArray{TC},labelsC;method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
     # Updates C as beta*C+alpha*contract(A,B), whereby the contraction pattern
     # is specified by labelsA, labelsB and labelsC. The iterables labelsA(B,C)
     # should contain a unique label for every index of array A(B,C), such that
@@ -122,102 +132,132 @@ function tensorcontract!{TA,TB,TC}(alpha::Number,A::StridedArray{TA},labelsA,con
     # the memory allocation and copying also impacts the computation time.
 
     if method==:BLAS
-        # try to change extra allocation as much as possible
-        if vcat(olabelsB,olabelsA)==labelsC[1:NC] # better to change role of A and B
-            labelsA,labelsB=labelsB,labelsA
-            olabelsA,olabelsB=olabelsB,olabelsA
-            odimsA,odimsB=odimsB,odimsA
-            cdimsA,cdimsB=cdimsB,cdimsA
-            A,B=B,A
-            NA,NB=NB,NA
-        end
-
-        olengthA=prod(odimsA)
-        olengthB=prod(odimsB)
-        clength=prod(cdimsA)
-
-        # permute A
-        if conjA=='C'
-            if vcat(clabels,olabelsA)==ulabelsA && TA==TC && isa(A,Array)
-                Amat=A
-                Amat=reshape(Amat,(clength,olengthA))
-            else
-                Amat=similar(A,TC,tuple(cdimsA...,odimsA...))
-                tensorcopy!(A,labelsA,Amat,vcat(clabels,olabelsA))
-                Amat=reshape(Amat,(clength,olengthA))
-            end
-        elseif conjA=='N'
-            if vcat(olabelsA,clabels)==ulabelsA && TA==TC && isa(A,Array)
-                Amat=A
-                Amat=reshape(Amat,(olengthA,clength))
-            elseif vcat(clabels,olabelsA)==ulabelsA && TA==TC && isa(A,Array)
-                conjA='T'
-                Amat=A
-                Amat=reshape(Amat,(clength,olengthA))
-            else
-                conjA='T' # it is more efficient to compute At*B
-                Amat=similar(A,TC,tuple(cdimsA...,odimsA...))
-                tensorcopy!(A,labelsA,Amat,vcat(clabels,olabelsA))
-                Amat=reshape(Amat,(clength,olengthA))
-            end
-        else
-            throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
-        end
-
-        # permute B
-        if conjB=='C'
-            if vcat(olabelsB,clabels)==ulabelsB && TB==TC && isa(B,Array)
-                Bmat=B
-                Bmat=reshape(Bmat,(olengthB,clength))
-            else
-                Bmat=similar(B,TC,tuple(odimsB...,cdimsB...))
-                tensorcopy!(B,labelsB,Bmat,vcat(olabelsB,clabels))
-                Bmat=reshape(Bmat,(olengthB,clength))
-            end
-        elseif conjB=='N'
-            if vcat(clabels,olabelsB)==ulabelsB && TB==TC && isa(B,Array)
-                Bmat=B
-                Bmat=reshape(Bmat,(clength,olengthB))
-            elseif vcat(olabelsB,clabels)==labelsB[1:NB] && TB==TC && isa(B,Array)
-                conjB='T'
-                Bmat=B
-                Bmat=reshape(Bmat,(olengthB,clength))
-            else
-                Bmat=similar(B,TC,tuple(cdimsB...,odimsB...))
-                tensorcopy!(B,labelsB,Bmat,vcat(clabels,olabelsB))
-                Bmat=reshape(Bmat,(clength,olengthB))
-            end
-        else
-            throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
-        end
-
-        # calculate C
-        totalodimsA=prod(odimsA)
-        totalodimsB=prod(odimsB)
-        totalcdims=prod(cdimsA)
-
-        if vcat(olabelsA,olabelsB)==ulabelsC && isa(C,Array)
-            Cmat=reshape(C,(olengthA,olengthB))
-            Base.LinAlg.BLAS.gemm!(conjA,conjB,convert(TC,alpha),Amat,Bmat,convert(TC,beta),Cmat)
-        else
-            Cmat=zeros(TC,(olengthA,olengthB))
-            Base.LinAlg.BLAS.gemm!(conjA,conjB,one(TC),Amat,Bmat,zero(TC),Cmat)
-            Cmat=reshape(Cmat,tuple(odimsA...,odimsB...))
-            tensoradd!(alpha,Cmat,vcat(olabelsA,olabelsB),beta,C,labelsC)
-        end
+        tensorcontract_blas!(alpha,A,conjA,B,conjB,beta,C,buffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
     elseif method==:native
         if NA>=NB # allows to generate less method definitions
             tensorcontract_native!(alpha,A,conjA,B,conjB,beta,C,oindA,cindA,oindB,cindB,oindCA,oindCB)
         else
             tensorcontract_native!(alpha,B,conjB,A,conjA,beta,C,oindB,cindB,oindA,cindA,oindCB,oindCA)
         end
-   # elseif method==:buffered
-   #      # to be written: allocate a fixed buffer, that can be used as temporary space for BLAS
     else
         throw(ArgumentError("unknown contraction method"))
     end
     return C
 end
+
+function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::StridedArray,conjB::Char,beta::Number,C::StridedArray,buffer::TCBuffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
+    NA=ndims(A)
+    NB=ndims(B)
+    NC=ndims(C)
+    TA=eltype(A)
+    TB=eltype(B)
+    TC=eltype(C)
+    
+    # only basic checking, this function is not expected to be called directly
+    length(oindA)==length(oindCA) || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindB)==length(oindCB) || throw(DimensionMismatch("invalid contraction pattern"))
+    length(cindA)==length(cindB)==div(NA+NB-NC,2) || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindA)+length(cindA)==NA || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindB)+length(cindB)==NB || throw(DimensionMismatch("invalid contraction pattern"))
+    length(oindCA)+length(oindCB)==NC || throw(DimensionMismatch("invalid contraction pattern"))
+
+    # try to avoid extra allocation as much as possible
+    if vcat(oindCB,oindCA)==[1:NC] # better to change role of A and B
+        oindA,oindB=oindB,oindA
+        cindA,cindB=cindB,cindA
+        oindCA,oindCB=oindCB,oindCA
+        A,B=B,A
+        NA,NB=NB,NA
+    end
+    
+    dimsA=size(A)
+    odimsA=dimsA[oindA]
+    dimsB=size(B)
+    odimsB=dimsB[oindB]
+    cdims=dimsA[cindA]
+
+    olengthA=prod(odimsA)
+    olengthB=prod(odimsB)
+    clength=prod(cdims)
+
+    elsize = isbits(TC) ? sizeof(TC) : sizeof(Ptr)
+    # permute A
+    if conjA=='C'
+        pA=vcat(cindA,oindA)
+        if pA==[1:NA] && TA==TC && isa(A,Array)
+            Amat=A
+            Amat=reshape(Amat,(clength,olengthA))
+        else
+            resize!(buffer.Abuf,length(A)*elsize)
+            Amat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Abuf)),tuple(cdims...,odimsA...))
+            tensorcopy_native!(A,Amat,pA)
+            Amat=reshape(Amat,(clength,olengthA))
+        end
+    elseif conjA=='N'
+        if vcat(oindA,cindA)==[1:NA] && TA==TC && isa(A,Array)
+            Amat=A
+            Amat=reshape(Amat,(olengthA,clength))
+        elseif vcat(cindA,oindA)==[1:NA] && TA==TC && isa(A,Array)
+            conjA='T'
+            Amat=A
+            Amat=reshape(Amat,(clength,olengthA))
+        else
+            pA=vcat(cindA,oindA)
+            conjA='T' # it is more efficient to compute At*B
+            resize!(buffer.Abuf,length(A)*elsize)
+            Amat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Abuf)),tuple(cdims...,odimsA...))
+            tensorcopy_native!(A,Amat,pA)
+            Amat=reshape(Amat,(clength,olengthA))
+        end
+    else
+        throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
+    end
+
+    # permute B
+    if conjB=='C'
+        pB=vcat(oindB,cindB)
+        if pB==[1:NB] && TB==TC && isa(B,Array)
+            Bmat=B
+            Bmat=reshape(Bmat,(olengthB,clength))
+        else
+            resize!(buffer.Bbuf,length(B)*elsize)
+            Bmat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Bbuf)),tuple(odimsB...,cdims...))
+            tensorcopy_native!(B,Bmat,pB)
+            Bmat=reshape(Bmat,(olengthB,clength))
+        end
+    elseif conjB=='N'
+        if vcat(cindB,oindB)==[1:NB] && TB==TC && isa(B,Array)
+            Bmat=B
+            Bmat=reshape(Bmat,(clength,olengthB))
+        elseif vcat(oindB,cindB)==[1:NB] && TB==TC && isa(B,Array)
+            conjB='T'
+            Bmat=B
+            Bmat=reshape(Bmat,(olengthB,clength))
+        else
+            pB=vcat(cindB,oindB)
+            resize!(buffer.Bbuf,length(B)*elsize)
+            Bmat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Bbuf)),tuple(cdims...,odimsB...))
+            tensorcopy_native!(B,Bmat,pB)
+            Bmat=reshape(Bmat,(clength,olengthB))
+        end
+    else
+        throw(ArgumentError("Value of conjA should be 'N' or 'C'"))
+    end
+
+    # calculate C
+    pC=vcat(oindCA,oindCB)
+    if pC==[1:NC] && isa(C,Array)
+        Cmat=reshape(C,(olengthA,olengthB))
+        Base.LinAlg.BLAS.gemm!(conjA,conjB,convert(TC,alpha),Amat,Bmat,convert(TC,beta),Cmat)
+    else
+        resize!(buffer.Cbuf,length(C)*elsize)
+        Cmat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Cbuf)),tuple(olengthA,olengthB))
+        Base.LinAlg.BLAS.gemm!(conjA,conjB,one(TC),Amat,Bmat,zero(TC),Cmat)
+        Cmat=reshape(Cmat,tuple(odimsA...,odimsB...))
+        tensoradd_native!(alpha,Cmat,beta,C,invperm(pC))
+    end
+end
+
 
 const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
 (1,1,0), # scalar product of 2 vectors

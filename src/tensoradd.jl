@@ -7,29 +7,35 @@
 # Simple method
 # --------------
 function tensoradd{TA,TB,N}(A::StridedArray{TA,N},labelsA,B::StridedArray{TB,N},labelsB,outputlabels=labelsA)
+    NA=ndims(A)
     dims=size(A)
     T=promote_type(eltype(A),eltype(B))
     perm=indexin(outputlabels,labelsA)
-    length(perm) == ndims(A) || throw(LabelError("invalid label specification"))
-    isperm(perm) || throw(LabelError("invalid label specification"))
+    length(perm) == NA || throw(LabelError("invalid label specification"))
+    isperm(perm) || throw(LabelError("labels do not specify a valid permutation"))
     C=similar(A,T,dims[perm])
-    tensorcopy!(A,labelsA,C,outputlabels)
+    perm==[1:NA] ? copy!(C,A) : tensorcopy_native!(A,C,perm)
     tensoradd!(one(T),B,labelsB,one(T),C,outputlabels)
     return C
 end
 
-# In-place method
-#-----------------
-@eval @ngenerate N typeof(C) $PERMUTEGENERATE function tensoradd!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},labelsA,beta::Number,C::StridedArray{TC,N},labelsC)
-    iperm=indexin(labelsC,labelsA)
-    length(iperm) == N || error("expected permutation of size $N, but length(perm)=$(length(perm))")
-    isperm(iperm) || error("input is not a permutation")
-    for i = 1:N
-        size(A,iperm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
+function tensoradd!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},labelsA,beta::Number,C::StridedArray{TC,N},labelsC)
+    NA=ndims(A)
+    perm=indexin(labelsC,labelsA)
+    length(perm) == NA || throw(LabelError("invalid label specification"))
+    isperm(perm) || throw(LabelError("labels do not specify a valid permutation"))
+    for i = 1:NA
+        size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
     end
     N==0 && (C[1]=beta*C[1]+alpha*A[1]; return C)
+    perm==[1:NA] && (beta==0 ? fill!(C,zero(TC)) : scale!(C,beta); Base.axpy!(alpha,A,C); return C)
+    return tensoradd_native!(alpha,A,beta,C,perm)
+end
 
-    @nexprs N d->(stridesA_{d} = stride(A,iperm[d]))
+# In-place method
+#-----------------
+@eval @ngenerate N typeof(C) $PERMUTEGENERATE function tensoradd_native!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},beta::Number,C::StridedArray{TC,N},perm)
+    @nexprs N d->(stridesA_{d} = stride(A,perm[d]))
     @nexprs N d->(stridesC_{d} = stride(C,d))
     @nexprs N d->(dims_{d} = size(C,d))
   

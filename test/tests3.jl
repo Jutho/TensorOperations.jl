@@ -91,9 +91,9 @@ Ccopy=tensorcopy(C,1:4,1:4)
 TensorOperations.tensorcopy!(A,1:4,C,p)
 TensorOperations.tensorcopy!(Acopy,1:4,Ccopy,p)
 @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
-@test_throws ErrorException TensorOperations.tensorcopy!(A,1:3,C,p)
+@test_throws LabelError TensorOperations.tensorcopy!(A,1:3,C,p)
 @test_throws DimensionMismatch TensorOperations.tensorcopy!(A,p,C,p)
-@test_throws ErrorException TensorOperations.tensorcopy!(A,1:4,C,[1,1,2,3])
+@test_throws LabelError TensorOperations.tensorcopy!(A,1:4,C,[1,1,2,3])
 
 # tensoradd!
 Cbig=zeros(Complex128,(50,50,50,50))
@@ -105,9 +105,9 @@ beta=randn()
 TensorOperations.tensoradd!(alpha,A,1:4,beta,C,p)
 Ccopy=beta*Ccopy+alpha*Acopy
 @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
-@test_throws ErrorException TensorOperations.tensoradd!(1.2,A,1:3,0.5,C,p)
+@test_throws LabelError TensorOperations.tensoradd!(1.2,A,1:3,0.5,C,p)
 @test_throws DimensionMismatch TensorOperations.tensoradd!(1.2,A,p,0.5,C,p)
-@test_throws ErrorException TensorOperations.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
+@test_throws LabelError TensorOperations.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
 
 # tensortrace!
 Abig=rand((30,30,30,30))
