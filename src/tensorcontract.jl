@@ -135,12 +135,13 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     length(oindCA)+length(oindCB)==NC || throw(DimensionMismatch("invalid contraction pattern"))
 
     # try to avoid extra allocation as much as possible
-    if vcat(oindCB,oindCA)==[1:NC] # better to change role of A and B
+    if NC>0 && vcat(oindCB,oindCA)==[1:NC] # better to change role of A and B
         oindA,oindB=oindB,oindA
         cindA,cindB=cindB,cindA
         oindCA,oindCB=oindCB,oindCA
         A,B=B,A
         NA,NB=NB,NA
+        TA,TB=TB,TA
     end
     
     dimsA=size(A)
@@ -153,13 +154,12 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     olengthB=prod(odimsB)
     clength=prod(cdims)
 
-    elsize = isbits(TC) ? sizeof(TC) : sizeof(Ptr)
+    elsize=isbits(TC) ? sizeof(TC) : sizeof(Ptr)
     # permute A
     if conjA=='C'
         pA=vcat(cindA,oindA)
         if pA==[1:NA] && TA==TC && isa(A,Array)
-            Amat=A
-            Amat=reshape(Amat,(clength,olengthA))
+            Amat=reshape(A,(clength,olengthA))
         else
             resize!(buffer.Abuf,length(A)*elsize)
             Amat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Abuf)),tuple(cdims...,odimsA...))
@@ -168,12 +168,10 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
         end
     elseif conjA=='N'
         if vcat(oindA,cindA)==[1:NA] && TA==TC && isa(A,Array)
-            Amat=A
-            Amat=reshape(Amat,(olengthA,clength))
+            Amat=reshape(A,(olengthA,clength))
         elseif vcat(cindA,oindA)==[1:NA] && TA==TC && isa(A,Array)
             conjA='T'
-            Amat=A
-            Amat=reshape(Amat,(clength,olengthA))
+            Amat=reshape(A,(clength,olengthA))
         else
             pA=vcat(cindA,oindA)
             conjA='T' # it is more efficient to compute At*B
@@ -190,8 +188,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     if conjB=='C'
         pB=vcat(oindB,cindB)
         if pB==[1:NB] && TB==TC && isa(B,Array)
-            Bmat=B
-            Bmat=reshape(Bmat,(olengthB,clength))
+            Bmat=reshape(B,(olengthB,clength))
         else
             resize!(buffer.Bbuf,length(B)*elsize)
             Bmat=pointer_to_array(convert(Ptr{TC},pointer(buffer.Bbuf)),tuple(odimsB...,cdims...))
@@ -200,12 +197,10 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
         end
     elseif conjB=='N'
         if vcat(cindB,oindB)==[1:NB] && TB==TC && isa(B,Array)
-            Bmat=B
-            Bmat=reshape(Bmat,(clength,olengthB))
+            Bmat=reshape(B,(clength,olengthB))
         elseif vcat(oindB,cindB)==[1:NB] && TB==TC && isa(B,Array)
             conjB='T'
-            Bmat=B
-            Bmat=reshape(Bmat,(olengthB,clength))
+            Bmat=reshape(B,(olengthB,clength))
         else
             pB=vcat(cindB,oindB)
             resize!(buffer.Bbuf,length(B)*elsize)
