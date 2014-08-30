@@ -36,8 +36,7 @@ include("tensorproduct.jl")
 
 # Scalar
 #--------
-scalar{T}(C::StridedArray{T,0})=C[1]
-
+scalar(C::StridedArray)=length(C)==1 ? C[1] : throw(DimensionMismatch())
 
 end # module
 

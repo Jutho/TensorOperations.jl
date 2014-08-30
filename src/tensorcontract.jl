@@ -351,7 +351,7 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
         @gencontractkernel(NA-div(NA+NB-NC,2),NB-div(NA+NB-NC,2),div(NA+NB-NC,2),order,alpha,Alinear,conjA,Blinear,conjB,beta,Clinear,startA,startB,startC,odimsA,odimsB,cdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
     else
         # build recursive stack
-        depth=iceil(log2(olengthA/OBASELENGTH))+iceil(log2(olengthB/OBASELENGTH))+iceil(log2(clength/CBASELENGTH))+4 # 4 levels safety margin
+        depth=max(0,iceil(log2(olengthA/OBASELENGTH))+iceil(log2(olengthB/OBASELENGTH))+iceil(log2(clength/CBASELENGTH)))+4 # 4 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
         stackpos[level]=0
