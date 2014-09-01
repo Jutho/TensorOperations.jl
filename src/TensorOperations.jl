@@ -1,7 +1,7 @@
 module TensorOperations
 
 export LabelError
-export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
+export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar, reset_tcbuffer
 
 # LabelError
 #------------

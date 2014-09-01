@@ -62,8 +62,7 @@ For type stability, the methods for tensor operations always assume the result t
 
 * `scalar(A)`
   
-  Returns the single element of a zero-dimensional array.
-
+  Returns the single element of a length 1 array, e.g. a zero-dimensional array or any higher-dimensional array which has `size=(1,1,1,1,...)`.
 
 ### Simple (non-mutating) methods
 
@@ -87,15 +86,21 @@ For type stability, the methods for tensor operations always assume the result t
   
   Trace or contract pairs of indices of array `A`, by assigning them an identical label in the iterable `labelsA`. The untraced indices, which are assigned a unique label, can be reordered according to the optional argument `outputlabels`. The default value corresponds to the order in which they appear. Note that only pairs of indices can be contracted, so that every label in `labelsA` can appear only once (for an untraced index) or twice (for an index in a contracted pair).
   
-* `tensorcontract(A,labelsA,B,labelsB[,outputlabels;method])`
+* `tensorcontract(A,labelsA,B,labelsB[,outputlabels;method,buffer])`
   
   Contract indices of array `A` with corresponding indices in array `B` by assigning them identical labels in the iterables `labelsA` and `labelsB`. The indices of the resulting array correspond to the indices that only appear in either `labelsA` or `labelsB` and can be ordered by specifying the optional argument `outputlabels`. The default is to have all open indices of array `A` followed by all open indices of array `B`. Note that inner contractions of an array should be handled first with `tensortrace`, so that every label can appear only once in `labelsA` or `labelsB` seperately, and once (for open index) or twice (for contracted index) in the union of `labelsA` and `labelsB`.
   
-  There is an optional keyword argument `method` whose value can be `:BLAS` or `:native`. The first option creates temporary copies of `A`, `B` and the result where the indices are permuted such that the contractions become equivalent to a single matrix multiplication, which is typically handled by BLAS. This is often the fastest approach and therefore the default value, but it does require sufficient memory and there is some overhead in allocating new memory (e.g. when doing this many times in a loop). In case `method` is set to `:native`, a Julia function is called that performs the contraction without creating tempories, with special attention to cache-friendliness for maximal efficiency.
+  There is two optional keyword arguments. The keyword argument `method` can take the values `:BLAS` or `:native`. The first option creates temporary copies of `A`, `B` and the result where the indices are permuted such that the contractions become equivalent to a single matrix multiplication, which is typically handled by BLAS. This is often the fastest approach and therefore the default value, but it does require sufficient memory and there is some overhead in allocating new memory (e.g. when doing this many times in a loop). In case `method` is set to `:native`, a Julia function is called that performs the contraction without creating tempories, with special attention to cache-friendliness for maximal efficiency. This can be faster for small tensors or when the contraction pattern is non-generic, i.e. when it amounts to a scalar (no open indices) or a tensor product (no contraction indices).
+  
+  The keyword argument `buffer` takes an instance of type `TCBuffer` as value. `TCBuffer` is a nonexported type that contains 3 vectors, which will be resized by `tensorcontract` so that they can serve as buffer for the first, second and output tensor, when using `method=:BLAS` (default). This avoids the allocation and deallocation of the temporary buffers and speeds up calculations where several contractions of approximately equal-sized tensors need to be computed. A default instance of `TCBuffer`` is created in the `TensorOperations` namespace, which should suffice for all purposes. If after a tensorcontraction of two large arrays, `tensorcontract` is not ran again, the buffers will not be automatically deallocated/shrunk. One can then call `reset_tcbuffer()`. When using `method=:native`, the `buffer` argument is not used at all.
   
 * `tensorproduct(A,labelsA,B,labelsB[,outputlabels])`
   
   Computes the tensor product of two arrays `A` and `B`, i.e. returns a new array `C` with `ndims(C)=ndims(A)+ndims(B)`. The indices of the output tensor are related to those of the input tensors by the pattern specified by the labels. Essentially, this is a special case of `tensorcontract` with no indices being contracted over.
+  
+* `reset_tcbuffer([size::Int])`
+
+  Reset the default TCBuffer in the TensorOperations namespace to a given size. If no size is given, the default value being 24576, i.e. 24 kilobytes is used.
  
 ### Mutating methods
 
@@ -134,7 +139,7 @@ The following features seem like interesting additions to the TensorOperations.j
 
 * Further optimize cache-friendliness by changing the loop order in the contraction kernel depending such that the inner loops run over the array dimensions with the smallest strides. Further efficiency increase can also be obtained by differentiating between a number of different tensor operations that are all handled by `tensorcontract(!)`. To use BLAS terminology, depending on the `labelsA` and `labelsB` the result of `tensorcontract` can be a level 1 operation [a dot product (no open indices) or a tensor product (no contraction indices)], a level 2 operation (no open indices in one of the two input arrays) or a level 3 operation (a genuine contraction with open and contraction indices in both input arrays). [STATUS: partially done].
 
-* Implementation of a a `:buffered` method for `tensorcontract(!)`, that can use a memory buffer in order to apply standard matrix multiplication on smaller subblocks of the input arrays without having to allocate new memory. Preferably coordinated with the gemm kernels of BLAS.
+* Implementation of a tensor contraction implementation that can immediately call the BLAS microkernels to act on small blocks of the arrays which are permuted into fixed size buffers.
 
 * Functionality to contract a large set of tensors, also called a tensor network, including a method to optimize over the contraction order along the lines of [arXiv:1304.6112v3](http://arxiv.org/abs/1304.6112v3).
 

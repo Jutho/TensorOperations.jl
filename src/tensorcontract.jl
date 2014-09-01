@@ -13,6 +13,13 @@ end
 
 const defaultcontractbuffer=TCBuffer(Array(Uint8, 1<<13),Array(Uint8, 1<<13),Array(Uint8, 1<<13))
 
+function reset_tcbuffer(size::Int=3*(1<<13))
+    singlesize=div(size,3)
+    resize!(defaultcontractbuffer.Abuf,singlesize)
+    resize!(defaultcontractbuffer.Bbuf,singlesize)
+    resize!(defaultcontractbuffer.Cbuf,singlesize)
+end
+
 # Simple method
 #---------------
 function tensorcontract(A::StridedArray,labelsA,B::StridedArray,labelsB,outputlabels=symdiff(labelsA,labelsB);method::Symbol=:BLAS,buffer::TCBuffer=defaultcontractbuffer)
