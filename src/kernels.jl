@@ -11,8 +11,8 @@ function _stridedloops(N::Int, itersym::Symbol, dimsym::Symbol, args...)
     for dim = 1:N
         itervar = Cartesian.inlineanonymous(itersym, dim)
         dimvar = Cartesian.inlineanonymous(dimsym, dim)
-        preargs = {}
-        postargs = {}
+        preargs = Any[]
+        postargs = Any[]
         for i=1:3:length(args)-1
             indnew = Cartesian.inlineanonymous(args[i], dim)
             start = (dim < N ? Cartesian.inlineanonymous(args[i], dim+1) : args[i+1])
@@ -31,7 +31,7 @@ function _stridedloops(N::Int, itersym::Symbol, dimsym::Symbol, args...)
         end
     end
     if N == 0 # even a zero-dimensional array has one element and thus requires a single run
-        preargs = {}
+        preargs = Any[]
         for i=1:3:length(args)-1
             indnew = Cartesian.inlineanonymous(args[i], 1)
             start = args[i+1]

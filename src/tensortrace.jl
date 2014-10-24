@@ -54,7 +54,7 @@ end
 
 # In place method
 #-----------------
-const TRACEGENERATE={(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)}
+const TRACEGENERATE=[(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)]
 
 @eval @ngenerate (NA,NC) typeof(C) $TRACEGENERATE function tensortrace_native!{TA,NA,TC,NC}(alpha::Number,A::StridedArray{TA,NA},beta::Number,C::StridedArray{TC,NC},oindA,cindA1,cindA2)
     stridesA=collect(strides(A))
