@@ -1,6 +1,6 @@
 module IndexNotation
 
-export @l_str
+export @l_str, LabelList
 
 using TensorOperations
 
