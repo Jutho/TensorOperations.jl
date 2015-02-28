@@ -13,7 +13,7 @@ end
 function tensortrace(A::StridedArray,labelsA) # there is no one-line method to compute the default outputlabels
     ulabelsA=unique(labelsA)
     labelsC=similar(labelsA,0)
-    sizehint(labelsC,length(ulabelsA))
+    sizehint!(labelsC,length(ulabelsA))
     for j=1:length(ulabelsA)
         ind=findfirst(labelsA,ulabelsA[j])
         if findnext(labelsA,ulabelsA[j],ind+1)==0
@@ -63,26 +63,26 @@ const TRACEGENERATE=[(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)]
     p=sortperm(cstridesA)
     cindA1=cindA1[p]
     cstridesA=cstridesA[p]
-    
+
     order=0
     if NC==0 || cstridesA[1] < minimum(ostridesA)
         order=1
     end
-    
+
     olength=1
     @nexprs NC d->(odims_{d} = size(C,d);olength*=odims_{d})
     @nexprs NC d->(ostridesC_{d} = stride(C,d))
     @nexprs NC d->(ostridesA_{d} = ostridesA[d])
-    
+
     clength=1
     @nexprs div(NA-NC,2) d->(cdims_{d} = size(A,cindA1[d]);clength*=cdims_{d})
     @nexprs div(NA-NC,2) d->(cstridesA_{d} = cstridesA[d])
-    
+
     # initialize to zero
     if beta==0
       fill!(C,zero(TC))
     end
-    
+
     startA = 1
     local Alinear::Array{TA,NA}
     if isa(A, SubArray)
@@ -99,14 +99,14 @@ const TRACEGENERATE=[(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)]
     else
         Clinear = C
     end
-    
+
     if olength*(clength+1)<=8*TBASELENGTH
         @gentracekernel(div(NA-NC,2),NC,order,alpha,Alinear,beta,Clinear,startA,startC,odims,cdims,ostridesA,cstridesA,ostridesC)
     else
         @nexprs NC d->(minostrides_{d} = min(ostridesA_{d},ostridesC_{d}))
 
         # build recursive stack
-        depth=iceil(log2(olength*(clength+1)/2/TBASELENGTH))+2 # 2 levels safety margin
+        depth=ceil(Integer, log2(olength*(clength+1)/2/TBASELENGTH))+2 # 2 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
         stackpos[level]=0

@@ -23,13 +23,13 @@ function tensorcopy!(A::StridedArray,labelsA,C::StridedArray,labelsC)
         size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
     end
     NA==0 && (C[1]=A[1]; return C)
-    perm==[1:NA] && return copy!(C,A)
+    perm==[1:NA;] && return copy!(C,A)
     tensorcopy_native!(A,C,perm)
 end
 
 # Implementation
 #----------------
-const PERMUTEGENERATE=[1,2,3,4,5,6,7,8] 
+const PERMUTEGENERATE=[1,2,3,4,5,6,7,8]
 
 @ngenerate N typeof(C) function tensorcopy_native!{TA,TC,N}(A::StridedArray{TA,N},C::StridedArray{TC,N},perm)
     @nexprs N d->(stridesA_{d} = stride(A,perm[d]))
@@ -59,7 +59,7 @@ const PERMUTEGENERATE=[1,2,3,4,5,6,7,8]
         @nexprs N d->(minstrides_{d} = min(stridesA_{d},stridesC_{d}))
 
         # build recursive stack
-        depth=iceil(log2(length(C)/TBASELENGTH))+2 # 2 levels safety margin
+        depth=ceil(Integer, log2(length(C)/TBASELENGTH))+2 # 2 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
         stackpos[level]=0
