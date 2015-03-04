@@ -1,5 +1,7 @@
 module TensorOperations
 
+using Compat  # for sizehint!
+
 export LabelError
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar, reset_tcbuffer
 

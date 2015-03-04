@@ -23,7 +23,7 @@ function tensorcopy!(A::StridedArray,labelsA,C::StridedArray,labelsC)
         size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
     end
     NA==0 && (C[1]=A[1]; return C)
-    perm==[1:NA;] && return copy!(C,A)
+    perm==collect(1:NA) && return copy!(C,A)
     tensorcopy_native!(A,C,perm)
 end
 

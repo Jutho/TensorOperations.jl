@@ -142,7 +142,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     length(oindCA)+length(oindCB)==NC || throw(DimensionMismatch("invalid contraction pattern"))
 
     # try to avoid extra allocation as much as possible
-    if NC>0 && vcat(oindCB,oindCA)==[1:NC;] # better to change role of A and B
+    if NC>0 && vcat(oindCB,oindCA)==collect(1:NC) # better to change role of A and B
         oindA,oindB=oindB,oindA
         cindA,cindB=cindB,cindA
         oindCA,oindCB=oindCB,oindCA
@@ -165,7 +165,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     # permute A
     if conjA=='C'
         pA=vcat(cindA,oindA)
-        if pA==[1:NA;] && TA==TC && isa(A,Array)
+        if pA==collect(1:NA) && TA==TC && isa(A,Array)
             Amat=reshape(A,(clength,olengthA))
         else
             resize!(buffer.Abuf,length(A)*elsize)
@@ -174,9 +174,9 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
             Amat=reshape(Amat,(clength,olengthA))
         end
     elseif conjA=='N'
-        if vcat(oindA,cindA)==[1:NA;] && TA==TC && isa(A,Array)
+        if vcat(oindA,cindA)==collect(1:NA) && TA==TC && isa(A,Array)
             Amat=reshape(A,(olengthA,clength))
-        elseif vcat(cindA,oindA)==[1:NA;] && TA==TC && isa(A,Array)
+        elseif vcat(cindA,oindA)==collect(1:NA) && TA==TC && isa(A,Array)
             conjA='T'
             Amat=reshape(A,(clength,olengthA))
         else
@@ -194,7 +194,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     # permute B
     if conjB=='C'
         pB=vcat(oindB,cindB)
-        if pB==[1:NB;] && TB==TC && isa(B,Array)
+        if pB==collect(1:NB) && TB==TC && isa(B,Array)
             Bmat=reshape(B,(olengthB,clength))
         else
             resize!(buffer.Bbuf,length(B)*elsize)
@@ -203,9 +203,9 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
             Bmat=reshape(Bmat,(olengthB,clength))
         end
     elseif conjB=='N'
-        if vcat(cindB,oindB)==[1:NB;] && TB==TC && isa(B,Array)
+        if vcat(cindB,oindB)==collect(1:NB) && TB==TC && isa(B,Array)
             Bmat=reshape(B,(clength,olengthB))
-        elseif vcat(oindB,cindB)==[1:NB;] && TB==TC && isa(B,Array)
+        elseif vcat(oindB,cindB)==collect(1:NB) && TB==TC && isa(B,Array)
             conjB='T'
             Bmat=reshape(B,(olengthB,clength))
         else
@@ -221,7 +221,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
 
     # calculate C
     pC=vcat(oindCA,oindCB)
-    if pC==[1:NC;] && isa(C,Array)
+    if pC==collect(1:NC) && isa(C,Array)
         Cmat=reshape(C,(olengthA,olengthB))
         Base.LinAlg.BLAS.gemm!(conjA,conjB,convert(TC,alpha),Amat,Bmat,convert(TC,beta),Cmat)
     else

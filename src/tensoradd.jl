@@ -25,7 +25,7 @@ function tensoradd!(alpha::Number,A::StridedArray,labelsA,beta::Number,C::Stride
         size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
     end
     NA==0 && (C[1]=beta*C[1]+alpha*A[1]; return C)
-    perm==[1:NA;] && return (beta==0 ? scale!(copy!(C,A),alpha) : Base.LinAlg.axpy!(alpha,A,scale!(C,beta)))
+    perm==collect(1:NA) && return (beta==0 ? scale!(copy!(C,A),alpha) : Base.LinAlg.axpy!(alpha,A,scale!(C,beta)))
     beta==0 && return scale!(tensorcopy_native!(A,C,perm),alpha)
     tensoradd_native!(alpha,A,beta,C,perm)
 end
