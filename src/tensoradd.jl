@@ -25,7 +25,7 @@ function tensoradd!(alpha::Number,A::StridedArray,labelsA,beta::Number,C::Stride
         size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
     end
     NA==0 && (C[1]=beta*C[1]+alpha*A[1]; return C)
-    perm==[1:NA] && return (beta==0 ? scale!(copy!(C,A),alpha) : Base.LinAlg.axpy!(alpha,A,scale!(C,beta)))
+    perm==collect(1:NA) && return (beta==0 ? scale!(copy!(C,A),alpha) : Base.LinAlg.axpy!(alpha,A,scale!(C,beta)))
     beta==0 && return scale!(tensorcopy_native!(A,C,perm),alpha)
     tensoradd_native!(alpha,A,beta,C,perm)
 end
@@ -36,11 +36,11 @@ end
     @nexprs N d->(stridesA_{d} = stride(A,perm[d]))
     @nexprs N d->(stridesC_{d} = stride(C,d))
     @nexprs N d->(dims_{d} = size(C,d))
-  
+
     if beta==0
         fill!(C,zero(TC))
     end
-    
+
     startA = 1
     local Alinear::Array{TA,N}
     if isa(A, SubArray)
@@ -57,14 +57,14 @@ end
     else
         Clinear = C
     end
-  
+
     if length(C)<=4*TBASELENGTH
         @stridedloops(N, i, dims, indA, startA, stridesA, indC, startC, stridesC, @inbounds Clinear[indC]=beta*Clinear[indC]+alpha*Alinear[indA])
     else
         @nexprs N d->(minstrides_{d} = min(stridesA_{d},stridesC_{d}))
 
         # build recursive stack
-        depth=iceil(log2(length(C)/TBASELENGTH))+2 # 2 levels safety margin
+        depth=ceil(Integer, log2(length(C)/TBASELENGTH))+2 # 2 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record pos of algorithm at the different recursion level
         stackpos[level]=0
@@ -78,20 +78,20 @@ end
         stackbstartA[level]=startA
         stackbstartC=zeros(Int,depth)
         stackbstartC[level]=startC
-        
+
         stackdC=zeros(Int,depth)
         stackdA=zeros(Int,depth)
         stackdmax=zeros(Int,depth)
         stacknewdim=zeros(Int,depth)
         stackolddim=zeros(Int,depth)
-        
+
         while level>0
             pos=stackpos[level]
             blength=stackblength[level]
             @nexprs N d->(bdims_{d} = stackbdims_{d}[level])
             bstartA=stackbstartA[level]
             bstartC=stackbstartC[level]
-            
+
             if blength<=TBASELENGTH || level==depth # base case
                 @stridedloops(N, i, bdims, indA, bstartA, stridesA, indC, bstartC, stridesC, @inbounds Clinear[indC]=beta*Clinear[indC]+alpha*Alinear[indA])
                 level-=1
@@ -119,7 +119,7 @@ end
                 stackdmax[level]=dmax
                 stackdC[level]=dC
                 stackdA[level]=dA
-                
+
                 stackpos[level+1]=0
                 @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? newdim : bdims_{d}))
                 stackblength[level+1]=div(blength,olddim)*newdim

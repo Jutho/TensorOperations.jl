@@ -110,7 +110,7 @@ function tensorcontract!(alpha::Number,A::StridedArray,labelsA,conjA::Char,B::St
 
     # Perform contraction
     method==:BLAS && return tensorcontract_blas!(alpha,A,conjA,B,conjB,beta,C,buffer,oindA,cindA,oindB,cindB,oindCA,oindCB)
-    method==:native && return NA>=NB ? 
+    method==:native && return NA>=NB ?
         tensorcontract_native!(alpha,A,conjA,B,conjB,beta,C,oindA,cindA,oindB,cindB,oindCA,oindCB) :
         tensorcontract_native!(alpha,B,conjB,A,conjA,beta,C,oindB,cindB,oindA,cindA,oindCB,oindCA)
 
@@ -125,14 +125,14 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     # side and all indcontract on the other. Compute the data for C from
     # multiplying these matrices. Permute again to bring indices in requested
     # order.
-    
+
     NA=ndims(A)
     NB=ndims(B)
     NC=ndims(C)
     TA=eltype(A)
     TB=eltype(B)
     TC=eltype(C)
-    
+
     # only basic checking, this function is not expected to be called directly
     length(oindA)==length(oindCA) || throw(DimensionMismatch("invalid contraction pattern"))
     length(oindB)==length(oindCB) || throw(DimensionMismatch("invalid contraction pattern"))
@@ -142,7 +142,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     length(oindCA)+length(oindCB)==NC || throw(DimensionMismatch("invalid contraction pattern"))
 
     # try to avoid extra allocation as much as possible
-    if NC>0 && vcat(oindCB,oindCA)==[1:NC] # better to change role of A and B
+    if NC>0 && vcat(oindCB,oindCA)==collect(1:NC) # better to change role of A and B
         oindA,oindB=oindB,oindA
         cindA,cindB=cindB,cindA
         oindCA,oindCB=oindCB,oindCA
@@ -150,7 +150,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
         NA,NB=NB,NA
         TA,TB=TB,TA
     end
-    
+
     dimsA=size(A)
     odimsA=dimsA[oindA]
     dimsB=size(B)
@@ -165,7 +165,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     # permute A
     if conjA=='C'
         pA=vcat(cindA,oindA)
-        if pA==[1:NA] && TA==TC && isa(A,Array)
+        if pA==collect(1:NA) && TA==TC && isa(A,Array)
             Amat=reshape(A,(clength,olengthA))
         else
             resize!(buffer.Abuf,length(A)*elsize)
@@ -174,9 +174,9 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
             Amat=reshape(Amat,(clength,olengthA))
         end
     elseif conjA=='N'
-        if vcat(oindA,cindA)==[1:NA] && TA==TC && isa(A,Array)
+        if vcat(oindA,cindA)==collect(1:NA) && TA==TC && isa(A,Array)
             Amat=reshape(A,(olengthA,clength))
-        elseif vcat(cindA,oindA)==[1:NA] && TA==TC && isa(A,Array)
+        elseif vcat(cindA,oindA)==collect(1:NA) && TA==TC && isa(A,Array)
             conjA='T'
             Amat=reshape(A,(clength,olengthA))
         else
@@ -194,7 +194,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
     # permute B
     if conjB=='C'
         pB=vcat(oindB,cindB)
-        if pB==[1:NB] && TB==TC && isa(B,Array)
+        if pB==collect(1:NB) && TB==TC && isa(B,Array)
             Bmat=reshape(B,(olengthB,clength))
         else
             resize!(buffer.Bbuf,length(B)*elsize)
@@ -203,9 +203,9 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
             Bmat=reshape(Bmat,(olengthB,clength))
         end
     elseif conjB=='N'
-        if vcat(cindB,oindB)==[1:NB] && TB==TC && isa(B,Array)
+        if vcat(cindB,oindB)==collect(1:NB) && TB==TC && isa(B,Array)
             Bmat=reshape(B,(clength,olengthB))
-        elseif vcat(oindB,cindB)==[1:NB] && TB==TC && isa(B,Array)
+        elseif vcat(oindB,cindB)==collect(1:NB) && TB==TC && isa(B,Array)
             conjB='T'
             Bmat=reshape(B,(olengthB,clength))
         else
@@ -221,7 +221,7 @@ function tensorcontract_blas!(alpha::Number,A::StridedArray,conjA::Char,B::Strid
 
     # calculate C
     pC=vcat(oindCA,oindCB)
-    if pC==[1:NC] && isa(C,Array)
+    if pC==collect(1:NC) && isa(C,Array)
         Cmat=reshape(C,(olengthA,olengthB))
         Base.LinAlg.BLAS.gemm!(conjA,conjB,convert(TC,alpha),Amat,Bmat,convert(TC,beta),Cmat)
     else
@@ -358,7 +358,7 @@ const CONTRACTGENERATE=[(1,1,2), # outer product of 2 vectors
         @gencontractkernel(NA-div(NA+NB-NC,2),NB-div(NA+NB-NC,2),div(NA+NB-NC,2),order,alpha,Alinear,conjA,Blinear,conjB,beta,Clinear,startA,startB,startC,odimsA,odimsB,cdims,ostridesA,cstridesA,ostridesB,cstridesB,ostridesCA,ostridesCB)
     else
         # build recursive stack
-        depth=max(0,iceil(log2(olengthA/OBASELENGTH))+iceil(log2(olengthB/OBASELENGTH))+iceil(log2(clength/CBASELENGTH)))+4 # 4 levels safety margin
+        depth=max(0,ceil(Integer, log2(olengthA/OBASELENGTH))+ceil(Integer, log2(olengthB/OBASELENGTH))+ceil(Integer, log2(clength/CBASELENGTH)))+4 # 4 levels safety margin
         level=1 # level of recursion
         stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
         stackpos[level]=0
