@@ -1,4 +1,4 @@
-using TensorOperations, IndexNotation
+using TensorOperations
 using Base.Test
 
 if VERSION.minor < 3

@@ -2,151 +2,125 @@
 #
 # Method for adding one tensor to another according to the
 # specified labels, thereby possibly having to permute the
-# data.
+# data. Copying as special case.
 
-# Simple method
-# --------------
-function tensoradd(A::StridedArray,labelsA,B::StridedArray,labelsB,outputlabels=labelsA)
-    dims=size(A)
-    T=promote_type(eltype(A),eltype(B))
-    C=similar(A,T,dims[indexin(outputlabels,labelsA)])
-    tensorcopy!(A,labelsA,C,outputlabels)
-    tensoradd!(1,B,labelsB,1,C,outputlabels)
+# Extract index information
+#---------------------------
+function add_indices(labelsA,labelsC)
+    indCinA=indexin(collect(labelsC),collect(labelsA))
+    isperm(indCinA) || throw(LabelError("invalid label specification: $labelsA to $labelsC"))
+    return indCinA
+end
+
+# Simple methods
+# ---------------
+function tensorcopy(A, labelsA, labelsC=labelsA)
+    labelsA == labelsC && return copy(A)
+
+    checklabellength(A, labelsA)
+    indCinA = add_indices(labelsA, labelsC)
+    C = similar_from_indices(eltype(A), indCinA, A)
+    add_native!(1, A, Val{:N}, 0, C, indCinA)
+end
+
+function tensoradd(A, labelsA, B, labelsB, labelsC=labelsA)
+    checklabellength(A, labelsA)
+    checklabellength(B, labelsB)
+    T = promote_type(eltype(A), eltype(B))
+    if labelsA == labelsC
+        C = similar_from_indices(T, 1:numind(A), A)
+        copy!(C,A)
+    else
+        indCinA = add_indices(labelsA, labelsC)
+        C = similar_from_indices(T, indCinA, A)
+        add_native!(1, A, Val{:N}, 0, C, indCinA)
+    end
+    indCinB = add_indices(labelsB, labelsC)
+    add_native!(1, B, Val{:N}, 1, C, indCinB)
 end
 
 # In-place method
 #-----------------
-function tensoradd!(alpha::Number,A::StridedArray,labelsA,beta::Number,C::StridedArray,labelsC)
-    NA=ndims(A)
-    perm=indexin(labelsC,labelsA)
-    length(perm) == NA || throw(LabelError("invalid label specification"))
-    isperm(perm) || throw(LabelError("labels do not specify a valid permutation"))
-    for i = 1:NA
-        size(A,perm[i]) == size(C,i) || throw(DimensionMismatch("destination tensor of incorrect size"))
-    end
-    NA==0 && (C[1]=beta*C[1]+alpha*A[1]; return C)
-    perm==collect(1:NA) && return (beta==0 ? scale!(copy!(C,A),alpha) : Base.LinAlg.axpy!(alpha,A,scale!(C,beta)))
-    beta==0 && return scale!(tensorcopy_native!(A,C,perm),alpha)
-    tensoradd_native!(alpha,A,beta,C,perm)
+tensorcopy!(A, labelsA, C, labelsC) = tensoradd!(1, A, labelsA, 0, C, labelsC)
+
+function tensoradd!(alpha,A,labelsA,beta,C,labelsC)
+    checklabellength(A, labelsA)
+    checklabellength(C, labelsC)
+    indCinA = add_indices(labelsA,labelsC)
+    add_native!(alpha, A, Val{:N}, beta, C, indCinA)
 end
 
-# Implementation
-#-----------------
-@eval @ngenerate N typeof(C) $PERMUTEGENERATE function tensoradd_native!{TA,TC,N}(alpha::Number,A::StridedArray{TA,N},beta::Number,C::StridedArray{TC,N},perm)
-    @nexprs N d->(stridesA_{d} = stride(A,perm[d]))
-    @nexprs N d->(stridesC_{d} = stride(C,d))
-    @nexprs N d->(dims_{d} = size(C,d))
-
-    if beta==0
-        fill!(C,zero(TC))
+# Implementation methods
+#------------------------
+# High level: can be extended for other types of arrays or tensors
+function add_native!{CA}(alpha, A::StridedArray, ::Type{Val{CA}}, beta, C::StridedArray, indCinA)
+    for i = 1:ndims(C)
+        size(A,indCinA[i]) == size(C,i) || throw(DimensionMismatch())
     end
 
-    startA = 1
-    local Alinear::Array{TA,N}
-    if isa(A, SubArray)
-        startA = A.first_index
-        Alinear = A.parent
+    dims, stridesA, stridesC, minstrides = add_strides(size(C), _permute(_strides(A),indCinA), _strides(C))
+    dataA = StridedData(A, stridesA, Val{CA})
+    offsetA = 0
+    dataC = StridedData(C, stridesC)
+    offsetC = 0
+
+    if alpha == 0
+        beta == 1 || _scale!(dataC,beta,dims)
+    elseif alpha == 1 && beta == 0
+        add_rec!(_one, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
+    elseif alpha == 1 && beta == 1
+        add_rec!(_one, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
+    elseif beta == 0
+        add_rec!(alpha, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
+    elseif beta == 1
+        add_rec!(alpha, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
     else
-        Alinear = A
-    end
-    startC = 1
-    local Clinear::Array{TC,N}
-    if isa(C, SubArray)
-        startC = C.first_index
-        Clinear = C.parent
-    else
-        Clinear = C
-    end
-
-    if length(C)<=4*TBASELENGTH
-        @stridedloops(N, i, dims, indA, startA, stridesA, indC, startC, stridesC, @inbounds Clinear[indC]=beta*Clinear[indC]+alpha*Alinear[indA])
-    else
-        @nexprs N d->(minstrides_{d} = min(stridesA_{d},stridesC_{d}))
-
-        # build recursive stack
-        depth=ceil(Integer, log2(length(C)/TBASELENGTH))+2 # 2 levels safety margin
-        level=1 # level of recursion
-        stackpos=zeros(Int,depth) # record pos of algorithm at the different recursion level
-        stackpos[level]=0
-        stackblength=zeros(Int,depth)
-        stackblength[level]=length(C)
-        @nexprs N d->begin
-            stackbdims_{d} = zeros(Int,depth)
-            stackbdims_{d}[level] = dims_{d}
-        end
-        stackbstartA=zeros(Int,depth)
-        stackbstartA[level]=startA
-        stackbstartC=zeros(Int,depth)
-        stackbstartC[level]=startC
-
-        stackdC=zeros(Int,depth)
-        stackdA=zeros(Int,depth)
-        stackdmax=zeros(Int,depth)
-        stacknewdim=zeros(Int,depth)
-        stackolddim=zeros(Int,depth)
-
-        while level>0
-            pos=stackpos[level]
-            blength=stackblength[level]
-            @nexprs N d->(bdims_{d} = stackbdims_{d}[level])
-            bstartA=stackbstartA[level]
-            bstartC=stackbstartC[level]
-
-            if blength<=TBASELENGTH || level==depth # base case
-                @stridedloops(N, i, bdims, indA, bstartA, stridesA, indC, bstartC, stridesC, @inbounds Clinear[indC]=beta*Clinear[indC]+alpha*Alinear[indA])
-                level-=1
-            elseif pos==0
-                # find which dimension to divide
-                dmax=0
-                maxval=0
-                newdim=0
-                olddim=0
-                dC=0
-                dA=0
-                @nexprs N d->begin
-                    newmax=bdims_{d}*minstrides_{d}
-                    if bdims_{d}>1 && newmax>maxval
-                        dmax=d
-                        olddim=bdims_{d}
-                        newdim=olddim>>1
-                        dC=stridesC_{d}
-                        dA=stridesA_{d}
-                        maxval=newmax
-                    end
-                end
-                stackolddim[level]=olddim
-                stacknewdim[level]=newdim
-                stackdmax[level]=dmax
-                stackdC[level]=dC
-                stackdA[level]=dA
-
-                stackpos[level+1]=0
-                @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? newdim : bdims_{d}))
-                stackblength[level+1]=div(blength,olddim)*newdim
-                stackbstartA[level+1]=bstartA
-                stackbstartC[level+1]=bstartC
-
-                stackpos[level]+=1
-                level+=1
-            elseif pos==1
-                olddim=stackolddim[level]
-                newdim=stacknewdim[level]
-                dmax=stackdmax[level]
-                dC=stackdC[level]
-                dA=stackdA[level]
-
-                stackpos[level+1]=0
-                @nexprs N d->(stackbdims_{d}[level+1] = (d==dmax ? olddim-newdim : bdims_{d}))
-                stackblength[level+1]=div(blength,olddim)*(olddim-newdim)
-                stackbstartA[level+1]=bstartA+dA*newdim
-                stackbstartC[level+1]=bstartC+dC*newdim
-
-                stackpos[level]+=1
-                level+=1
-            else
-                level-=1
-            end
-        end
+        add_rec!(alpha, dataA, beta, dataC, dims, offsetA, offsetC, minstrides)
     end
     return C
+end
+
+# Recursive divide and conquer approach:
+@generated function add_rec!{N}(alpha, A::StridedData{N}, beta, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int})
+    quote
+        if prod(dims) <= BASELENGTH
+            add_micro!(alpha, A, beta, C, dims, offsetA, offsetC)
+        else
+            dmax = _indmax(_memjumps(dims, minstrides))
+            @dividebody $N dmax dims offsetA A offsetC C begin
+                add_rec!(alpha, A, beta, C, dims, offsetA, offsetC, minstrides)
+            end begin
+                add_rec!(alpha, A, beta, C, dims, offsetA, offsetC, minstrides)
+            end
+        end
+        return C
+    end
+end
+
+# Micro kernel at end of recursion:
+@generated function add_micro!{N}(alpha, A::StridedData{N}, beta, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int)
+    quote
+        startA = A.start+offsetA
+        stridesA = A.strides
+        startC = C.start+offsetC
+        stridesC = C.strides
+        @stridedloops($N, dims, indA, startA, stridesA, indC, startC, stridesC, @inbounds C[indC]=axpby(alpha,A[indA],beta,C[indC]))
+        return C
+    end
+end
+
+# Stride calculation
+#--------------------
+@generated function add_strides{N}(dims::NTuple{N,Int}, stridesA::NTuple{N,Int}, stridesC::NTuple{N,Int})
+    minstridesex = Expr(:tuple,[:(min(stridesA[$d],stridesC[$d])) for d = 1:N]...)
+    quote
+        minstrides = $minstridesex
+        p = sortperm(collect(minstrides))
+        dims = _permute(dims, p)
+        stridesA = _permute(stridesA, p)
+        stridesC = _permute(stridesC, p)
+        minstrides = _permute(minstrides, p)
+
+        return dims, stridesA, stridesC, minstrides
+    end
 end

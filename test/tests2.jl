@@ -42,6 +42,10 @@ A=randn(3,20,5,3,4)
 B=randn(5,6,20,3)
 C1=tensorcontract(A,[:a,:b,:c,:d,:e],B,[:c,:f,:b,:g],[:a,:g,:e,:d,:f];method=:BLAS)
 C2=tensorcontract(A,[:a,:b,:c,:d,:e],B,[:c,:f,:b,:g],[:a,:g,:e,:d,:f];method=:native)
+C3=zeros(3,3,4,3,6)
+for a=1:3, b=1:20, c=1:5, d=1:3, e=1:4, f=1:6, g=1:3
+    C3[a,g,e,d,f] = A[a,b,c,d,e]*B[c,f,b,g]
+end
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
 @test_throws tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])

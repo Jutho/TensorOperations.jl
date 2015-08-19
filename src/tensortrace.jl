@@ -1,228 +1,150 @@
-# tensorcopy.jl
+# tensortrace.jl
 #
 # Method for tracing some of the indices of a tensor and
 # adding the result to another tensor.
 
-# Simple method
-#---------------
-function tensortrace(A::StridedArray,labelsA,outputlabels)
-    dimsA=size(A)
-    C=similar(A,dimsA[indexin(outputlabels,labelsA)])
-    tensortrace!(1,A,labelsA,0,C,outputlabels)
-end
-function tensortrace(A::StridedArray,labelsA) # there is no one-line method to compute the default outputlabels
-    ulabelsA=unique(labelsA)
-    labelsC=similar(labelsA,0)
-    sizehint!(labelsC,length(ulabelsA))
-    for j=1:length(ulabelsA)
-        ind=findfirst(labelsA,ulabelsA[j])
-        if findnext(labelsA,ulabelsA[j],ind+1)==0
-            push!(labelsC,ulabelsA[j])
-        end
-    end
-    tensortrace(A,labelsA,labelsC)
-end
+# Extract index information
+#---------------------------
+function trace_indices(labelsA,labelsC)
+    indCinA=indexin(labelsC,labelsA)
 
-
-function tensortrace!(alpha::Number,A::StridedArray,labelsA,beta::Number,C::StridedArray,labelsC)
-    NA=ndims(A)
-    NC=ndims(C)
-    (length(labelsA)==NA && length(labelsC)==NC) || throw(LabelError("invalid label specification"))
-    NA==NC && return tensoradd!(alpha,A,labelsA,beta,C,labelsC) # nothing to trace
-
-    oindA=indexin(labelsC,labelsA)
     clabels=unique(setdiff(labelsA,labelsC))
-    NA==NC+2*length(clabels) || throw(LabelError("invalid label specification"))
-
     cindA1=Array(Int,length(clabels))
     cindA2=Array(Int,length(clabels))
     for i=1:length(clabels)
-        cindA1[i]=findfirst(labelsA,clabels[i])
-        cindA2[i]=findnext(labelsA,clabels[i],cindA1[i]+1)
+        cindA1[i] = findfirst(labelsA,clabels[i])
+        cindA2[i] = findnext(labelsA,clabels[i],cindA1[i]+1)
     end
-    isperm(vcat(oindA,cindA1,cindA2)) || throw(LabelError("invalid label specification"))
-
-    for i = 1:NC
-        size(A,oindA[i]) == size(C,i) || throw(DimensionMismatch("tensor sizes incompatible"))
-    end
-    for i = 1:div(NA-NC,2)
-        size(A,cindA1[i]) == size(A,cindA2[i]) || throw(DimensionMismatch("tensor sizes incompatible"))
-    end
-    tensortrace_native!(alpha,A,beta,C,oindA,cindA1,cindA2)
+    pA = vcat(indCinA, cindA1, cindA2)
+    isperm(pA) || throw(LabelError("invalid trace specification: $labelsA to $labelsC"))
+    return indCinA, cindA1, cindA2
 end
 
+# Simple method
+#---------------
+function tensortrace(A, labelsA, labelsC = unique2(labelsA))
+    checklabellength(A, labelsA)
+    indCinA, cindA1, cindA2 = trace_indices(labelsA,labelsC)
+    C = similar_from_indices(eltype(A), indCinA, A)
+    trace_native!(1, A, Val{:N}, 0, C, indCinA, cindA1, cindA2)
+end
 
-# In place method
+# auxiliary:
+function unique2(C)
+    out = collect(C)
+    i = 1
+    while i < length(out)
+        inext = findnext(out,out[i],i+1)
+        if inext == 0
+            i += 1
+            continue
+        end
+        while inext != 0
+            deleteat!(out,inext)
+            inext = findnext(out,out[i],i+1)
+        end
+        deleteat!(out,i)
+    end
+    out
+end
+
+# In-place method
 #-----------------
-const TRACEGENERATE=[(2,0),(3,1),(4,2),(4,0),(5,3),(5,1),(6,4),(6,2),(6,0)]
+function tensortrace!(alpha, A, labelsA, beta, C, labelsC)
+    checklabellength(A, labelsA)
+    checklabellength(C, labelsC)
+    indCinA, cindA1, cindA2 = trace_indices(labelsA,labelsC)
+    trace_native!(alpha, A, Val{:N}, beta, C, indCinA, cindA1, cindA2)
+    return C
+end
 
-@eval @ngenerate (NA,NC) typeof(C) $TRACEGENERATE function tensortrace_native!{TA,NA,TC,NC}(alpha::Number,A::StridedArray{TA,NA},beta::Number,C::StridedArray{TC,NC},oindA,cindA1,cindA2)
-    stridesA=collect(strides(A))
-    cstridesA=stridesA[cindA1]+stridesA[cindA2]
-    ostridesA=stridesA[oindA]
-    p=sortperm(cstridesA)
-    cindA1=cindA1[p]
-    cstridesA=cstridesA[p]
+# Implementation methods
+#------------------------
+# High level: can be extended for other types of arrays or tensors
+function trace_native!{CA}(alpha, A::StridedArray, ::Type{Val{CA}}, beta, C::StridedArray, indCinA, cindA1, cindA2)
+    NC = ndims(C)
+    NA = ndims(A)
 
-    order=0
-    if NC==0 || cstridesA[1] < minimum(ostridesA)
-        order=1
+    for i = 1:NC
+        size(A,indCinA[i]) == size(C,i) || throw(DimensionMismatch(""))
+    end
+    for i = 1:div(NA-NC,2)
+        size(A,cindA1[i]) == size(A,cindA2[i]) || throw(DimensionMismatch(""))
     end
 
-    olength=1
-    @nexprs NC d->(odims_{d} = size(C,d);olength*=odims_{d})
-    @nexprs NC d->(ostridesC_{d} = stride(C,d))
-    @nexprs NC d->(ostridesA_{d} = ostridesA[d])
+    pA = vcat(indCinA, cindA1, cindA2)
+    dims, stridesA, stridesC, minstrides = trace_strides(_permute(size(A),pA), _permute(_strides(A),pA), _strides(C))
+    dataA = StridedData(A, stridesA, Val{CA})
+    offsetA = 0
+    dataC = StridedData(C, stridesC)
+    offsetC = 0
 
-    clength=1
-    @nexprs div(NA-NC,2) d->(cdims_{d} = size(A,cindA1[d]);clength*=cdims_{d})
-    @nexprs div(NA-NC,2) d->(cstridesA_{d} = cstridesA[d])
-
-    # initialize to zero
-    if beta==0
-      fill!(C,zero(TC))
-    end
-
-    startA = 1
-    local Alinear::Array{TA,NA}
-    if isa(A, SubArray)
-        startA = A.first_index
-        Alinear = A.parent
+    if alpha == 0
+        beta == 1 || _scale!(dataC, beta, dims)
+    elseif alpha == 1 && beta == 0
+        trace_rec!(_one, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
+    elseif alpha == 1 && beta == 1
+        trace_rec!(_one, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
+    elseif beta == 0
+        trace_rec!(alpha, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
+    elseif beta == 1
+        trace_rec!(alpha, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
     else
-        Alinear = A
-    end
-    startC = 1
-    local Clinear::Array{TC,NC}
-    if isa(C, SubArray)
-        startC = C.first_index
-        Clinear = C.parent
-    else
-        Clinear = C
-    end
-
-    if olength*(clength+1)<=8*TBASELENGTH
-        @gentracekernel(div(NA-NC,2),NC,order,alpha,Alinear,beta,Clinear,startA,startC,odims,cdims,ostridesA,cstridesA,ostridesC)
-    else
-        @nexprs NC d->(minostrides_{d} = min(ostridesA_{d},ostridesC_{d}))
-
-        # build recursive stack
-        depth=ceil(Integer, log2(olength*(clength+1)/2/TBASELENGTH))+2 # 2 levels safety margin
-        level=1 # level of recursion
-        stackpos=zeros(Int,depth) # record position of algorithm at the different recursion level
-        stackpos[level]=0
-        stackoblength=zeros(Int,depth)
-        stackoblength[level]=olength
-        stackcblength=zeros(Int,depth)
-        stackcblength[level]=clength
-        @nexprs NC d->begin
-            stackobdims_{d} = zeros(Int,depth)
-            stackobdims_{d}[level] = odims_{d}
-        end
-        @nexprs div(NA-NC,2) d->begin
-            stackcbdims_{d} = zeros(Int,depth)
-            stackcbdims_{d}[level] = cdims_{d}
-        end
-        stackbstartA=zeros(Int,depth)
-        stackbstartA[level]=startA
-        stackbstartC=zeros(Int,depth)
-        stackbstartC[level]=startC
-        stackgamma=zeros(typeof(beta),depth)
-        stackgamma[level]=beta
-
-        stackdC=zeros(Int,depth)
-        stackdA=zeros(Int,depth)
-        stackdmax=zeros(Int,depth)
-        stackwhichd=zeros(Int,depth)
-        stacknewdim=zeros(Int,depth)
-        stackolddim=zeros(Int,depth)
-
-        while level>0
-            pos=stackpos[level]
-            oblength=stackoblength[level]
-            cblength=stackcblength[level]
-            @nexprs NC d->(obdims_{d} = stackobdims_{d}[level])
-            @nexprs div(NA-NC,2) d->(cbdims_{d} = stackcbdims_{d}[level])
-            bstartA=stackbstartA[level]
-            bstartC=stackbstartC[level]
-            gamma=stackgamma[level]
-
-            if oblength*(cblength+1)<=2*TBASELENGTH || level==depth # base case
-                @gentracekernel(div(NA-NC,2),NC,order,alpha,Alinear,gamma,Clinear,bstartA,bstartC,obdims,cbdims,ostridesA,cstridesA,ostridesC)
-                level-=1
-            elseif pos==0
-                # find which dimension to divide
-                dmax=0
-                whichd=0
-                maxval=0
-                newdim=0
-                olddim=0
-                dC=0
-                dA=0
-                @nexprs NC d->begin
-                    newmax=obdims_{d}*minostrides_{d}
-                    if obdims_{d}>1 && newmax>maxval
-                        dmax=d
-                        whichd=1
-                        olddim=obdims_{d}
-                        newdim=olddim>>1
-                        dC=ostridesC_{d}
-                        dA=ostridesA_{d}
-                        maxval=newmax
-                    end
-                end
-                @nexprs div(NA-NC,2) d->begin
-                    newmax=cbdims_{d}*cstridesA_{d}
-                    if cbdims_{d}>1 && newmax>maxval
-                        dmax=d
-                        whichd=2
-                        olddim=cbdims_{d}
-                        newdim=olddim>>1
-                        dC=0
-                        dA=cstridesA_{d}
-                        maxval=newmax
-                    end
-                end
-                stackolddim[level]=olddim
-                stacknewdim[level]=newdim
-                stackdmax[level]=dmax
-                stackwhichd[level]=whichd
-                stackdC[level]=dC
-                stackdA[level]=dA
-
-                stackpos[level+1]=0
-                @nexprs NC d->(stackobdims_{d}[level+1] = (d==dmax && whichd==1 ? newdim : obdims_{d}))
-                @nexprs div(NA-NC,2) d->(stackcbdims_{d}[level+1] = (d==dmax && whichd==2 ? newdim : cbdims_{d}))
-                stackoblength[level+1]=whichd==1 ? div(oblength,olddim)*newdim : oblength
-                stackcblength[level+1]=whichd==2 ? div(cblength,olddim)*newdim : cblength
-                stackbstartA[level+1]=bstartA
-                stackbstartC[level+1]=bstartC
-                stackgamma[level+1]=gamma
-
-                stackpos[level]+=1
-                level+=1
-            elseif pos==1
-                olddim=stackolddim[level]
-                newdim=stacknewdim[level]
-                dmax=stackdmax[level]
-                whichd=stackwhichd[level]
-                dC=stackdC[level]
-                dA=stackdA[level]
-
-                stackpos[level+1]=0
-                @nexprs NC d->(stackobdims_{d}[level+1] = (d==dmax && whichd==1 ? olddim-newdim : obdims_{d}))
-                @nexprs div(NA-NC,2) d->(stackcbdims_{d}[level+1] = (d==dmax && whichd==2 ? olddim-newdim : cbdims_{d}))
-                stackoblength[level+1]=whichd==1 ? div(oblength,olddim)*(olddim-newdim) : oblength
-                stackcblength[level+1]=whichd==2 ? div(cblength,olddim)*(olddim-newdim) : cblength
-                stackbstartA[level+1]=bstartA+newdim*dA
-                stackbstartC[level+1]=bstartC+newdim*dC
-                stackgamma[level+1]=whichd==2 ? one(gamma) : gamma
-
-                stackpos[level]+=1
-                level+=1
-            else
-                level-=1
-            end
-        end
+        trace_rec!(alpha, dataA, beta, dataC, dims, offsetA, offsetC, minstrides)
     end
     return C
+end
+
+# Recursive divide and conquer approach:
+@generated function trace_rec!{N}(alpha, A::StridedData{N}, beta, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int})
+    quote
+        if prod(dims) + prod(_filterdims(dims,C)) <= 2*BASELENGTH
+            trace_micro!(alpha, A, beta, C, dims, offsetA, offsetC)
+        else
+            dmax = _indmax(_memjumps(dims, minstrides))
+            @dividebody $N dmax dims offsetA A offsetC C begin
+                trace_rec!(alpha, A, beta, C, dims, offsetA, offsetC, minstrides)
+            end begin
+                if C.strides[dmax] == 0
+                    trace_rec!(alpha, A, _one, C, dims, offsetA, offsetC, minstrides)
+                else
+                    trace_rec!(alpha, A, beta, C, dims, offsetA, offsetC, minstrides)
+                end
+            end
+        end
+        return C
+    end
+end
+
+# Micro kernel at end of recursion
+@generated function trace_micro!{N}(alpha, A::StridedData{N}, beta, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int)
+    quote
+        _scale!(C, beta, dims, offsetC)
+        startA = A.start+offsetA
+        stridesA = A.strides
+        startC = C.start+offsetC
+        stridesC = C.strides
+        @stridedloops($N, dims, indA, startA, stridesA, indC, startC, stridesC, @inbounds C[indC]=axpby(alpha,A[indA],_one,C[indC]))
+        return C
+    end
+end
+
+# Stride calculation
+#--------------------
+@generated function trace_strides{NA,NC}(dims::NTuple{NA,Int}, stridesA::NTuple{NA,Int}, stridesC::NTuple{NC,Int})
+    M = div(NA-NC,2)
+    dimsex = Expr(:tuple,[:(dims[$d]) for d=1:(NC+M)]...)
+    stridesAex = Expr(:tuple,[:(stridesA[$d]) for d = 1:NC]...,[:(stridesA[$(NC+d)]+stridesA[$(NC+M+d)]) for d = 1:M]...)
+    stridesCex = Expr(:tuple,[:(stridesC[$d]) for d = 1:NC]...,[0 for d = 1:M]...)
+    minstridesex = Expr(:tuple,[:(min(stridesA[$d],stridesC[$d])) for d = 1:NC]...,[:(stridesA[$(NC+d)]+stridesA[$(NC+M+d)]) for d = 1:M]...)
+    quote
+        minstrides = $minstridesex
+        p = sortperm(collect(minstrides))
+        newdims = _permute($dimsex, p)
+        newstridesA = _permute($stridesAex, p)
+        newstridesC = _permute($stridesCex, p)
+        minstrides = _permute(minstrides, p)
+
+        return newdims, newstridesA, newstridesC, minstrides
+    end
 end
