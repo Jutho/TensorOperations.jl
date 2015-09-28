@@ -1,6 +1,6 @@
-# axpby.jl
+# aux/axpby.jl
 #
-# Simple wrapper for the operation of computing alpha * x + beta * y, and two
+# Simple wrapper for the operation of computing α * x + β * y, and two
 # special singleton types (immutables) to remove any overhead of multiplication
 # by one or addition by zero.
 
@@ -12,14 +12,14 @@ end
 const _zero = Zero()
 const _one = One()
 
-axpby(a::One,  x, b::One,  y) = x+y
-axpby(a::Zero, x, b::One,  y) = y
-axpby(a::One,  x, b::Zero, y) = x
-axpby(a::Zero, x, b::Zero, y) = zero(y)
+axpby(α::One,  x, β::One,  y) = x+y
+axpby(α::Zero, x, β::One,  y) = y
+axpby(α::One,  x, β::Zero, y) = x
+axpby(α::Zero, x, β::Zero, y) = zero(y)
 
-axpby(a::One,  x, b,       y) = x+b*y
-axpby(a::Zero, x, b,       y) = b*y
-axpby(a,       x, b::Zero, y) = a*x
-axpby(a,       x, b::One,  y) = a*x+y
+axpby(α::One,  x, β,       y) = x+β*y
+axpby(α::Zero, x, β,       y) = β*y
+axpby(α,       x, β::Zero, y) = α*x
+axpby(α,       x, β::One,  y) = α*x+y
 
-axpby(a,       x, b,       y) = a*x+b*y
+axpby(α,       x, β,       y) = α*x+β*y

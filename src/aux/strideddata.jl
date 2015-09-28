@@ -1,6 +1,8 @@
-# strideddate.jl
+# aux/strideddata.jl
 #
-# Implementation wrapper to group together the data (as vector), the strides and the starting index
+# Wrapper to group data (as vector indicating a memory region), a starting offset
+# inside the region and a collection of strides to interpret this memory as a
+# multidimensional array.
 
 immutable StridedData{N,T,C}
     data::Vector{T}
@@ -10,7 +12,7 @@ end
 typealias NormalStridedData{N,T} StridedData{N,T,:N}
 typealias ConjugatedStridedData{N,T} StridedData{N,T,:C}
 
-typealias StridedSubArray{T,N,A<:Array,I<:Tuple{Vararg{Union(Colon,Range{Int64},Int64)}},LD} SubArray{T,N,A,I,LD}
+typealias StridedSubArray{T,N,A<:Array,I<:Tuple{Vararg{Union{Colon,Range{Int64},Int64}}},LD} SubArray{T,N,A,I,LD}
 
 StridedData{N,T,C}(a::Array{T}, strides::NTuple{N,Int} = _strides(a), ::Type{Val{C}} = Val{:N}) =
     StridedData{N,T,C}(vec(a), strides, 1)
@@ -23,10 +25,7 @@ Base.getindex(a::ConjugatedStridedData,i) = conj(a.data[i])
 Base.setindex!(a::NormalStridedData,v,i) = (@inbounds a.data[i] = v)
 Base.setindex!(a::ConjugatedStridedData,v,i) = (@inbounds a.data[i] = conj(v))
 
-"""function _filterdims{N}(dims::NTuple{N,Int}, a::StridedData{N})
-
-Set dimensions dims[d]==1 for all d where a.strides[d] == 0.
-"""
+# set dimensions dims[d]==1 for all d where a.strides[d] == 0.
 @generated function _filterdims{N}(dims::NTuple{N,Int}, a::StridedData{N})
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:(a.strides[$d]==0 ? 1 : dims[$d]) for d=1:N]...)
@@ -34,9 +33,9 @@ Set dimensions dims[d]==1 for all d where a.strides[d] == 0.
 end
 
 # initial scaling of a block specified by dims
-_scale!{N}(C::StridedData{N}, beta::One, dims::NTuple{N,Int}, offset::Int=0) = C
+_scale!{N}(C::StridedData{N}, β::One, dims::NTuple{N,Int}, offset::Int=0) = C
 
-@generated function _scale!{N}(C::StridedData{N}, beta::Zero, dims::NTuple{N,Int}, offset::Int=0)
+@generated function _scale!{N}(C::StridedData{N}, β::Zero, dims::NTuple{N,Int}, offset::Int=0)
     meta = Expr(:meta,:inline)
     quote
         $meta
@@ -48,14 +47,14 @@ _scale!{N}(C::StridedData{N}, beta::One, dims::NTuple{N,Int}, offset::Int=0) = C
     end
 end
 
-@generated function _scale!{N}(C::StridedData{N}, beta::Number, dims::NTuple{N,Int}, offset::Int=0)
+@generated function _scale!{N}(C::StridedData{N}, β::Number, dims::NTuple{N,Int}, offset::Int=0)
     meta = Expr(:meta,:inline)
     quote
         $meta
         dims = _filterdims(dims,C)
         startC = C.start+offset
         stridesC = C.strides
-        @stridedloops($N, dims, indC, startC, stridesC, @inbounds C[indC] *= beta)
+        @stridedloops($N, dims, indC, startC, stridesC, @inbounds C[indC] *= β)
         return C
     end
 end

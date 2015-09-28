@@ -1,3 +1,7 @@
+# aux/meta.jl
+#
+# A bunch of auxiliary metaprogramming tools and generated functions
+
 @generated function _strides{T,N}(A::StridedArray{T,N})
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:(stride(A,$d)) for d = 1:N]...)
