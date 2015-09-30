@@ -17,7 +17,7 @@ function tensorify(ex::Expr)
             if ex.head == :(:=)
                 return :($dst = deindexify($src, $indices))
             else
-                value = ex.head == :(==) ? 0 : +1
+                value = ex.head == :(=) ? 0 : +1
                 return :(deindexify!($dst, $src, $indices, $value))
             end
         end

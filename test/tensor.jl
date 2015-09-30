@@ -186,3 +186,12 @@ end
 @test_throws DimensionMismatch begin
     @tensor C[d,e,a] += alpha*A[a,b,c,d]*B[c,e,b]
 end
+
+D=10;
+A=randn(D,D,D,D);
+B=randn(D,D,D,D);
+C=randn(D,D,D,D);
+
+@test_throws TensorOperations.IndexError begin
+    @tensor C[a,b,c,d] = conj(A[c,a])*B[c,b]
+end

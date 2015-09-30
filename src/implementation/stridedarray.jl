@@ -79,13 +79,12 @@ Implements `C = β*C+α*contract(op(A),op(B))` where `A` and `B` are contracted 
 
 The optional argument `method` specifies whether the contraction is performed using BLAS matrix multiplication by specifying `Val{:BLAS}` (default), or using a native algorithm by specifying `Val{:native}`. The native algorithm does not copy the data but is typically slower.
 """
-function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS})
+function contract!{CA,CB,TC<:Base.LinAlg.BlasFloat}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray{TC}, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS})
     NA = ndims(A)
     NB = ndims(B)
     NC = ndims(C)
     TA = eltype(A)
     TB = eltype(B)
-    TC = eltype(C)
 
     # dimension checking
     dimA = size(A)
@@ -180,7 +179,7 @@ function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray,
     return C
 end
 
-function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:native}})
+function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:native}}=Val{:native}())
     NA = ndims(A)
     NB = ndims(B)
     NC = ndims(C)
