@@ -1,8 +1,8 @@
 # TensorOperations.jl
 
-[![Build Status](https://travis-ci.org/jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/jutho/TensorOperations.jl)
-[![Coverage Status](https://coveralls.io/repos/jutho/TensorOperations.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/jutho/TensorOperations.jl?branch=master)
-[![codecov.io](http://codecov.io/github/jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/jutho/TensorOperations.jl?branch=master)
+[![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl)
+[![Coverage Status](https://coveralls.io/repos/Jutho/TensorOperations.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master)
+[![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
 
 Fast tensor operations using a convenient index notation.
 
