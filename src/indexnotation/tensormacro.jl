@@ -6,14 +6,6 @@ macro tensor(arg)
     tensorify(arg)
 end
 
-macro tensoropt(args...)
-    if isa(args[1],Symbol)
-        defaultcost = 
-    x=processcost(args[1:end-1])
-
-    tensorify(arg)
-end
-
 function tensorify(ex::Expr)
     if ex.head == :(=) || ex.head == :(:=) || ex.head == :(+=) || ex.head == :(-=)
         lhs = ex.args[1]
