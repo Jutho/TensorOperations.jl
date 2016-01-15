@@ -1,4 +1,4 @@
-# aux/meta.jl
+# auxiliary/meta.jl
 #
 # A bunch of auxiliary metaprogramming tools and generated functions
 

@@ -1,4 +1,4 @@
-# aux/unique2.jl
+# auxiliary/unique2.jl
 #
 # Similar to unique, but removes all occurences of elements that appear more than once.
 

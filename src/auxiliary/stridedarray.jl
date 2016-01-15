@@ -1,4 +1,4 @@
-# aux/stridedarray.jl
+# auxiliary/stridedarray.jl
 #
 # Simple auxiliary methods to interface with StridedArray from Julia Base.
 

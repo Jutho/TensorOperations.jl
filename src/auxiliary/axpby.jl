@@ -1,4 +1,4 @@
-# aux/axpby.jl
+# auxiliary/axpby.jl
 #
 # Simple wrapper for the operation of computing α * x + β * y, and two
 # special singleton types (immutables) to remove any overhead of multiplication

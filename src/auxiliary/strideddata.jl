@@ -1,4 +1,4 @@
-# aux/strideddata.jl
+# auxiliary/strideddata.jl
 #
 # Wrapper to group data (as vector indicating a memory region), a starting offset
 # inside the region and a collection of strides to interpret this memory as a

@@ -7,12 +7,12 @@ export @tensor
 
 # Auxiliary functions
 #---------------------
-include("aux/axpby.jl")
-include("aux/error.jl")
-include("aux/meta.jl")
-include("aux/stridedarray.jl")
-include("aux/strideddata.jl")
-include("aux/unique2.jl")
+include("auxiliary/axpby.jl")
+include("auxiliary/error.jl")
+include("auxiliary/meta.jl")
+include("auxiliary/stridedarray.jl")
+include("auxiliary/strideddata.jl")
+include("auxiliary/unique2.jl")
 
 # Implementations
 #-----------------
