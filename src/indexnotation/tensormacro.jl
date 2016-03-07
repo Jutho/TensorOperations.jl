@@ -1,6 +1,7 @@
 # indexnotation/tensormacro.jl
 #
 # Defines the @tensor macro which switches to an index-notation environment.
+const prime = symbol("'")
 
 macro tensor(arg)
     tensorify(arg)
@@ -43,8 +44,8 @@ tensorify(ex) = ex
 function makeindex_expr(ex::Expr)
     if ex.head == :ref
         for i = 2:length(ex.args)
-            if isa(ex.args[i],Expr) && ex.args[i].head == symbol("'") && length(ex.args[i].args) == 1
-                ex.args[i] = symbol("$(ex.args[i])'")
+            if isa(ex.args[i],Expr) && ex.args[i].head == prime
+                ex.args[i] = makesymbolprime(ex.args[i])
             end
             isa(ex.args[i],Int) || isa(ex.args[i],Symbol) || isa(ex.args[i],Char) || error("cannot make indices from $ex")
         end
@@ -52,4 +53,15 @@ function makeindex_expr(ex::Expr)
         error("cannot make indices from $ex")
     end
     return :(Indices{$(tuple(ex.args[2:end]...))}())
+end
+
+function makesymbolprime(ex::Expr)
+    if isa(ex,Expr) && ex.head == prime && length(ex.args) == 1
+        if isa(ex.args[1],Symbol)
+            return symbol(ex.args[1],prime)
+        elseif isa(ex.args[1],Expr) && ex.args[1].head == prime
+            return symbol(makesymbolprime(ex.args[1]),prime)
+        end
+    end
+    error("cannot make indices from $ex")
 end

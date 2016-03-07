@@ -1,8 +1,5 @@
 # TensorOperations.jl
-
-[![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl)
-[![Coverage Status](https://coveralls.io/repos/Jutho/TensorOperations.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master)
-[![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
+[![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl) [![Coverage Status](https://coveralls.io/repos/Jutho/TensorOperations.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master) [![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
 
 Fast tensor operations using a convenient index notation.
 
@@ -43,10 +40,10 @@ In the second to last line, the result of the operation will be stored in the pr
 
 Following Einstein's summation convention, the result is computed by first tracing/contracting the 3rd and 5th index of array `A`. The resulting array will then be contracted with array `B` by contracting its 2nd index with the last index of `B` and its last index with the first index of `B`. The resulting array has three remaining indices, which correspond to the indices `a` and `c` of array `A` and index `b` of array `B` (in that order). To this, the array `C` (scaled with `α`) is added, where its first two indices will be permuted to fit with the order `a,c,b`. The result will then be stored in array `D`, which requires a second permutation to bring the indices in the requested order `a,b,c`.
 
-In this example, the labels were specified by arbitrary letters or even longer names. Any valid variable name is valid as a label. Note though that these labels are never interpreted as existing Julia variables, but rather are converted into symbols by the `@tensor` macro. This means, in particular, that the specific tensor operations defined by the code inside the `@tensor` environment are completely specified at compile time. Alternatively, one can also choose to specify the labels using literal integer or character constants, such that also the following code specifies the same operation as above.
+In this example, the labels were specified by arbitrary letters or even longer names. Any valid variable name is valid as a label. Note though that these labels are never interpreted as existing Julia variables, but rather are converted into symbols by the `@tensor` macro. This means, in particular, that the specific tensor operations defined by the code inside the `@tensor` environment are completely specified at compile time. Alternatively, one can also choose to specify the labels using literal integer or character constants, such that also the following code specifies the same operation as above. Finally, it is also allowed to use primes to denote different indices
 
 ```julia
-@tensor D[å,ß,ccc] = A[å,1,'f',ccc,'f',2]*B[2,ß,1] + α*C[ccc,å,ß]
+@tensor D[å,ß,c'] = A[å,1,'f',c','f',2]*B[2,ß,1] + α*C[c',å,ß]
 ```
 
 The index pattern is analyzed at compile time and wrapped in appropriate types such that the result of the operation can be computed with a minimal number of temporaries. The use of `@generated` functions further enables to move as much of the label analysis to compile time. You can read more about these topics in the section "Implementation" below.
@@ -93,12 +90,10 @@ For type stability, the functions for tensor operations always assume the result
   Returns the single element of a length 1 array, e.g. a zero-dimensional array or any higher-dimensional array which has `size=(1,1,1,1,...)`.
 
 ## Implementation
-
 ### Building blocks
 Under the hood, the implementation is again centered around the basic unit operations: addition, tracing and contraction. These operations are implemented for arbitrary instances of type `StridedArray` with arbitrary element types. The implementation can easily be extended to user defined types, especially if they just wrap multidimensional data with a strided memory storage, as explained below.
 
 The building blocks resemble the functions discussed above, but have a different interface and are more general. They are used both by the functions as well as by the `@tensor` macro, as discussed below. We here just summarize their functionality and further discuss the implementation for strided data in the next section. Note that these functions are not exported.
-
 - `add!(α, A, conjA, β, C, indCinA)`
 
   Implements `C = β*C+α*permute(op(A))` where `A` is permuted according to `indCinA` and `op` is `conj` if `conjA=Val{:C}` or the identity map if `conjA=Val{:N}`. The indexable collection `indCinA` contains as nth entry the dimension of `A` associated with the nth dimension of `C`.
@@ -113,7 +108,6 @@ The building blocks resemble the functions discussed above, but have a different
 
   The optional argument `method` specifies whether the contraction is performed using BLAS matrix multiplication by specifying `Val{:BLAS}`, or using a native algorithm by specifying `Val{:native}`. The native algorithm does not copy the data but is typically slower. The BLAS-based algorithm is chosen by default, if the element type of the output array is in `Base.LinAlg.BlasFloat`.
 
-
 ### Implementation for `StridedArray`
 `TensorOperations.jl` provides implementation for any Julia `StridedArray{T,N}` for arbitrary element type `T` and arbitrary dimensionality `N`. The assumption that the multidimensional data has strided memory storage is crucial to the chosen implementation. It is generically not possible to simultaneously access the memory of the different arrays (`A` and `C` for `add!` and `trace!`, or `A`, `B` and `C` for `contract!`) in a cache-optimal way. Special care is given to cache-friendliness of the implementation by using a cache-oblivious divide-and-conquer strategy.
 
@@ -122,16 +116,18 @@ For `add!`, `trace!` and the native implementation of `contract!`, the problem i
 In order to deal with all types of `StridedArray` in a uniform way, and also to enhance the extensibility to user-defined arrays, `TensorOperations.jl` defines a new type `StridedData{N,T,C}`. This `immutable` wraps the strided data as a `data::Vector{T}`, which should be thought of as a memory pointer to the relevant memory region. It also includes a field `start::Int` such that `data[start]` is the first item of the data and a field `strides::NTuple{N,Int}` that defines how to access the other elements of the multidimensional data. Furthermore, it has a type parameter `C` that specifies whether the data (`C=:N`) or the conjugated data (`C=:C`) should be used. Note that `StridedData` does not include the dimensionality, this is always specified separately. Within the recursive divide-and-conquer algorithms, `StridedData` groups the set of arguments that remains constant, whereas the dimensionality and an additional offset are updated when dividing the problem into smaller subproblems.
 
 We now provide some additional details on the specific implementation of the three building blocks:
-
 - `add!`
+
   The `add!` operation corresponds schematically to `C = β C + α perm(op(A))` where the dimensions of `A` are permuted with respect to those of `C`. This operation generalizes the `axpy!` operation of BLAS to multidimensional arrays where the order of the different dimensions in both arrays can be different. The data in `A` and `C` are wrapped in a `StridedData` instance, and then passed on to `add_rec!` which implements the recursive divide-and-conquer strategy.
 
   Copying one array into another is a special case of addition corresponding to the choices `β=0` and `α=1`. Rather than providing a different implementation, special values `0` or `1` for `α` and/or `β` are intercepted early on and replaced by special singleton types `Zero()` and `One()`. An auxiliary function `axpby` which represents the operation `α*x + β*y` together with Julia's multiple dispatch is then exploited in order to make sure that no unnecessary calculations are performed when multiplying/adding those special values.
 
 - `trace!`
+
   Tracing corresponds to the case where one or more pairs of dimensions of a higher-dimensional array `A` are traced/contracted and the result is added/copied to a lower-dimensional array `C`. While addition could be seen as a special case of this operation with zero pairs of contracted dimensions, we did not find a way of expressing this special case with zero overhead. Therefore, these two operations have a separate though completely analogous implementation.
 
 - `contract!`
+
   For `contract!`, a native approach using the same divide-and-conquer strategy is also implemented. For big arrays whose element type is either `Float32`, `Float64`, `Complex64` or `Complex128` (the so-called `Base.LinAlg.BlasFloat` family), it is typically faster to rewrite the problem as a matrix multipliciation problem to be handled by the heavily tuned algorithm in the BLAS library. Thereto, the default implementation of `contract!` will in that case use `add!` on the two input arrays `A` and `B` to copy them to a permuted form such that the contraction is equivalent to matrix multiplication. A final `add!` is then used to copy or add this result back onto the output array `C`. While typically faster, this approach does require the allocation of temporary arrays to store the matrix equivalent of `A`, `B` and `C`. However, it only performs this copy when necessary and directly used the original arrays `A`, `B` or `C` if possible.
 
 ### The `@tensor` macro and allocation
@@ -140,15 +136,19 @@ Within an environment `@tensor begin ... end`, the indexing brackets `[...]` act
 To make use of the full generality of the building blocks, the macro based syntax depends on the following types. The `indexify` function creates instances of the type `IndexedObject{I,C,A,T}`, which wrap a multidimensional object `object::A` (no restrictions on `A`) and a scalar coefficient `α::T`. The set of labels of the object is stored as a tuple in the type parameter `I`, whereas the type parameter `C` encodes the effect of conjugation. This means that conjugating an array and/or multiplying it with a scalar is a delayed or lazy operation: these operations are not evaluated directly but rather stored inside the field and the type parameters. A linear combination of several `IndexedObject` instances is also not evaluated immediately but rather stored in an object of the type `SumOfIndexedObjects{Os<:Tuple{Vararg{AbstractIndexedObject}}}`. Similarly, the multiplication of two `IndexedObject` instances (which leads to contraction depending on their labels) gives rise to an object of `ProductOfIndexedObjects{IA,IB,CA,CB,OA,OB,TA,TB}`.
 
 Evaluation of these operations is postponed until they appear in a `deindexify(!)` call corresponding to an assignment to the left hand side, or when they appear in a further set of operations, leading to the creation (=allocation) of a temporary array. The following call thus works without allocating any temporary array:
+
 ```julia
 @tensor D[a,b,c] += α*A[a,c,b] + B[a,d,b,d,c] - conj(C[c,b,a])
 ```
-Upon evaluation, first `α*A` will be added to `D` using a call to `add!`, then a call to `trace!` will add `B` to this result, and a final call to `add!` will add `conj(C)` to this result. Because the labels are stored in the type parameters, a `@generated` function is used to transform the label patterns into the correct arguments for `add!` and `trace!` at *compile time*.
+
+Upon evaluation, first `α*A` will be added to `D` using a call to `add!`, then a call to `trace!` will add `B` to this result, and a final call to `add!` will add `conj(C)` to this result. Because the labels are stored in the type parameters, a `@generated` function is used to transform the label patterns into the correct arguments for `add!` and `trace!` at _compile time_.
 
 If one of the terms contains a simple contraction of two arrays as in
+
 ```julia
 @tensor D[a,b,c] = α*A[a,c,d,e]*conj(B[d,b,e]) + β*conj(C[c,b,a])
 ```
+
 then still no memory is allocated for storing the intermedate result of the contraction. However, temporaries will likely be allocated in the default BLAS-based `contract!` routine, as discussed in the previous section. As before, a `@generated` function takes care of generating the correct arguments at compile time.
 
 Any more advanced operation does need to create tempory arrays to store intermediate results. In particular:
@@ -161,17 +161,20 @@ The `src` folder of `TensorOperations.jl` contains four subfolders in which the 
 The folders `functions` and `indexnotation` contain the necessary code to support the function-based syntax and the `@tensor` macro syntax respectively. In particular, the folder `indexnotation` contains one file for the macro, and one file for each of the special types `IndexedObject`, `SumOfIndexedObjects` and `ProductOfIndexedObjects` discussed above. Both the function and macro based syntax are completely general and should work for any multidimensional object, provided a corresponding implementation for `add!`, `trace!` and `contract!` is provided.
 
 Finally, the folder `aux` contains some auxiliary code, such as some metaprogramming tools, the `unique2` function which removes all elements of a list which appear more than once, the definition of the `StridedData` type, the elementary `axpby` operation and the definition of a dedicated `IndexError` type for reporting errors in the index notation. Finally, there is a file `stridedarray.jl` which provides some auxiliary abstraction to interface with the `StridedArray` type of Julia Base. It contains the following function definitions:
-
 - `numind(A)`
+
   Returns the number of indices of a tensor-like object `A`, i.e. for a multidimensional array (`<:AbstractArray`) we have `numind(A) = ndims(A)`. Also works in type domain.
 
 - `similar_from_indices(T, indices, A, conjA=Val{:N})`
+
   Returns an object similar to `A` which has an `eltype` given by `T` and dimensions/sizes corresponding to a selection of those of `op(A)`, where the selection is specified by `indices` (which contains integer between `1` and `numind(A)`) and `op` is `conj` if `conjA=Val{:C}` or does nothing if `conjA=Val{:N}` (default).
 
 - `similar_from_indices(T, indices, A, B, conjA=Val{:N}, conjB={:N})`
+
   Returns an object similar to `A` which has an `eltype` given by `T` and dimensions/sizes corresponding to a selection of those of `op(A)` and `op(B)` concatenated, where the selection is specified by `indices` (which contains integers between `1` and `numind(A)+numind(B)` and `op` is `conj` if `conjA` or `conjB` equal `Val{:C}` or does nothing if `conjA` or `conjB` equal `Val{:N}` (default).
 
 - `scalar(C)`
+
   Returns the single element of a tensor-like object with zero dimensions, i.e. if `numind(C)==0`.
 
 In summary, to add support for a user-defined tensor-like type, the functions in the files `aux/stridedarray.jl` and `implementation/stridedarray.jl` should be reimplemented. This should be rather straightforwarded if the type just wraps multidimensional data with a strided storage in memory.
