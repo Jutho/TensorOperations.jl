@@ -43,6 +43,9 @@ tensorify(ex) = ex
 function makeindex_expr(ex::Expr)
     if ex.head == :ref
         for i = 2:length(ex.args)
+            if isa(ex.args[i],Expr) && ex.args[i].head == symbol("'") && length(ex.args[i].args) == 1
+                ex.args[i] = symbol("$(ex.args[i])'")
+            end
             isa(ex.args[i],Int) || isa(ex.args[i],Symbol) || isa(ex.args[i],Char) || error("cannot make indices from $ex")
         end
     else

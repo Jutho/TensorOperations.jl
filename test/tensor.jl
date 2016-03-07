@@ -22,7 +22,7 @@ C2=A+permutedims(B,p)
 end
 
 A=randn(50,100,100)
-@tensor C1[a] := A[a,b,b]
+@tensor C1[a] := A[a,b',b']
 C2=zeros(50)
 for i=1:50
     for j=1:100
