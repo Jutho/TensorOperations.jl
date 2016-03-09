@@ -57,7 +57,7 @@ end
 
 function makesymbolprime(ex::Expr)
     if isa(ex,Expr) && ex.head == prime && length(ex.args) == 1
-        if isa(ex.args[1],Symbol)
+        if isa(ex.args[1],Symbol) || isa(ex.args[1],Int)
             return symbol(ex.args[1],prime)
         elseif isa(ex.args[1],Expr) && ex.args[1].head == prime
             return symbol(makesymbolprime(ex.args[1]),prime)
