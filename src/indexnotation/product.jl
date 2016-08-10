@@ -20,7 +20,7 @@ Base.eltype(P::ProductOfIndexedObjects) = promote_type(eltype(P.A),eltype(P.B))
     J = unique2([IA...,IB...])
     J = tuple(J...)
     meta = Expr(:meta, :inline)
-    Expr(:block, :meta, :($J))
+    Expr(:block, meta, :($J))
 end
 
 @generated function *(A::AbstractIndexedObject,B::AbstractIndexedObject)

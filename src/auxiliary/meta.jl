@@ -70,19 +70,19 @@ function _stridedloops(N::Int, dims::Symbol, args...)
     mod(length(args),3)==1 || error("Wrong number of arguments")
     argiter = 1:3:length(args)-1
     body = args[end]
-    pre = [Expr(:(=), args[i], symbol(args[i],0)) for i in argiter]
+    pre = [Expr(:(=), args[i], Symbol(args[i],0)) for i in argiter]
     ex = Expr(:block, pre..., body)
     for d = 1:N
-        pre = [Expr(:(=), symbol(args[i], d-1), symbol(args[i], d)) for i in argiter]
-        post = [Expr(:(+=), symbol(args[i], d), Expr(:ref, args[i+2], d)) for i in argiter]
+        pre = [Expr(:(=), Symbol(args[i], d-1), Symbol(args[i], d)) for i in argiter]
+        post = [Expr(:(+=), Symbol(args[i], d), Expr(:ref, args[i+2], d)) for i in argiter]
         ex = Expr(:block, pre..., ex, post...)
         rangeex = Expr(:(:), 1, Expr(:ref, dims, d))
         forex = Expr(:(=), gensym(), rangeex)
         ex = Expr(:for, forex, ex)
         if d==1
-            ex = Expr(:macrocall, symbol("@simd"), ex)
+            ex = Expr(:macrocall, Symbol("@simd"), ex)
         end
     end
-    pre = [Expr(:(=),symbol(args[i],N),args[i+1]) for i in argiter]
+    pre = [Expr(:(=),Symbol(args[i],N),args[i+1]) for i in argiter]
     ex = Expr(:block, pre..., ex)
 end

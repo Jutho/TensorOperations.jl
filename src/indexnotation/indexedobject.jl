@@ -35,7 +35,7 @@ Base.eltype{I,C, A, T}(::Type{IndexedObject{I,C, A, T}}) = promote_type(eltype(A
 @generated function indices{I,C,A,T}(::Type{IndexedObject{I,C,A,T}})
     J = tuple(unique2(I)...)
     meta = Expr(:meta, :inline)
-    Expr(:block, :meta, :($J))
+    Expr(:block, meta, :($J))
 end
 
 indexify{I}(object, ::Indices{I}) = IndexedObject{I,:N}(object)
