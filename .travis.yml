@@ -1,7 +1,16 @@
+# Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
+os:
+  - linux
+  - osx
 julia:
-  - 0.5
+  - release
   - nightly
+notifications:
+  email: false
 
 after_success:
-- julia -e 'cd(Pkg.dir("TensorOperations")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
+  # push coverage results to Coveralls
+  - julia -e 'cd(Pkg.dir("TensorOperations")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  # push coverage results to Codecov
+  - julia -e 'cd(Pkg.dir("TensorOperations")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
