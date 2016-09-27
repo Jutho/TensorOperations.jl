@@ -20,7 +20,7 @@ immutable IndexedObject{I,C,A,T} <: AbstractIndexedObject
         new(object, α)
     end
 end
-Base.call{I,C, A, T}(::Type{IndexedObject{I,C}}, object::A, α::T=1) = IndexedObject{I,C, A, T}(object, α)
+(::Type{IndexedObject{I,C}}){I, C, A, T}(object::A, α::T=1) = IndexedObject{I,C, A, T}(object, α)
 
 Base.conj{I}(a::IndexedObject{I,:N}) = IndexedObject{I,:C}(a.object, conj(a.α))
 Base.conj{I}(a::IndexedObject{I,:C}) = IndexedObject{I,:N}(a.object, conj(a.α))

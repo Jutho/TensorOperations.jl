@@ -17,7 +17,7 @@ typealias StridedSubArray{T,N,A<:Array,I<:Tuple{Vararg{Union{Colon,Range{Int64},
 StridedData{N,T,C}(a::Array{T}, strides::NTuple{N,Int} = _strides(a), ::Type{Val{C}} = Val{:N}) =
     StridedData{N,T,C}(vec(a), strides, 1)
 StridedData{N,T,C}(a::StridedSubArray{T}, strides::NTuple{N,Int} = _strides(a), ::Type{Val{C}} = Val{:N}) =
-    StridedData{N,T,C}(vec(a.parent), strides, a.first_index)
+    StridedData{N,T,C}(vec(a.parent), strides, Base.first_index(a))
 
 Base.getindex(a::NormalStridedData,i) = a.data[i]
 Base.getindex(a::ConjugatedStridedData,i) = conj(a.data[i])
