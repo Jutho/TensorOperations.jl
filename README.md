@@ -6,9 +6,7 @@ Fast tensor operations using a convenient index notation.
 
 ## What's new
 
-- Fully compatible with Julia v0.4.
-- New interface: a new `@tensor` macro for specifying tensor operations via index notation, which is now the preferred choice and advantageous over the method based interface.
-- Completely rewritten to make use of new features in the Julia Language (such as `@generated` functions) and to make it easier to extend this package for new tensor-like types.
+- Fully compatible with Julia v0.5.
 
 ## Installation
 
