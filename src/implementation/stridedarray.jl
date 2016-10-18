@@ -179,7 +179,7 @@ function contract!{CA,CB,TC<:Base.LinAlg.BlasFloat}(α, A::StridedArray, ::Type{
     return C
 end
 
-function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:native}}=Val{:native}())
+function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:native}}=Val{:native})
     NA = ndims(A)
     NB = ndims(B)
     NC = ndims(C)
