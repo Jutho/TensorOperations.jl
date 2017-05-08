@@ -9,15 +9,15 @@ import Base: +, -, *
 immutable Indices{I}
 end
 
-abstract AbstractIndexedObject
+@compat abstract type AbstractIndexedObject end
 indices(a::AbstractIndexedObject) = indices(typeof(a))
 
 immutable IndexedObject{I,C,A,T} <: AbstractIndexedObject
     object::A
     α::T
-    function IndexedObject(object::A, α::T)
+    function (::Type{IndexedObject{I,C,A,T}}){I,C,A,T}(object::A, α::T)
         checkindices(object, I)
-        new(object, α)
+        new{I,C,A,T}(object, α)
     end
 end
 (::Type{IndexedObject{I,C}}){I, C, A, T}(object::A, α::T=1) = IndexedObject{I,C, A, T}(object, α)
