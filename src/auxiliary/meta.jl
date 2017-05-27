@@ -80,7 +80,7 @@ function _stridedloops(N::Int, dims::Symbol, args...)
         forex = Expr(:(=), gensym(), rangeex)
         ex = Expr(:for, forex, ex)
         if d==1
-            ex = Expr(:macrocall, Symbol("@simd"), ex)
+            ex = Expr(:macrocall, Symbol("@simd"), LineNumberNode(@__LINE__), ex)
         end
     end
     pre = [Expr(:(=),Symbol(args[i],N),args[i+1]) for i in argiter]
