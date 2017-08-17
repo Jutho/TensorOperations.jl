@@ -15,12 +15,12 @@ indices(a::AbstractIndexedObject) = indices(typeof(a))
 struct IndexedObject{I,C,A,T} <: AbstractIndexedObject
     object::A
     α::T
-    function IndexedObject(object::A, α::T)
+    function IndexedObject{I,C,A,T}(object::A, α::T) where {I,C,A,T}
         checkindices(object, I)
         new(object, α)
     end
 end
-(::Type{IndexedObject{I,C}})(object::A, α::T=1) where {I, C, A, T} = IndexedObject{I,C, A, T}(object, α)
+IndexedObject{I,C}(object::A, α::T=1) where {I, C, A, T} = IndexedObject{I,C, A, T}(object, α)
 
 Base.conj(a::IndexedObject{I,:N}) where {I} = IndexedObject{I,:C}(a.object, conj(a.α))
 Base.conj(a::IndexedObject{I,:C}) where {I} = IndexedObject{I,:N}(a.object, conj(a.α))

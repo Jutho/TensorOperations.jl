@@ -80,7 +80,7 @@ for d=1:Dd, f=1:Df, h=1:Dh
     end
 end
 @test vecnorm(D1-D2)<eps()*sqrt(length(D1))*vecnorm(D1+D2)
-@test_approx_eq(vecnorm(D1),sqrt(abs(@tensor scalar(D1[d,f,h]*conj(D1[d,f,h])))))
+@test vecnorm(D1) ≈ sqrt(abs(@tensor scalar(D1[d,f,h]*conj(D1[d,f,h]))))
 
 Abig=randn((30,30,30,30))
 A=view(Abig,1+3*(0:9),2+2*(0:6),5+4*(0:6),4+3*(0:8))
