@@ -7,7 +7,7 @@
 
 const BASELENGTH=2048
 
-@generated function add_rec!{N}(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int})
+@generated function add_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int}) where N
     quote
         if 2*prod(dims) <= BASELENGTH
             add_micro!(α, A, β, C, dims, offsetA, offsetC)
@@ -23,7 +23,7 @@ const BASELENGTH=2048
     end
 end
 
-@generated function trace_rec!{N}(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int})
+@generated function trace_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int}) where N
     quote
         if prod(dims) + prod(_filterdims(dims,C)) <= BASELENGTH
             trace_micro!(α, A, β, C, dims, offsetA, offsetC)
@@ -43,8 +43,8 @@ end
     end
 end
 
-@generated function contract_rec!{N}(α, A::StridedData{N}, B::StridedData{N}, β, C::StridedData{N},
-    dims::NTuple{N, Int}, offsetA::Int, offsetB::Int, offsetC::Int, minstrides::NTuple{N, Int})
+@generated function contract_rec!(α, A::StridedData{N}, B::StridedData{N}, β, C::StridedData{N},
+    dims::NTuple{N, Int}, offsetA::Int, offsetB::Int, offsetC::Int, minstrides::NTuple{N, Int}) where N
 
     quote
         odimsA = _filterdims(_filterdims(dims, A), C)

@@ -3,7 +3,7 @@
 # A wrapper to store the sum of a set of indexed objects and evaluate lazily,
 # i.e. evaluate upon calling `deindexify`.
 
-immutable SumOfIndexedObjects{Os<:Tuple{Vararg{AbstractIndexedObject}}} <: AbstractIndexedObject
+struct SumOfIndexedObjects{Os<:Tuple{Vararg{AbstractIndexedObject}}} <: AbstractIndexedObject
     objects::Os
 end
 
@@ -22,7 +22,7 @@ Base.eltype(A::SumOfIndexedObjects) = _eltypetuple(A.objects)
 *(β::Number, A::SumOfIndexedObjects) = SumOfIndexedObjects(_multuple(β, A.objects))
 -(A::SumOfIndexedObjects) = *(-1, A)
 
-indices{Os}(A::SumOfIndexedObjects{Os}) = indices(Os.parameters[1])
+indices(A::SumOfIndexedObjects{Os}) where {Os} = indices(Os.parameters[1])
 
 function +(A::SumOfIndexedObjects, B::SumOfIndexedObjects)
     add_indices(indices(A), indices(B)) # performs index check
@@ -43,7 +43,7 @@ end
 
 -(a::AbstractIndexedObject, b::AbstractIndexedObject) = +(a, -b)
 
-@generated function deindexify{Os}(A::SumOfIndexedObjects{Os}, I::Indices)
+@generated function deindexify(A::SumOfIndexedObjects{Os}, I::Indices) where Os
     addex = Expr(:block, [:(deindexify!(dst, A.objects[$j], I, +1)) for j=2:length(Os.parameters)]...)
     quote
         dst = deindexify(A.objects[1], I, eltype(A))
@@ -52,7 +52,7 @@ end
     end
 end
 
-@generated function deindexify!{Os}(dst, A::SumOfIndexedObjects{Os}, I::Indices, β=0)
+@generated function deindexify!(dst, A::SumOfIndexedObjects{Os}, I::Indices, β=0) where Os
     addex = Expr(:block, [:(deindexify!(dst, A.objects[$j], I, +1)) for j=2:length(Os.parameters)]...)
     quote
         deindexify!(dst, A.objects[1], I, β)

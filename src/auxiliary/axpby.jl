@@ -4,9 +4,9 @@
 # special singleton types (immutables) to remove any overhead of multiplication
 # by one or addition by zero.
 
-immutable Zero <: Integer
+struct Zero <: Integer
 end
-immutable One <: Integer
+struct One <: Integer
 end
 
 const _zero = Zero()

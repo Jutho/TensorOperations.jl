@@ -3,7 +3,7 @@
 # A wrapper to store the contraction (product) of two indexed objects and
 # evaluate lazily, i.e. evaluate upon calling `deindexify`.
 
-immutable ProductOfIndexedObjects{IA,IB,CA,CB,OA,OB,TA,TB} <: AbstractIndexedObject
+struct ProductOfIndexedObjects{IA,IB,CA,CB,OA,OB,TA,TB} <: AbstractIndexedObject
     A::IndexedObject{IA,CA,OA,TA}
     B::IndexedObject{IB,CB,OB,TB}
 end
@@ -16,7 +16,7 @@ Base.eltype(P::ProductOfIndexedObjects) = promote_type(eltype(P.A),eltype(P.B))
 *(β::Number, P::ProductOfIndexedObjects) = *(P,β)
 -(P::ProductOfIndexedObjects) = *(-1, P)
 
-@generated function indices{IA,IB,CA,CB,OA,OB,TA,TB}(::Type{ProductOfIndexedObjects{IA,IB,CA,CB,OA,OB,TA,TB}})
+@generated function indices(::Type{ProductOfIndexedObjects{IA,IB,CA,CB,OA,OB,TA,TB}}) where {IA,IB,CA,CB,OA,OB,TA,TB}
     J = unique2([IA...,IB...])
     J = tuple(J...)
     meta = Expr(:meta, :inline)
@@ -49,7 +49,7 @@ end
     Expr(:block,meta,:(ProductOfIndexedObjects($argA,$argB)))
 end
 
-@generated function deindexify{IA,IB,CA,CB,IC}(P::ProductOfIndexedObjects{IA,IB,CA,CB}, I::Indices{IC}, T::Type = eltype(P))
+@generated function deindexify(P::ProductOfIndexedObjects{IA,IB,CA,CB}, I::Indices{IC}, T::Type = eltype(P)) where {IA,IB,CA,CB,IC}
     meta = Expr(:meta, :inline)
     oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
     indCinAB = vcat(oindA,length(IA)+oindB)[indCinoAB]
@@ -61,7 +61,7 @@ end
     end
 end
 
-@generated function deindexify!{IA,IB,CA,CB,IC}(dst, P::ProductOfIndexedObjects{IA,IB,CA,CB}, ::Indices{IC}, β=0)
+@generated function deindexify!(dst, P::ProductOfIndexedObjects{IA,IB,CA,CB}, ::Indices{IC}, β=0) where {IA,IB,CA,CB,IC}
     oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
     conjA = Val{CA}
     conjB = Val{CB}

@@ -2,7 +2,7 @@
 #
 # Implements the microkernels for solving the subproblems of the various problems.
 
-@generated function add_micro!{N}(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int)
+@generated function add_micro!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int) where N
     quote
         startA = A.start+offsetA
         stridesA = A.strides
@@ -13,7 +13,7 @@
     end
 end
 
-@generated function trace_micro!{N}(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int)
+@generated function trace_micro!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int) where N
     quote
         _scale!(C, β, dims, offsetC)
         startA = A.start+offsetA
@@ -25,7 +25,7 @@ end
     end
 end
 
-@generated function contract_micro!{N}(α, A::StridedData{N}, B::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA, offsetB, offsetC)
+@generated function contract_micro!(α, A::StridedData{N}, B::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA, offsetB, offsetC) where N
     quote
         _scale!(C, β, dims, offsetC)
         startA = A.start+offsetA

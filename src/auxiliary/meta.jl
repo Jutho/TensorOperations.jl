@@ -2,24 +2,24 @@
 #
 # A bunch of auxiliary metaprogramming tools and generated functions
 
-@generated function _strides{T,N}(A::StridedArray{T,N})
+@generated function _strides(A::StridedArray{T,N}) where {T,N}
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:(stride(A,$d)) for d = 1:N]...)
     Expr(:block, meta, ex)
 end
 
-@generated function _indmax{N,T}(values::NTuple{N,T})
+@generated function _indmax(values::NTuple{N,T}) where {N,T}
     meta = Expr(:meta,:inline)
     Expr(:block, meta, :(dmax = 1), :(max = values[1]), [:(values[$d] > max && (dmax = $d; max = values[$d])) for d = 2:N]..., :(return dmax))
 end
 
-@generated function _permute{T,N}(t::NTuple{N,T}, p)
+@generated function _permute(t::NTuple{N,T}, p) where {T,N}
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:(t[p[$d]]) for d = 1:N]...)
     Expr(:block, meta, ex)
 end
 
-@generated function _memjumps{N}(dims::NTuple{N,Int},strides::NTuple{N,Int})
+@generated function _memjumps(dims::NTuple{N,Int},strides::NTuple{N,Int}) where N
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:((dims[$d]-1)*strides[$d]) for d = 1:N]...)
     Expr(:block, meta, ex)
