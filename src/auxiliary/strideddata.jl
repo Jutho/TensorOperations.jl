@@ -9,6 +9,7 @@ struct StridedData{N,T,C}
     strides::NTuple{N,Int}
     start::Int
 end
+
 NormalStridedData{N,T} =  StridedData{N,T,:N}
 ConjugatedStridedData{N,T} =  StridedData{N,T,:C}
 

@@ -10,6 +10,7 @@ struct Indices{I}
 end
 
 abstract type AbstractIndexedObject end
+
 indices(a::AbstractIndexedObject) = indices(typeof(a))
 
 struct IndexedObject{I,C,A,T} <: AbstractIndexedObject
@@ -17,7 +18,7 @@ struct IndexedObject{I,C,A,T} <: AbstractIndexedObject
     α::T
     function IndexedObject{I,C,A,T}(object::A, α::T) where {I,C,A,T}
         checkindices(object, I)
-        new(object, α)
+        new{I,C,A,T}(object, α)
     end
 end
 IndexedObject{I,C}(object::A, α::T=1) where {I, C, A, T} = IndexedObject{I,C, A, T}(object, α)
