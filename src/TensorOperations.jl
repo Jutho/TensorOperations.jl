@@ -1,7 +1,5 @@
 module TensorOperations
 
-using Compat
-
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
 
