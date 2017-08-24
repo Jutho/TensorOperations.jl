@@ -6,7 +6,7 @@ Fast tensor operations using a convenient index notation.
 
 ## What's new
 
-- Fully compatible with Julia v0.5.
+- Fully compatible with Julia v0.6. (v0.5 no longer supported)
 
 ## Installation
 

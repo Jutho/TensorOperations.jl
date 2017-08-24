@@ -8,7 +8,7 @@
 
 Implements `C = β*C+α*permute(op(A))` where `A` is permuted according to `indCinA` and `op` is `conj` if `conjA=Val{:C}` or the identity map if `conjA=Val{:N}`. The indexable collection `indCinA` contains as nth entry the dimension of `A` associated with the nth dimension of `C`.
 """
-function add!{CA}(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA)
+function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA) where CA
     for i = 1:ndims(C)
         size(A,indCinA[i]) == size(C,i) || throw(DimensionMismatch())
     end
@@ -39,7 +39,7 @@ end
 
 Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially traced, according to `indCinA`, `cindA1` and `cindA2`, and `op` is `conj` if `conjA=Val{:C}` or the identity map if `conjA=Val{:N}`. The indexable collection `indCinA` contains as nth entry the dimension of `A` associated with the nth dimension of `C`. The partial trace is performed by contracting dimension `cindA1[i]` of `A` with dimension `cindA2[i]` of `A` for all `i in 1:length(cindA1)`.
 """
-function trace!{CA}(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA, cindA1, cindA2)
+function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA, cindA1, cindA2) where CA
     NC = ndims(C)
     NA = ndims(A)
 
@@ -79,7 +79,7 @@ Implements `C = β*C+α*contract(op(A),op(B))` where `A` and `B` are contracted 
 
 The optional argument `method` specifies whether the contraction is performed using BLAS matrix multiplication by specifying `Val{:BLAS}` (default), or using a native algorithm by specifying `Val{:native}`. The native algorithm does not copy the data but is typically slower.
 """
-function contract!{CA,CB,TC<:Base.LinAlg.BlasFloat}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray{TC}, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS})
+function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray{TC}, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS}) where {CA,CB,TC<:Base.LinAlg.BlasFloat}
     NA = ndims(A)
     NB = ndims(B)
     NC = ndims(C)
@@ -179,7 +179,7 @@ function contract!{CA,CB,TC<:Base.LinAlg.BlasFloat}(α, A::StridedArray, ::Type{
     return C
 end
 
-function contract!{CA,CB}(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:native}}=Val{:native})
+function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:native}}=Val{:native}) where {CA,CB}
     NA = ndims(A)
     NB = ndims(B)
     NC = ndims(C)

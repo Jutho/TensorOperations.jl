@@ -2,7 +2,7 @@
 #
 # An exception type for reporting errors in the index specificatino
 
-immutable IndexError{S<:AbstractString} <: Exception
+struct IndexError{S<:AbstractString} <: Exception
     msg::S
 end
 
