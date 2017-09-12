@@ -2,24 +2,21 @@
 #
 # A bunch of auxiliary metaprogramming tools and generated functions
 
-@generated function _strides(A::StridedArray{T,N}) where {T,N}
-    meta = Expr(:meta,:inline)
-    ex = Expr(:tuple,[:(stride(A,$d)) for d = 1:N]...)
-    Expr(:block, meta, ex)
-end
-
-@generated function _indmax(values::NTuple{N,T}) where {N,T}
+@generated function _indmax(values::NTuple{N}) where {N}
     meta = Expr(:meta,:inline)
     Expr(:block, meta, :(dmax = 1), :(max = values[1]), [:(values[$d] > max && (dmax = $d; max = values[$d])) for d = 2:N]..., :(return dmax))
 end
 
-@generated function _permute(t::NTuple{N,T}, p) where {T,N}
+@generated function _permute(t::NTuple{N}, p) where {N}
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:(t[p[$d]]) for d = 1:N]...)
     Expr(:block, meta, ex)
 end
 
-@generated function _memjumps(dims::NTuple{N,Int},strides::NTuple{N,Int}) where N
+@inline memjumps(dims::Tuple{}, strides::Tuple{}) = ()
+@inline memjumps(dims::NTuple{N,Int}, strides::NTuple{N,Int}) where {N} = ((dims[1]-1)*strides[1], memjumps(tail(dims),tail(strides))...)
+
+@generated function _memjumps(dims::NTuple{N,Int}, strides::NTuple{N,Int}) where N
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:((dims[$d]-1)*strides[$d]) for d = 1:N]...)
     Expr(:block, meta, ex)
@@ -80,11 +77,7 @@ function _stridedloops(N::Int, dims::Symbol, args...)
         forex = Expr(:(=), gensym(), rangeex)
         ex = Expr(:for, forex, ex)
         if d==1
-            if VERSION < v"0.7-"
-                ex = Expr(:macrocall, Symbol("@simd"), ex)
-            else
-                ex = Expr(:macrocall, Symbol("@simd"), LineNumberNode(@__LINE__), ex)
-            end
+            ex = :(@simd $ex)
         end
     end
     pre = [Expr(:(=),Symbol(args[i],N),args[i+1]) for i in argiter]

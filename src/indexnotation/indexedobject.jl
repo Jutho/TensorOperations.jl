@@ -60,9 +60,9 @@ end
     length(Jdst) == length(Idst) || throw(IndexError("left-hand side cannot have partial trace: $Idst"))
     if length(Isrc) == length(Jdst)
         indCinA = add_indices(Isrc, Idst)
-        :($meta;add!(src.α, src.object, Val{C}, β, dst, $indCinA))
+        :($meta; add!(src.α, src.object, Val{C}, β, dst, $indCinA))
     else
         indCinA, cindA1, cindA2 = trace_indices(Isrc, Idst)
-        return :($meta;trace!(src.α, src.object, Val{C}, β, dst, $indCinA, $cindA1, $cindA2))
+        return :($meta; trace!(src.α, src.object, Val{C}, β, dst, $indCinA, $cindA1, $cindA2))
     end
 end

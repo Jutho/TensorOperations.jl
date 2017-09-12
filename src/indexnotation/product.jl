@@ -68,6 +68,6 @@ end
     meta = Expr(:meta,:inline)
     quote
         $meta
-        contract!(P.A.α*P.B.α,P.A.object,$conjA,P.B.object,$conjB,β,dst,$oindA,$cindA,$oindB,$cindB,$indCinoAB)
+        contract!(P.A.α*P.B.α, P.A.object, $conjA, P.B.object, $conjB, β, dst, $oindA, $cindA, $oindB, $cindB, $indCinoAB)
     end
 end

@@ -17,7 +17,7 @@ function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA
         size(A,indCinA[i]) == size(C,i) || throw(DimensionMismatch())
     end
 
-    dims, stridesA, stridesC, minstrides = add_strides(size(C), _permute(_strides(A),indCinA), _strides(C))
+    dims, stridesA, stridesC, minstrides = add_strides(size(C), _permute(strides(A),indCinA), strides(C))
     dataA = StridedData(A, stridesA, Val{CA})
     offsetA = 0
     dataC = StridedData(C, stridesC)
@@ -61,7 +61,7 @@ function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCi
     end
 
     pA = vcat(indCinA, cindA1, cindA2)
-    dims, stridesA, stridesC, minstrides = trace_strides(_permute(size(A),pA), _permute(_strides(A),pA), _strides(C))
+    dims, stridesA, stridesC, minstrides = trace_strides(_permute(size(A),pA), _permute(strides(A),pA), strides(C))
     dataA = StridedData(A, stridesA, Val{CA})
     offsetA = 0
     dataC = StridedData(C, stridesC)
@@ -218,9 +218,9 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     # Perform contraction
     pA = vcat(oindA, cindA)
     pB = vcat(oindB, cindB)
-    sA = _permute(_strides(A), pA)
-    sB = _permute(_strides(B), pB)
-    sC = _permute(_strides(C), invperm(indCinoAB))
+    sA = _permute(strides(A), pA)
+    sB = _permute(strides(B), pB)
+    sC = _permute(strides(C), invperm(indCinoAB))
 
     dimsA = _permute(size(A), pA)
     dimsB = _permute(size(B), pB)
