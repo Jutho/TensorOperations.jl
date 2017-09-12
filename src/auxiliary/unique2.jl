@@ -2,7 +2,8 @@
 #
 # Similar to unique, but removes all occurences of elements that appear more than once.
 
-"""unique2(itr)
+"""
+    unique2(itr)
 
 Returns an array containing only those elements that appear exactly once in itr,
 and without any elements that appear more than once.

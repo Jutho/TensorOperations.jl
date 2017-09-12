@@ -4,9 +4,13 @@
 # Base Library. Checks dimensions and converts to StridedData before passing
 # to low-level (recursive) function.
 
-"""`add!(α, A, conjA, β, C, indCinA)`
+"""
+    add!(α, A, conjA, β, C, indCinA)
 
-Implements `C = β*C+α*permute(op(A))` where `A` is permuted according to `indCinA` and `op` is `conj` if `conjA=Val{:C}` or the identity map if `conjA=Val{:N}`. The indexable collection `indCinA` contains as nth entry the dimension of `A` associated with the nth dimension of `C`.
+Implements `C = β*C+α*permute(op(A))` where `A` is permuted according to `indCinA`
+and `op` is `conj` if `conjA=Val{:C}` or the identity map if `conjA=Val{:N}`. The
+indexable collection `indCinA` contains as nth entry the dimension of `A` associated
+with the nth dimension of `C`.
 """
 function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA) where CA
     for i = 1:ndims(C)
@@ -35,9 +39,15 @@ function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA
     return C
 end
 
-"""`trace!(α, A, conjA, β, C, indCinA, cindA1, cindA2)`
+"""
+    trace!(α, A, conjA, β, C, indCinA, cindA1, cindA2)
 
-Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially traced, according to `indCinA`, `cindA1` and `cindA2`, and `op` is `conj` if `conjA=Val{:C}` or the identity map if `conjA=Val{:N}`. The indexable collection `indCinA` contains as nth entry the dimension of `A` associated with the nth dimension of `C`. The partial trace is performed by contracting dimension `cindA1[i]` of `A` with dimension `cindA2[i]` of `A` for all `i in 1:length(cindA1)`.
+Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially traced,
+according to `indCinA`, `cindA1` and `cindA2`, and `op` is `conj` if `conjA=Val{:C}`
+or the identity map if `conjA=Val{:N}`. The indexable collection `indCinA` contains
+as nth entry the dimension of `A` associated with the nth dimension of `C`. The
+partial trace is performed by contracting dimension `cindA1[i]` of `A` with dimension
+`cindA2[i]` of `A` for all `i in 1:length(cindA1)`.
 """
 function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA, cindA1, cindA2) where CA
     NC = ndims(C)
@@ -73,11 +83,21 @@ function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCi
     return C
 end
 
-"""`contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indCinoAB, [method])`
+"""
+    contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indCinoAB, [method])
 
-Implements `C = β*C+α*contract(op(A),op(B))` where `A` and `B` are contracted according to `oindA`, `cindA`, `oindB`, `cindB` and `indCinoAB`. The operation `op` acts as `conj` if `conjA` or `conjB` equal `Val{:C}` or as the identity map if `conjA` (`conjB`) equal `Val{:N}`. The dimension `cindA[i]` of `A` is contracted with dimension `cindB[i]` of `B`. The `n`th dimension of C is associated with an uncontracted (open) dimension of `A` or `B` according to `indCinoAB[n] < NoA ? oindA[indCinoAB[n]] : oindB[indCinoAB[n]-NoA]` with `NoA=length(oindA)` the number of open dimensions of `A`.
+Implements `C = β*C+α*contract(op(A),op(B))` where `A` and `B` are contracted according
+to `oindA`, `cindA`, `oindB`, `cindB` and `indCinoAB`. The operation `op` acts as
+`conj` if `conjA` or `conjB` equal `Val{:C}` or as the identity map if `conjA` (`conjB`)
+equal `Val{:N}`. The dimension `cindA[i]` of `A` is contracted with dimension `cindB[i]`
+of `B`. The `n`th dimension of C is associated with an uncontracted (open) dimension
+of `A` or `B` according to `indCinoAB[n] < NoA ? oindA[indCinoAB[n]] : oindB[indCinoAB[n]-NoA]`
+with `NoA=length(oindA)` the number of open dimensions of `A`.
 
-The optional argument `method` specifies whether the contraction is performed using BLAS matrix multiplication by specifying `Val{:BLAS}` (default), or using a native algorithm by specifying `Val{:native}`. The native algorithm does not copy the data but is typically slower.
+The optional argument `method` specifies whether the contraction is performed using
+BLAS matrix multiplication by specifying `Val{:BLAS}` (default), or using a native
+algorithm by specifying `Val{:native}`. The native algorithm does not copy the data
+but is typically slower.
 """
 function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray{TC}, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS}) where {CA,CB,TC<:Base.LinAlg.BlasFloat}
     NA = ndims(A)
