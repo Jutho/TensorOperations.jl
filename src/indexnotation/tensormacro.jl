@@ -1,33 +1,155 @@
 # indexnotation/tensormacro.jl
 #
 # Defines the @tensor macro which switches to an index-notation environment.
-const prime = Symbol("'")
-
-macro tensor(arg)
-    tensorify(arg)
+macro tensor(ex::Expr)
+    tensorify(ex)
+end
+macro tensoropt(ex::Expr)
+    tensorify(ex, optdata(ex))
+end
+macro tensoropt(optex::Expr, ex::Expr)
+    tensorify(ex, optdata(optex, ex))
+end
+macro optimalcontractiontree(ex::Expr)
+    if isassignment(ex) || isdefinition(ex)
+        _,ex = getlhsrhs(ex::Expr)
+    elseif !(ex.head == :call && ex.args[1] == :*)
+        error("cannot compute optimal contraction tree for this expression")
+    end
+    network = [getindices(ex.args[k]) for k = 2:length(ex.args)]
+    tree, cost = optimaltree(network, optdata(ex))
+    return tree, cost
+end
+macro optimalcontractiontree(optex::Expr, ex::Expr)
+    if isassignment(ex) || isdefinition(ex)
+        _,ex = getlhsrhs(ex::Expr)
+    elseif !(ex.head == :call && ex.args[1] == :*)
+        error("cannot compute optimal contraction tree for this expression")
+    end
+    network = [getindices(ex.args[k]) for k = 2:length(ex.args)]
+    tree, cost = optimaltree(network, optdata(optex, ex))
+    return tree, cost
 end
 
-function tensorify(ex::Expr)
-    if ex.head == :(=) || ex.head == :(:=) || ex.head == :(+=) || ex.head == :(-=)
-        lhs = ex.args[1]
-        rhs = ex.args[2]
-        if isa(lhs, Expr) && lhs.head == :ref
-            dst = tensorify(lhs.args[1])
-            src = ex.head == :(-=) ? tensorify(Expr(:call,:-,rhs)) : tensorify(rhs)
-            indices = makeindex_expr(lhs)
-            if ex.head == :(:=)
-                return :($dst = deindexify($src, $indices))
+function optdata(ex::Expr)
+    allindices = unique(getallindices(ex))
+    cost = Power{:χ}(1,1)
+    return Dict{Any, typeof(cost)}(i=>cost for i in allindices)
+end
+function optdata(optex::Expr, ex::Expr)
+    optex.head == :tuple || error("invalid index cost specification")
+
+    isempty(optex.args) && return tensorify(ex)
+
+    args = optex.args
+    if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
+        indices = Vector{Any}(length(args))
+        costs = Vector{Any}(length(args))
+        costtype = typeof(parsecost(args[1].args[3]))
+        for k = 1:length(args)
+            if isa(args[k], Expr) && args[k].head == :call && args[k].args[1] == :(=>)
+                indices[k] = args[k].args[2]
+                costs[k] = parsecost(args[k].args[3])
+                costtype = promote_type(costtype, typeof(costs[k]))
             else
-                value = ex.head == :(=) ? 0 : +1
-                return :(deindexify!($dst, $src, $indices, $value))
+                error("invalid index cost specification")
             end
         end
+        costs = convert(Vector{costtype}, costs)
+    else
+        indices = args
+        costtype = Power{:chi,Int}
+        costs = fill(Power{:χ,Int}(1,1), length(args))
     end
+    makeindices!(indices)
+    return Dict{Any, costtype}(indices[k]=>costs[k] for k = 1:length(args))
+end
+
+function parsecost(ex::Expr)
+    if ex.head == :call && ex.args[1] == :*
+        return *(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :+
+        return +(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :-
+        return -(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :^
+        return ^(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :/
+        return /(map(parsecost, ex.args[2:end])...)
+    else
+        error("invalid index cost specification: $ex")
+    end
+end
+parsecost(ex::Number) = ex
+parsecost(ex::Symbol) = Power{ex}(1,1)
+
+
+isassignment(ex::Expr) = ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=)
+isdefinition(ex::Expr) = ex.head == :(:=) || (ex.head == :call && ex.args[1] == :(≝))
+
+function getlhsrhs(ex::Expr)
+    if ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=) || ex.head == :(:=)
+        return ex.args[1], ex.args[2]
+    elseif ex.head == :call && ex.args[1] == :(≝)
+        return ex.args[2], ex.args[3]
+    else
+        error("invalid assignment or definition $ex")
+    end
+end
+
+function tensorify(ex::Expr, optdata = nothing)
+    # assignment case
+    if isassignment(ex) || isdefinition(ex)
+        #TODO: remove when := is removed
+        # if ex.head == :(:=)
+        #     warn(":= will likely be deprecated as assignment operator in Julia, use ≝ (\\eqdef + TAB) or go to http://github.com/Jutho/TensorOperations.jl to suggest ASCII alternatives", once=true, key=:warnaboutcoloneq)
+        # end
+        lhs, rhs = getlhsrhs(ex)
+        # process left hand side
+        if isa(lhs, Expr) && lhs.head == :ref
+            dst = esc(lhs.args[1])
+            if length(lhs.args) == 2 && lhs.args[2] == :(:)
+                indices = getindices(rhs)
+                if all(isa(i, Integer) && i < 0 for i in indices)
+                    indices = makeindices!(sort(indices, rev=true))
+                else
+                    error("cannot automatically infer index order of left hand side")
+                end
+            else
+                indices = makeindices!(lhs.args[2:end])
+            end
+            src = ex.head == :(-=) ? tensorify(Expr(:call, :-, rhs), optdata) : tensorify(rhs, optdata)
+            if isassignment(ex)
+                value = ex.head == :(=) ? 0 : +1
+                return :(deindexify!($dst, $src, Indices{$(tuple(indices...))}(), $value))
+            else
+                return :($dst = deindexify($src, Indices{$(tuple(indices...))}() ))
+            end
+        elseif isdefinition(ex)
+            # if lhs is not an index expression, there is no difference between assignment and definition
+            ex = Expr(:(=), lhs, rhs)
+        end
+    end
+    # single tensor expression
     if ex.head == :ref
-        indices = makeindex_expr(ex)
-        t = tensorify(ex.args[1])
-        return :(indexify($t,$indices))
+        indices = makeindices!(ex.args[2:end])
+        t = esc(ex.args[1])
+        return :(indexify($t, Indices{$(tuple(indices...))}() ))
     end
+    # tensor contraction: structure contraction order
+    if ex.head == :call && ex.args[1] == :* && length(ex.args) > 3
+        network = [getindices(ex.args[k]) for k = 2:length(ex.args)]
+        if optdata == nothing
+            if isnconstyle(network)
+                tree = ncontree(network)
+                ex = tree2expr(ex.args[2:end], tree)
+            end
+        else
+            tree, = optimaltree(network, optdata)
+            ex = tree2expr(ex.args[2:end], tree)
+        end
+    end
+    # scalar
     if ex.head == :call && ex.args[1] == :scalar
         if length(ex.args) != 2
             error("scalar accepts only a single argument")
@@ -36,32 +158,71 @@ function tensorify(ex::Expr)
         indices = :(Indices{()}())
         return :(scalar(deindexify($src, $indices)))
     end
-    return Expr(ex.head,map(tensorify,ex.args)...)
+    return Expr(ex.head, map(tensorify, ex.args)...)
 end
 tensorify(ex::Symbol) = esc(ex)
 tensorify(ex) = ex
 
-function makeindex_expr(ex::Expr)
+# for any index expression, get the list of uncontracted indices from that expression
+function getindices(ex::Expr)
     if ex.head == :ref
-        for i = 2:length(ex.args)
-            if isa(ex.args[i],Expr) && ex.args[i].head == prime
-                ex.args[i] = makesymbolprime(ex.args[i])
-            end
-            isa(ex.args[i],Int) || isa(ex.args[i],Symbol) || isa(ex.args[i],Char) || error("cannot make indices from $ex")
+        indices = makeindices!(ex.args[2:end])
+        return unique2(indices)
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
+        return getindices(ex.args[2]) # getindices on any of the args[2:end] should yield the same result
+    elseif ex.head == :call && ex.args[1] == :*
+        indices = getindices(ex.args[2])
+        for k = 3:length(ex.args)
+            append!(indices, getindices(ex.args[k]))
         end
+        return unique2(indices)
+    elseif ex.head == :call && length(ex.args) == 2
+        return getindices(ex.args[2])
     else
-        error("cannot make indices from $ex")
+        return Vector{Any}()
     end
-    return :(Indices{$(tuple(ex.args[2:end]...))}())
+end
+getindices(ex) = Vector{Any}()
+
+function getallindices(ex::Expr)
+    if ex.head == :ref
+        return makeindices!(ex.args[2:end])
+    elseif !isempty(ex.args)
+        return unique(mapreduce(getallindices, vcat, ex.args))
+    else
+        return Vector{Any}()
+    end
+end
+getallindices(ex) = Vector{Any}()
+
+# make the arguments of a :ref expression into a proper list of indices of type Int, Char or Symbol
+function makeindices!(list::Vector)
+    for i = 1:length(list)
+        if isa(list[i], Expr)
+            list[i] = makesymbol(list[i])
+        end
+        isa(list[i], Int) || isa(list[i], Symbol) || isa(list[i], Char) || error("cannot make index from $(list[i])")
+    end
+    return list
+end
+# make a symbol from an index that is itself an expression: currently only supports priming
+const prime = Symbol("'")
+function makesymbol(ex::Expr)
+    if ex.head == prime && length(ex.args) == 1
+        if isa(ex.args[1], Symbol) || isa(ex.args[1], Int)
+            return Symbol(ex.args[1], "′")
+        elseif isa(ex.args[1], Expr)
+            return Symbol(makesymbol(ex.args[1]), "′")
+        end
+    # could be extended with other functionality
+    end
+    error("cannot make index from $ex")
 end
 
-function makesymbolprime(ex::Expr)
-    if isa(ex,Expr) && ex.head == prime && length(ex.args) == 1
-        if isa(ex.args[1],Symbol) || isa(ex.args[1],Int)
-            return Symbol(ex.args[1],prime)
-        elseif isa(ex.args[1],Expr) && ex.args[1].head == prime
-            return Symbol(makesymbolprime(ex.args[1]),prime)
-        end
+function tree2expr(args, tree)
+    if isa(tree, Int)
+        return args[tree]
+    else
+        return Expr(:call, :*, tree2expr(args, tree[1]), tree2expr(args, tree[2]))
     end
-    error("cannot make indices from $ex")
 end

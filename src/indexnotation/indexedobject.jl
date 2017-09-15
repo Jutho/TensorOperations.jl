@@ -39,7 +39,7 @@ Base.eltype(::Type{IndexedObject{I,C, A, T}}) where {I,C, A, T} = promote_type(e
     Expr(:block, meta, :($J))
 end
 
-indexify(object, ::Indices{I}) where {I} = IndexedObject{I,:N}(object)
+@inline indexify(object, ::Indices{I}) where {I} = IndexedObject{I,:N}(object)
 
 deindexify(A::IndexedObject{I,:N}, ::Indices{I}) where {I} = A.α == 1 ? A.object : A.α*A.object
 deindexify(A::IndexedObject{I,:C}, ::Indices{I}) where {I} = A.α == 1 ? conj(A.object) : A.α*conj(A.object)

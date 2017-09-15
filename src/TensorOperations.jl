@@ -3,7 +3,7 @@ module TensorOperations
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
 
-export @tensor
+export @tensor, @tensoropt, @optimalcontractiontree
 
 # Auxiliary functions
 #---------------------
@@ -25,7 +25,12 @@ include("implementation/strides.jl")
 
 # Index notation
 #----------------
+import Base.Iterators.flatten
+
 include("indexnotation/tensormacro.jl")
+include("indexnotation/nconstyle.jl")
+include("indexnotation/poly.jl")
+include("indexnotation/optimize.jl")
 include("indexnotation/indexedobject.jl")
 include("indexnotation/sum.jl")
 include("indexnotation/product.jl")
