@@ -47,10 +47,12 @@ deindexify(A::IndexedObject{I,:C}, ::Indices{I}) where {I} = A.α == 1 ? conj(A.
 @generated function deindexify(A::IndexedObject{I,C}, ::Indices{J}, T::Type = eltype(A)) where {I,C,J}
     meta = Expr(:meta, :inline)
     indCinA, = trace_indices(I,J)
+    indCinAt = (indCinA...)
     conj = Val{C}
     quote
         $meta
-        deindexify!(similar_from_indices(T, $indCinA, A.object, $conj), A, Indices{$J}())
+        B = similar_from_indices(T, $indCinAt, A.object, $conj)
+        deindexify!(B, A, Indices{$J}())
     end
 end
 

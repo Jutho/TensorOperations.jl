@@ -1,9 +1,30 @@
 # indexnotation/tensormacro.jl
 #
 # Defines the @tensor macro which switches to an index-notation environment.
+"""
+    @tensor(block)
+
+Specify one or more tensor operations using Einstein's index notation. Indices can
+be chosen to be arbitrary Julia variable names, or integers. When contracting several
+tensors together, this will be evaluated as pairwise contractions in left to right
+order, unless the so-called NCON style is used (positive integers for contracted
+indices and negative indices for open indices).
+"""
 macro tensor(ex::Expr)
     tensorify(ex)
 end
+
+"""
+    @tensoropt(optex, block)
+    @tensoropt(block)
+
+Specify one or more tensor operations using Einstein's index notation. Indices can
+be chosen to be arbitrary Julia variable names, or integers. When contracting several
+tensors together, the macro will determine (at compile time) the optimal contraction
+order depending on the cost associated to the individual indices. If no `optex` is
+provided, all indices are assumed to have an abstract scaling `χ` which is optimized
+in the asympotic limit of large `χ`.
+"""
 macro tensoropt(ex::Expr)
     tensorify(ex, optdata(ex))
 end

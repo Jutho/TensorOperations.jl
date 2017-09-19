@@ -1,5 +1,9 @@
 module TensorOperations
 
+import Base.Iterators.flatten
+import Base.setindex
+
+
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
 
@@ -25,8 +29,6 @@ include("implementation/strides.jl")
 
 # Index notation
 #----------------
-import Base.Iterators.flatten
-
 include("indexnotation/tensormacro.jl")
 include("indexnotation/nconstyle.jl")
 include("indexnotation/poly.jl")

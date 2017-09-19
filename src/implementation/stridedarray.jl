@@ -14,10 +14,10 @@ with the nth dimension of `C`.
 """
 function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA) where CA
     for i = 1:ndims(C)
-        size(A,indCinA[i]) == size(C,i) || throw(DimensionMismatch())
+        size(A, indCinA[i]) == size(C, i) || throw(DimensionMismatch("$(size(A)), $(size(C)), $(indCinA)"))
     end
 
-    dims, stridesA, stridesC, minstrides = add_strides(size(C), _permute(strides(A),indCinA), strides(C))
+    dims, stridesA, stridesC, minstrides = add_strides(size(C), _permute(strides(A), indCinA), strides(C))
     dataA = StridedData(A, stridesA, Val{CA})
     offsetA = 0
     dataC = StridedData(C, stridesC)
@@ -56,12 +56,10 @@ function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCi
     for i = 1:NC
         size(A,indCinA[i]) == size(C,i) || throw(DimensionMismatch(""))
     end
-    for i = 1:div(NA-NC,2)
-        size(A,cindA1[i]) == size(A,cindA2[i]) || throw(DimensionMismatch(""))
-    end
+    map(i->size(A,i), cindA1) == map(i->size(A,i), cindA2) || throw(DimensionMismatch(""))
 
-    pA = vcat(indCinA, cindA1, cindA2)
-    dims, stridesA, stridesC, minstrides = trace_strides(_permute(size(A),pA), _permute(strides(A),pA), strides(C))
+    pA = (indCinA..., cindA1..., cindA2...)
+    dims, stridesA, stridesC, minstrides = trace_strides(_permute(size(A), pA), _permute(strides(A), pA), strides(C))
     dataA = StridedData(A, stridesA, Val{CA})
     offsetA = 0
     dataC = StridedData(C, stridesC)
@@ -111,15 +109,13 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     dimB = size(B)
     dimC = size(C)
 
-    cdimsA = dimA[cindA]
-    cdimsB = dimB[cindB]
-    odimsA = dimA[oindA]
-    odimsB = dimB[oindB]
+    cdimsA = map(i->dimA[i], cindA)
+    cdimsB = map(i->dimB[i], cindB)
+    odimsA = map(i->dimA[i], oindA)
+    odimsB = map(i->dimB[i], oindB)
     odimsAB = tuple(odimsA..., odimsB...)
 
-    for i = 1:length(cdimsA)
-        cdimsA[i] == cdimsB[i] || throw(DimensionMismatch())
-    end
+    cdimsA == cdimsB || throw(DimensionMismatch())
     cdims = cdimsA
 
     for i = 1:length(indCinoAB)
@@ -133,25 +129,25 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     # permute A
     if CA == :C
         conjA = 'C'
-        pA = vcat(cindA, oindA)
-        if isa(A, Array{TC}) && pA == collect(1:NA)
+        pA = (cindA..., oindA...)
+        if isa(A, Array{TC}) && pA == (1:NA...)
             Amat = reshape(A, (clength, olengthA))
         else
-            Apermuted = Array{TC}(tuple(cdims..., odimsA...))
+            Apermuted = Array{TC}((cdims..., odimsA...))
             # tensorcopy!(A, 1:NA, Apermuted, pA)
             add!(1, A, Val{:N}, 0, Apermuted, pA)
             Amat = reshape(Apermuted, (clength, olengthA))
         end
     else
         conjA = 'N'
-        pA = vcat(oindA, cindA)
-        if isa(A, Array{TC}) && pA == collect(1:NA)
+        pA = (oindA..., cindA...)
+        if isa(A, Array{TC}) && pA == (1:NA...)
             Amat = reshape(A, (olengthA, clength))
-        elseif isa(A, Array{TC}) && vcat(cindA, oindA) == collect(1:NA)
+        elseif isa(A, Array{TC}) && (cindA..., oindA...) == (1:NA...)
             conjA = 'T'
             Amat = reshape(A, (clength, olengthA))
         else
-            Apermuted = Array{TC}(tuple(odimsA..., cdims...))
+            Apermuted = Array{TC}((odimsA..., cdims...))
             # tensorcopy!(A, 1:NA, Apermuted, pA)
             add!(1, A, Val{:N}, 0, Apermuted, pA)
             Amat = reshape(Apermuted, (olengthA, clength))
@@ -161,25 +157,25 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     # permute B
     if CB == :C
         conjB = 'C'
-        pB = vcat(oindB, cindB)
-        if isa(B, Array{TC}) && pB == collect(1:NB)
+        pB = (oindB..., cindB...)
+        if isa(B, Array{TC}) && pB == (1:NB...)
             Bmat = reshape(B, (olengthB, clength))
         else
-            Bpermuted = Array{TC}(tuple(odimsB..., cdims...))
+            Bpermuted = Array{TC}((odimsB..., cdims...))
             # tensorcopy!(B, 1:NB, Bpermuted, pB)
             add!(1, B, Val{:N}, 0, Bpermuted, pB)
             Bmat = reshape(Bpermuted, (olengthB, clength))
         end
     else
         conjB = 'N'
-        pB = vcat(cindB, oindB)
-        if  isa(B, Array{TC}) && pB == collect(1:NB)
+        pB = (cindB..., oindB...)
+        if  isa(B, Array{TC}) && pB == (1:NB...)
             Bmat = reshape(B, (clength, olengthB))
-        elseif isa(B, Array{TC}) && vcat(oindB, cindB) == collect(1:NB)
+        elseif isa(B, Array{TC}) && (oindB..., cindB...) == (1:NB...)
             conjB = 'T'
             Bmat = reshape(B, (olengthB, clength))
         else
-            Bpermuted = Array{TC}(tuple(cdims..., odimsB...))
+            Bpermuted = Array{TC}((cdims..., odimsB...))
             # tensorcopy!(B, 1:NB, Bpermuted, pB)
             add!(1, B, Val{:N}, 0, Bpermuted, pB)
             Bmat = reshape(Bpermuted, (clength, olengthB))
@@ -187,14 +183,13 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     end
 
     # calculate C
-    if isa(C, Array) && indCinoAB == collect(1:NC)
+    if isa(C, Array) && indCinoAB == (1:NC...)
         Cmat = reshape(C, (olengthA, olengthB))
         BLAS.gemm!(conjA, conjB, TC(α), Amat, Bmat, TC(β), Cmat)
     else
         Cmat = Array{TC}(olengthA, olengthB)
         BLAS.gemm!(conjA, conjB, TC(1), Amat, Bmat, TC(0), Cmat)
-        # tensoradd!(α, reshape(Cmat, tuple(odimsA..., odimsB...)), pC, β, C, 1:NC)
-        add!(α, reshape(Cmat, tuple(odimsA..., odimsB...)), Val{:N}, β, C, indCinoAB)
+        add!(α, reshape(Cmat, (odimsA..., odimsB...)), Val{:N}, β, C, indCinoAB)
     end
     return C
 end
@@ -209,18 +204,24 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     dimB = size(B)
     dimC = size(C)
 
-    cdimsA = dimA[cindA]
-    cdimsB = dimB[cindB]
-    odimsA = dimA[oindA]
-    odimsB = dimB[oindB]
+    cdimsA = map(i->dimA[i], cindA)
+    cdimsB = map(i->dimB[i], cindB)
+    odimsA = map(i->dimA[i], oindA)
+    odimsB = map(i->dimB[i], oindB)
     odimsAB = tuple(odimsA..., odimsB...)
 
+    cdimsA == cdimsB || throw(DimensionMismatch())
+
+    for i = 1:length(indCinoAB)
+        dimC[i] == odimsAB[indCinoAB[i]] || throw(DimensionMismatch())
+    end
+
     # Perform contraction
-    pA = vcat(oindA, cindA)
-    pB = vcat(oindB, cindB)
+    pA = (oindA..., cindA...)
+    pB = (oindB..., cindB...)
     sA = _permute(strides(A), pA)
     sB = _permute(strides(B), pB)
-    sC = _permute(strides(C), invperm(indCinoAB))
+    sC = _permute(strides(C), tinvperm(indCinoAB))
 
     dimsA = _permute(size(A), pA)
     dimsB = _permute(size(B), pB)

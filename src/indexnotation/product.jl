@@ -26,22 +26,20 @@ end
 @generated function *(A::AbstractIndexedObject,B::AbstractIndexedObject)
     IA = indices(A)
     IB = indices(B)
-    IC = symdiff(IA,IB)
+    IC = tuple(symdiff(IA,IB)...)
     oindA, cindA, oindB, cindB, = contract_indices(IA,IB,IC)
     meta = Expr(:meta,:inline)
     if A <: IndexedObject{IA}
         argA = :A
     else
-        IA = IA[vcat(oindA,cindA)]
-        IA = tuple(IA...)
+        IA = map(l->IA[l], (oindA...,cindA...))
         indA = :(Indices{$IA}())
         argA = :(indexify(deindexify(A,$indA),$indA))
     end
     if B <: IndexedObject{IB}
         argB = :B
     else
-        IB = IB[vcat(cindB,oindB)]
-        IB = tuple(IB...)
+        IB = map(l->IB[l], (cindB...,oindB...))
         indB = :(Indices{$IB}())
         argB = :(indexify(deindexify(B,$indB),$indB))
     end
@@ -52,12 +50,12 @@ end
 @generated function deindexify(P::ProductOfIndexedObjects{IA,IB,CA,CB}, I::Indices{IC}, T::Type = eltype(P)) where {IA,IB,CA,CB,IC}
     meta = Expr(:meta, :inline)
     oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    indCinAB = vcat(oindA,length(IA)+oindB)[indCinoAB]
+    indCinABt = map(l->(oindA...,(length(IA).+oindB)...)[l], indCinoAB)
     conjA = Val{CA}
     conjB = Val{CB}
     quote
         $meta
-        deindexify!(similar_from_indices(T, $indCinAB, P.A.object, P.B.object, $conjA, $conjB), P, I)
+        deindexify!(similar_from_indices(T, $indCinABt, P.A.object, P.B.object, $conjA, $conjB), P, I)
     end
 end
 
