@@ -92,7 +92,7 @@ function optdata(optex::Expr, ex::Expr)
             costs = convert(Vector{costtype}, costs)
         else
             indices = args
-            costtype = Power{:chi,Int}
+            costtype = Power{:χ,Int}
             costs = fill(Power{:χ,Int}(1,1), length(args))
         end
         makeindices!(indices)
@@ -105,6 +105,7 @@ function optdata(optex::Expr, ex::Expr)
         for i in excludeind
             d[i] = 1
         end
+        return d
     else
          error("invalid index cost specification")
      end

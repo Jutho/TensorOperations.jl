@@ -62,15 +62,20 @@ By default, a contraction of several tensors `A[a,b,c,d,e]*B[b,e,f,g]*C[c,f,i,j]
 Furthermore, there is a `@tensoropt` macro which will optimize the contraction order to minimize the total number of multiplications (cost model might change or become choosable in the future). The optimal contraction order will be determined at compile time and will be hard coded in the macro expansion. The cost/size of the different indices can be specified in various ways, and can be integers or some arbitrary polynomial of an abstract variable, e.g. `χ`. In the latter case, the optimization assumes the assymptotic limit of large `χ`.
 
 ```julia
-@tensoropt C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+@tensoropt D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
 # cost χ for all indices (a,b,c,d,e,f)
-@tensoropt (a,b,c,e) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+@tensoropt (a,b,c,e) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
 # cost χ for indices a,b,c,e, other indices (d,f) have cost 1
-@tensoropt !(a,b,c,e) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+@tensoropt !(a,b,c,e) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
 # cost 1 for indices a,b,c,e, other indices (d,f) have cost χ
-@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
 # cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
 ```
+The optimal contraction tree as well as the associated cost can be obtained by
+```julia
+@optimalcontractiontree C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+```
+where the cost of the indices can be specified in the same various ways as for `@tensoropt`.
 
 ### Functions
 
