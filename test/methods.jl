@@ -54,31 +54,11 @@ end
 # test tensorproduct
 A = randn(5,5,5,5)
 B = rand(Complex128,(5,5,5,5))
-C1 = reshape(@inferred tensorproduct(A,(1,2,3,4),B,(5,6,7,8),(1,2,5,6,3,4,7,8)),(5*5*5*5,5*5*5*5))
+C1 = reshape((@inferred tensorproduct(A,(1,2,3,4),B,(5,6,7,8),(1,2,5,6,3,4,7,8))),(5*5*5*5,5*5*5*5))
 C2 = kron(reshape(B,(25,25)),reshape(A,(25,25)))
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws TensorOperations.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
 @test_throws TensorOperations.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
-
-# test index notation
-#---------------------
-# Da = 10
-# Db = 15
-# Dc = 4
-# Dd = 8
-# De = 6
-# Df = 7
-# Dg = 3
-# Dh = 2
-# A = rand(Complex128,(Da,Dc,Df,Da,De,Db,Db,Dg))
-# B = rand(Complex128,(Dc,Dh,Dg,De,Dd))
-# C = rand(Complex128,(Dd,Dh,Df))
-# D = rand(Complex128,(Dd,Df,Dh))
-# D[l"d,f,h"] = A[l"a,c,f,a,e,b,b,g"]*B[l"c,h,g,e,d"]+0.5*C[l"d,h,f"]
-# @test_approx_eq(vecnorm(D),sqrt(abs(scalar(D[l"d,f,h"]*conj(D[l"d,f,h"])))))
-# @test_throws IndexError D[l"a,a,a"]
-# @test_throws IndexError D[l"a,b,c,d"]
-# @test_throws IndexError D[l"a,b"]
 
 # test in-place methods
 #-----------------------
