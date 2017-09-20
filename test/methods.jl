@@ -4,15 +4,17 @@
 A=randn((3,5,4,6))
 p=randperm(4)
 C1=permutedims(A,p)
-C2=tensorcopy(A,1:4,p)
+C2=tensorcopy(A,(1:4...),(p...))
+@inferred tensorcopy(A,(1:4...),(p...))
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws TensorOperations.IndexError tensorcopy(A,1:3,1:4)
 @test_throws TensorOperations.IndexError tensorcopy(A,[1,2,2,4],1:4)
 
 # test tensoradd
 B=randn((5,6,3,4))
-p=[3,1,4,2]
-C1=tensoradd(A,p,B,1:4)
+p=(3,1,4,2)
+C1=tensoradd(A,p,B,(1:4...))
+@inferred tensoradd(A,p,B,(1:4...))
 C2=A+permutedims(B,p)
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws DimensionMismatch tensoradd(A,1:4,B,1:4)

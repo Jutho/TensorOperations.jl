@@ -2,16 +2,23 @@
 #
 # Method-based access to tensor operations using inplace definitions.
 
-tensorcopy!(A, IA, C, IC) = tensoradd!(1, A, IA, 0, C, IC)
+tensorcopy!(A, IA, C, IC) = tensorcopy!(A, tuple(IA...), C, tuple(IC...))
+tensoradd!(α, A, IA, β, C, IC) = tensoradd!(α, A, tuple(IA...), β, C, tuple(IC...))
+tensortrace!(α, A, IA, β, C, IC) = tensortrace!(α, A, tuple(IA...), β, C, tuple(IC...))
+tensorcontract!(α, A, IA, conjA, B, IB, conjB, β, C, IC; method::Symbol = :BLAS) =
+    tensorcontract!(α, A, tuple(IA...), conjA, B, tuple(IB...), conjB, β, C, tuple(IC...); method = method)
+tensorproduct!(α, A, IA, B, IB, β, C, IC) = tensorproduct!(α, A, tuple(IA...), B, tuple(IB...), β, C, tuple(IC...))
 
-function tensoradd!(α, A, IA, β, C, IC)
+tensorcopy!(A, IA::Tuple, C, IC::Tuple) = tensoradd!(1, A, IA, 0, C, IC)
+
+function tensoradd!(α, A, IA::Tuple, β, C, IC::Tuple)
     checkindices(A, IA)
     checkindices(C, IC)
     indCinA = add_indices(IA, IC)
     add!(α, A, Val{:N}, β, C, indCinA)
 end
 
-function tensortrace!(α, A, IA, β, C, IC)
+function tensortrace!(α, A, IA::Tuple, β, C, IC::Tuple)
     checkindices(A, IA)
     checkindices(C, IC)
     indCinA, cindA1, cindA2 = trace_indices(IA, IC)
@@ -19,7 +26,7 @@ function tensortrace!(α, A, IA, β, C, IC)
     return C
 end
 
-function tensorcontract!(α, A, IA, conjA, B, IB, conjB, β, C, IC; method::Symbol = :BLAS)
+function tensorcontract!(α, A, IA::Tuple, conjA, B, IB::Tuple, conjB, β, C, IC::Tuple; method::Symbol = :BLAS)
     # Updates C as β*C+α*contract(A, B), whereby the contraction pattern
     # is specified by IA, IB and IC. The iterables IA(B, C)
     # should contain a unique label for every index of array A(B, C), such that
@@ -59,7 +66,7 @@ function tensorcontract!(α, A, IA, conjA, B, IB, conjB, β, C, IC; method::Symb
     return C
 end
 
-function tensorproduct!(α, A, IA, B, IB, β, C, IC)
+function tensorproduct!(α, A, IA::Tuple, B, IB::Tuple, β, C, IC::Tuple)
     isempty(intersect(IA, IB)) || throw(LabelError("not a valid tensor product"))
     tensorcontract!(α, A, IA, 'N', B, IB, 'N', β, C, IC; method = :native)
 end

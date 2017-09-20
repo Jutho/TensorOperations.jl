@@ -2,6 +2,14 @@
 #
 # Method-based access to tensor operations using simple definitions.
 
+# type unstable; better use tuples instead
+tensorcopy(A, IA, IC=IA) = tensorcopy(A, tuple(IA...), tuple(IC...))
+tensoradd(A, IA, B, IB, IC=IA) = tensoradd(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
+tensortrace(A, IA, IC = unique2(IA)) = tensortrace(A, tuple(IA...), tuple(IC...))
+tensorcontract(A, IA, B, IB, IC = symdiff(IA, IB); method::Symbol = :BLAS) =
+    tensorcontract(A, tuple(IA...), B, tuple(IB...), tuple(IC...); method = method)
+tensorproduct(A, IA, B, IB, IC = vcat(IA, IB)) = tensorproduct(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
+
 """
     tensorcopy(A, IA, IC=IA)
 
@@ -12,7 +20,7 @@ should contain the same elements in a different order.
 The result of this method is equivalent to `permutedims(A, p)` where p is the permutation
 such that `IC=IA[p]`. The implementation of tensorcopy is however more efficient on average.
 """
-function tensorcopy(A, IA, IC=IA)
+function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     IA == IC && return copy(A)
 
     checkindices(A, IA)
@@ -22,7 +30,7 @@ function tensorcopy(A, IA, IC=IA)
 end
 
 """
-    tensoradd(A, IA, B, IB, IC=IA)
+    tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
 
 Returns the result of adding arrays `A` and `B` where the iterabels `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
@@ -34,13 +42,13 @@ tensorcopy(A, IA, IC) + tensorcopy(B, IB, IC)
 
 but without creating the temporary permuted arrays.
 """
-function tensoradd(A, IA, B, IB, IC=IA)
+function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
     checkindices(A, IA)
     checkindices(B, IB)
     T = promote_type(eltype(A), eltype(B))
     if IA == IC
-        C = similar_from_indices(T, 1:numind(A), A)
-        copy!(C,A)
+        C = similar(A, T)
+        copy!(C, A)
     else
         indCinA = add_indices(IA, IC)
         C = similar_from_indices(T, indCinA, A)
@@ -51,7 +59,7 @@ function tensoradd(A, IA, B, IB, IC=IA)
 end
 
 """
-    tensortrace(A, IA, IC=unique2(IA))
+    tensortrace(A, IA::Tuple, IC::Tuple)
 
 Trace or contract pairs of indices of array `A`, by assigning them an identical
 indices in the iterable `IA`. The untraced indices, which are assigned a unique index,
@@ -60,15 +68,15 @@ to the order in which they appear. Note that only pairs of indices can be contra
 so that every index in `IA` can appear only once (for an untraced index) or twice
 (for an index in a contracted pair).
 """
-function tensortrace(A, IA, IC = unique2(IA))
+function tensortrace(A, IA::Tuple, IC::Tuple)
     checkindices(A, IA)
-    indCinA, cindA1, cindA2 = trace_indices(IA,IC)
+    indCinA, cindA1, cindA2 = trace_indices(IA, IC)
     C = similar_from_indices(eltype(A), indCinA, A)
     trace!(1, A, Val{:N}, 0, C, indCinA, cindA1, cindA2)
 end
 
 """
-    tensorcontract(A, IA, B, IB, IC=symdiff(IA,IB); method=:BLAS)
+    tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple; method=:BLAS)
 
 Contract indices of array `A` with corresponding indices in array `B` by assigning
 them identical labels in the iterables `IA` and `IB`. The indices of the resulting
@@ -91,12 +99,13 @@ This can be faster for small tensors or when the contraction pattern is non-gene
 e.g. when it amounts to a scalar (no open indices) or a tensor product (no contraction
 indices).
 """
-function tensorcontract(A, IA, B, IB, IC = symdiff(IA,IB); method::Symbol = :BLAS)
+function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple; method::Symbol = :BLAS)
     checkindices(A, IA)
     checkindices(B, IB)
 
     oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    indCinAB = vcat(oindA,length(IA)+oindB)[indCinoAB]
+    oinAB = (oindA..., .+(oindB, length(IA))...)
+    indCinAB = map(l->oinAB[l], indCinoAB)
 
     T = promote_type(eltype(A), eltype(B))
     C = similar_from_indices(T, indCinAB, A, B)
@@ -112,7 +121,7 @@ function tensorcontract(A, IA, B, IB, IC = symdiff(IA,IB); method::Symbol = :BLA
 end
 
 """
-    tensorproduct(A, IA, B, IB, IC=union(IA,IB))
+    tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple = (IA..., IB...))
 
 Computes the tensor product of two arrays `A` and `B`, i.e. returns a new array `C`
 with `ndims(C)=ndims(A)+ndims(B)`. The indices of the output tensor are related to
@@ -121,7 +130,7 @@ this is a special case of `tensorcontract` with no indices being contracted over
 On top of just calling `tensorcontract` with `method=:native`, this method checks
 whether the indices indeed specify a tensor product instead of a genuine contraction.
 """
-function tensorproduct(A, IA, B, IB, IC = symdiff(IA,IB))
+function tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple = (IA..., IB...))
     isempty(intersect(IA, IB)) || throw(IndexError("not a valid tensor product"))
     tensorcontract(A, IA, B, IB, IC; method = :native)
 end

@@ -10,12 +10,6 @@ tsetdiff(a::Tuple{Any}, b::Tuple{Any}) = ()
 tsetdiff(a::Tuple, b::Tuple{Any}) = a[1] == b[1] ? tail(a) : (a[1], tsetdiff(tail(a), b)...)
 tsetdiff(a::Tuple, b::Tuple) = tsetdiff(tsetdiff(a, (b[1],)), tail(b))
 
-# tuple sort
-tsortedinsert(t::Tuple{}, v) = (v,)
-tsortedinsert(t::Tuple, v) = v <= t[1] ? (v, t...) : (t[1], tsortedinsert(tail(t), v)...)
-tsort(t::Tuple{}) = t
-tsort(t::Tuple) = tsortedinsert(tsort(tail(t)), t[1])
-
 # tuple unique: assumes that every element appears exactly twice
 tunique(src::Tuple) = tunique(src, ())
 tunique(src::NTuple{N,Any}, dst::NTuple{N,Any}) where {N} = dst
@@ -31,6 +25,7 @@ end
 
 function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     # trace indices
+    isodd(length(IA)-length(IC)) && throw(IndexError("invalid trace specification: $IA to $IC"))
     Itrace = tunique(tsetdiff(IA, IC))
 
     cindA1 = map(l->findfirst(IA, l), Itrace)
@@ -42,10 +37,10 @@ function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     return indCinA, cindA1, cindA2
 end
 
-
 function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any}, IC::NTuple{NC,Any}) where {NA,NB,NC}
     # labels
     IAB = (IA..., IB...)
+    isodd(length(IAB)-length(IC)) && throw(IndexError("invalid contraction pattern: $IA and $IB to $IC"))
     Icontract = tunique(tsetdiff(IAB, IC))
     IopenA = tsetdiff(IA, Icontract)
     IopenB = tsetdiff(IB, Icontract)
