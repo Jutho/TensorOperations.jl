@@ -6,7 +6,11 @@ Fast tensor operations using a convenient index notation.
 
 ## What's new
 
-- Fully compatible with Julia v0.6. (v0.5 no longer supported)
+- Addition of a `@tensoropt` macro that will optimize the contraction order of any product of tensors `A[...]*B[...]*C[...]*...` (see below).
+- The `@tensor` macro will reorganize the contraction order of the so-called NCON style of specifying indices is respected, i.e. all contracted indices are labelled by positive integers and all uncontracted indices are specified by negative integers. In that case, tensors will be contracted in such an order that indices with smaller integer label will
+be contracted first
+- Better overall type stability, both in the `@tensor(opt)` environment and with the function based approach. Even the simple function based syntax can now be made type stable by specifing the indices using tuples.
+- Fully compatible with Julia v0.6 and v0.7. (v0.5 no longer supported)
 
 ## Installation
 
@@ -52,6 +56,21 @@ In this example, the labels were specified by arbitrary letters or even longer n
 ```
 
 The index pattern is analyzed at compile time and wrapped in appropriate types such that the result of the operation can be computed with a minimal number of temporaries. The use of `@generated` functions further enables to move as much of the label analysis to compile time. You can read more about these topics in the section "Implementation" below.
+
+By default, a contraction of several tensors `A[a,b,c,d,e]*B[b,e,f,g]*C[c,f,i,j]*...` will be evaluted using pairwise contractions from left to right, i.e. as `( (A[a,b,c,d,e] * B[b,e,f,g]) * C[c,f,i,j]) * ...`. However, if one respects the so-called [NCON](https://arxiv.org/abs/1402.0939) style of specifying indices, i.e. positive integers for the contracted indices and negative indices for the open indices, the different factors will be reordered and so that the pairwise tensor contractions contract over indices with smaller integer label first. For example, `D[:] := A[-1,3,1,-2,2]*B[3,2,4,-5]*C[1,4,-4,-3]` will be evaluated as `(A[-1,3,1,-2,2]*C[1,4,-4,-3])*B[3,2,4,-5]`. Furthermore, in that case the indices of the output tensor (`D` in this case) do not need to be specified, and will be chosen as `(-1,-2,-3,-4,-5)`. Any other order is of course still possible by just specifying it.
+
+Furthermore, there is a `@tensoropt` macro which will optimize the contraction order to minimize the total number of multiplications (cost model might change or become choosable in the future). The optimal contraction order will be determined at compile time and will be hard coded in the macro expansion. The cost/size of the different indices can be specified in various ways, and can be integers or some arbitrary polynomial of an abstract variable, e.g. `χ`. In the latter case, the optimization assumes the assymptotic limit of large `χ`.
+
+```julia
+@tensoropt C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost χ for all indices (a,b,c,d,e,f)
+@tensoropt (a,b,c,e) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost χ for indices a,b,c,e, other indices (d,f) have cost 1
+@tensoropt !(a,b,c,e) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost 1 for indices a,b,c,e, other indices (d,f) have cost χ
+@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
+```
 
 ### Functions
 
@@ -178,17 +197,17 @@ The `src` folder of `TensorOperations.jl` contains four subfolders in which the 
 
 The folders `functions` and `indexnotation` contain the necessary code to support the function-based syntax and the `@tensor` macro syntax respectively. In particular, the folder `indexnotation` contains one file for the macro, and one file for each of the special types `IndexedObject`, `SumOfIndexedObjects` and `ProductOfIndexedObjects` discussed above. Both the function and macro based syntax are completely general and should work for any multidimensional object, provided a corresponding implementation for `add!`, `trace!` and `contract!` is provided.
 
-Finally, the folder `aux` contains some auxiliary code, such as some metaprogramming tools, the `unique2` function which removes all elements of a list which appear more than once, the definition of the `StridedData` type, the elementary `axpby` operation and the definition of a dedicated `IndexError` type for reporting errors in the index notation. Finally, there is a file `stridedarray.jl` which provides some auxiliary abstraction to interface with the `StridedArray` type of Julia Base. It contains the following function definitions:
+Finally, the folder `auxiliary` contains some auxiliary code, such as some metaprogramming tools, the `unique2` function which removes all elements of a list which appear more than once, the definition of the `StridedData` type, the elementary `axpby` operation and the definition of a dedicated `IndexError` type for reporting errors in the index notation. Finally, there is a file `stridedarray.jl` which provides some auxiliary abstraction to interface with the `StridedArray` type of Julia Base. It contains the following function definitions:
 
 - `numind(A)`
 
   Returns the number of indices of a tensor-like object `A`, i.e. for a multidimensional array (`<:AbstractArray`) we have `numind(A) = ndims(A)`. Also works in type domain.
 
-- `similar_from_indices(T, indices, A, conjA=Val{:N})`
+- `similar_from_indices(T, indices::Tuple{Vararg{Int}}, A, conjA=Val{:N})`
 
   Returns an object similar to `A` which has an `eltype` given by `T` and dimensions/sizes corresponding to a selection of those of `op(A)`, where the selection is specified by `indices` (which contains integer between `1` and `numind(A)`) and `op` is `conj` if `conjA=Val{:C}` or does nothing if `conjA=Val{:N}` (default).
 
-- `similar_from_indices(T, indices, A, B, conjA=Val{:N}, conjB={:N})`
+- `similar_from_indices(T, indices::Tuple{Vararg{Int}}, A, B, conjA=Val{:N}, conjB={:N})`
 
   Returns an object similar to `A` which has an `eltype` given by `T` and dimensions/sizes corresponding to a selection of those of `op(A)` and `op(B)` concatenated, where the selection is specified by `indices` (which contains integers between `1` and `numind(A)+numind(B)` and `op` is `conj` if `conjA` or `conjB` equal `Val{:C}` or does nothing if `conjA` or `conjB` equal `Val{:N}` (default).
 
@@ -196,12 +215,11 @@ Finally, the folder `aux` contains some auxiliary code, such as some metaprogram
 
   Returns the single element of a tensor-like object with zero dimensions, i.e. if `numind(C)==0`.
 
-In summary, to add support for a user-defined tensor-like type, the functions in the files `aux/stridedarray.jl` and `implementation/stridedarray.jl` should be reimplemented. This should be rather straightforwarded if the type just wraps multidimensional data with a strided storage in memory.
+In summary, to add support for a user-defined tensor-like type, the functions in the files `auxiliary/stridedarray.jl` and `implementation/stridedarray.jl` should be reimplemented. This should be rather straightforwarded if the type just wraps multidimensional data with a strided storage in memory.
 
 ## Planned features
 
-The following features seem like interesting additions to the `TensorOperations.jl` package, and might therefore appear in the future (not necessarily in this order).
+The following features seem like interesting additions to the `TensorOperations.jl` package, and might therefore appear in the future.
 
-- Functionality to contract a large set of tensors, also called a tensor network, including a method to optimize over the contraction order along the lines of [arXiv:1304.6112v6](http://arxiv.org/abs/1304.6112v6).
-- Implementation of a tensor contraction implementation that can immediately call the BLAS microkernels to act on small blocks of the arrays which are permuted into fixed size buffers.
+- Implementation of a tensor contraction implementation that can immediately call the BLAS microkernels to act on small blocks of the arrays which are permuted into fixed size buffers. Or rather, possibility to use some of the recent efforts in this direction as backend (e.g. [TBLIS](https://github.com/devinamatthews/tblis), [HPTT](https://github.com/springer13/hptt) and [TCL](https://github.com/springer13/tcl)).
 - Implementation of a `@rawindex` macro that translates an expression with index notation directly into a raw set of nested loops. While loosing the advantage of cache-friendlyness for large arrays, this can be advantageous for smaller arrays. In addition, this would allow for more general expressions where functions of array entries are computed without having to allocate a temporary array, or where three or more dimensions are simultaneously summed over.
