@@ -24,6 +24,19 @@ tensors together, the macro will determine (at compile time) the optimal contrac
 order depending on the cost associated to the individual indices. If no `optex` is
 provided, all indices are assumed to have an abstract scaling `χ` which is optimized
 in the asympotic limit of large `χ`.
+
+The cost can be specified in the following ways:
+
+```julia
+@tensoropt C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost χ for all indices (a,b,c,d,e,f)
+@tensoropt (a,b,c,e) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost χ for indices a,b,c,e, other indices (d,f) have cost 1
+@tensoropt !(a,b,c,e) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost 1 for indices a,b,c,e, other indices (d,f) have cost χ
+@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) C[a,b,c,d] := A[a,e,c,f]*B[f,d,e,b]
+# cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
+```
 """
 macro tensoropt(ex::Expr)
     tensorify(ex, optdata(ex))
@@ -58,34 +71,44 @@ function optdata(ex::Expr)
     return Dict{Any, typeof(cost)}(i=>cost for i in allindices)
 end
 function optdata(optex::Expr, ex::Expr)
-    optex.head == :tuple || error("invalid index cost specification")
+    if optex.head == :tuple
 
-    isempty(optex.args) && return tensorify(ex)
+        isempty(optex.args) && return nothing
 
-    args = optex.args
-    if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
-        indices = Vector{Any}(length(args))
-        costs = Vector{Any}(length(args))
-        costtype = typeof(parsecost(args[1].args[3]))
-        for k = 1:length(args)
-            if isa(args[k], Expr) && args[k].head == :call && args[k].args[1] == :(=>)
-                indices[k] = args[k].args[2]
-                costs[k] = parsecost(args[k].args[3])
-                costtype = promote_type(costtype, typeof(costs[k]))
-            else
-                error("invalid index cost specification")
+        args = optex.args
+        if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
+            indices = Vector{Any}(length(args))
+            costs = Vector{Any}(length(args))
+            costtype = typeof(parsecost(args[1].args[3]))
+            for k = 1:length(args)
+                if isa(args[k], Expr) && args[k].head == :call && args[k].args[1] == :(=>)
+                    indices[k] = args[k].args[2]
+                    costs[k] = parsecost(args[k].args[3])
+                    costtype = promote_type(costtype, typeof(costs[k]))
+                else
+                    error("invalid index cost specification")
+                end
             end
+            costs = convert(Vector{costtype}, costs)
+        else
+            indices = args
+            costtype = Power{:chi,Int}
+            costs = fill(Power{:χ,Int}(1,1), length(args))
         end
-        costs = convert(Vector{costtype}, costs)
+        makeindices!(indices)
+        return Dict{Any, costtype}(indices[k]=>costs[k] for k = 1:length(args))
+    elseif optex.head == :call && optex.args[1] == :!
+        allindices = unique(getallindices(ex))
+        excludeind = makeindices!(optex.args[2:end])
+        cost = Power{:χ}(1,1)
+        d = Dict{Any, typeof(cost)}(i=>cost for i in allindices)
+        for i in excludeind
+            d[i] = 1
+        end
     else
-        indices = args
-        costtype = Power{:chi,Int}
-        costs = fill(Power{:χ,Int}(1,1), length(args))
-    end
-    makeindices!(indices)
-    return Dict{Any, costtype}(indices[k]=>costs[k] for k = 1:length(args))
-end
-
+         error("invalid index cost specification")
+     end
+ end
 function parsecost(ex::Expr)
     if ex.head == :call && ex.args[1] == :*
         return *(map(parsecost, ex.args[2:end])...)
