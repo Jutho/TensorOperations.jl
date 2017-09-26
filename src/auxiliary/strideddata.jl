@@ -10,10 +10,11 @@ struct StridedData{N,T,C}
     start::Int
 end
 
-NormalStridedData{N,T} =  StridedData{N,T,:N}
-ConjugatedStridedData{N,T} =  StridedData{N,T,:C}
+const NormalStridedData{N,T} = StridedData{N,T,:N}
+const ConjugatedStridedData{N,T} = StridedData{N,T,:C}
 
-StridedSubArray{T,N,A<:Array,I<:Tuple{Vararg{Union{Colon,Range{Int64},Int64}}},LD} =  SubArray{T,N,A,I,LD}
+const DimIndex = Union{Colon, Range{Int}, Int}
+const StridedSubArray{T,N,A<:Array{T},I<:Tuple{Vararg{DimIndex}},L} = SubArray{T,N,A,I,L}
 
 StridedData(a::Array{T}, strides::NTuple{N,Int} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
     StridedData{N,T,C}(vec(a), strides, 1)
