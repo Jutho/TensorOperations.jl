@@ -1,6 +1,8 @@
 # test simple methods
 #---------------------
-# test tensorcopy
+@testset "tensorxxx() methods" begin
+
+@testset "tensorcopy()" begin
 A = randn((3,5,4,6))
 p = randperm(4)
 C1 = permutedims(A,p)
@@ -8,16 +10,19 @@ C2 = @inferred tensorcopy(A,(1:4...),(p...))
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws TensorOperations.IndexError tensorcopy(A,1:3,1:4)
 @test_throws TensorOperations.IndexError tensorcopy(A,[1,2,2,4],1:4)
+end
 
-# test tensoradd
+@testset "tensoradd()" begin
+A = randn((3,5,4,6))
 B = randn((5,6,3,4))
 p = (3,1,4,2)
 C1 = @inferred tensoradd(A,p,B,(1:4...))
 C2 = A+permutedims(B,p)
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws DimensionMismatch tensoradd(A,1:4,B,1:4)
+end
 
-# test tensortrace
+@testset "tensortrace()" begin
 A = randn(50,100,100)
 C1 = tensortrace(A,[:a,:b,:b])
 C2 = zeros(50)
@@ -36,8 +41,9 @@ for i1 = 1:4, i2 = 1:3, i3 = 1:3
     end
 end
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+end
 
-# test tensorcontract
+@testset "tensorcontract()" begin
 A = randn(3,20,5,3,4)
 B = randn(5,6,20,3)
 C1 = @inferred tensorcontract(A,(:a,:b,:c,:d,:e),B,(:c,:f,:b,:g),(:a,:g,:e,:d,:f);method = :BLAS)
@@ -50,8 +56,9 @@ end
 @test vecnorm(C2-C3)<eps()*sqrt(length(C1))*vecnorm(C2+C3)
 @test_throws TensorOperations.IndexError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
 @test_throws TensorOperations.IndexError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
+end
 
-# test tensorproduct
+@testset "tensorproduct()" begin
 A = randn(5,5,5,5)
 B = rand(Complex128,(5,5,5,5))
 C1 = reshape((@inferred tensorproduct(A,(1,2,3,4),B,(5,6,7,8),(1,2,5,6,3,4,7,8))),(5*5*5*5,5*5*5*5))
@@ -59,13 +66,16 @@ C2 = kron(reshape(B,(25,25)),reshape(A,(25,25)))
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws TensorOperations.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
 @test_throws TensorOperations.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
+end
 
-# test in-place methods
+end
+
 #-----------------------
 # test different versions of in-place methods,
 # with changing element type and with nontrivial strides
+@testset "tensorxxx!() methods" begin
 
-# tensorcopy!
+@testset "tensorcopy!()" begin
 Abig = randn((30,30,30,30))
 A = view(Abig,1+3*(0:9),2+2*(0:6),5+4*(0:6),4+3*(0:8))
 p = [3,1,4,2]
@@ -79,8 +89,12 @@ TensorOperations.tensorcopy!(Acopy,1:4,Ccopy,p)
 @test_throws TensorOperations.IndexError TensorOperations.tensorcopy!(A,1:3,C,p)
 @test_throws DimensionMismatch TensorOperations.tensorcopy!(A,p,C,p)
 @test_throws TensorOperations.IndexError TensorOperations.tensorcopy!(A,1:4,C,[1,1,2,3])
+end
 
-# tensoradd!
+@testset "tensoradd!()" begin
+Abig = randn((30,30,30,30))
+A = view(Abig,1+3*(0:9),2+2*(0:6),5+4*(0:6),4+3*(0:8))
+p = [3,1,4,2]
 Cbig = zeros(Complex128,(50,50,50,50))
 C = view(Cbig,13+(0:6),11+4*(0:9),15+4*(0:8),4+3*(0:6))
 Acopy = tensorcopy(A,1:4,p)
@@ -93,8 +107,9 @@ Ccopy = beta*Ccopy+alpha*Acopy
 @test_throws TensorOperations.IndexError TensorOperations.tensoradd!(1.2,A,1:3,0.5,C,p)
 @test_throws DimensionMismatch TensorOperations.tensoradd!(1.2,A,p,0.5,C,p)
 @test_throws TensorOperations.IndexError TensorOperations.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
+end
 
-# tensortrace!
+@testset "tensortrace!()" begin
 Abig = rand((30,30,30,30))
 A = view(Abig,1+3*(0:8),2+2*(0:14),5+4*(0:6),7+2*(0:8))
 Bbig = rand(Complex128,(50,50))
@@ -113,8 +128,9 @@ end
 @test_throws DimensionMismatch TensorOperations.tensortrace!(alpha,A,[:a,:b,:c,:a],beta,B,[:c,:b])
 @test_throws TensorOperations.IndexError TensorOperations.tensortrace!(alpha,A,[:a,:b,:a,:a],beta,B,[:c,:b])
 @test_throws DimensionMismatch TensorOperations.tensortrace!(alpha,A,[:a,:b,:a,:c],beta,B,[:c,:b])
+end
 
-# tensorcontract!
+@testset "tensorcontract!()" begin
 Abig = rand((30,30,30,30))
 A = view(Abig,1+3*(0:8),2+2*(0:14),5+4*(0:6),7+2*(0:8))
 Bbig = rand(Complex128,(50,50,50))
@@ -149,3 +165,6 @@ TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',beta
 @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',beta,C,[:d,:a,:e])
 @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',beta,C,[:d,:e])
 @test_throws DimensionMismatch TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',beta,C,[:d,:e,:a])
+end
+
+end

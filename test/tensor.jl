@@ -1,9 +1,10 @@
 # test index notation using @tensor macro
 #-----------------------------------------
+@testset "@tensor macro" begin
 A=randn((3,5,4,6))
-p=randperm(4)
+p=[4,1,3,2]
 C1=permutedims(A,p)
-@eval @tensor C2[$(p...)] := A[1,2,3,4]
+@tensor C2[4,1,3,2] := A[1,2,3,4]
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
 @test_throws TensorOperations.IndexError begin
     @tensor C[1,2,3,4] := A[1,2,3]
@@ -30,6 +31,7 @@ for i=1:50
     end
 end
 @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+
 A=randn(3,20,5,3,20,4,5)
 @tensor C1[e,a,d] := A[a,b,c,d,b,e,c]
 C2=zeros(4,3,3)
@@ -194,4 +196,5 @@ C=randn(D,D,D,D);
 
 @test_throws TensorOperations.IndexError begin
     @tensor C[a,b,c,d] = conj(A[c,a])*B[c,b]
+end
 end
