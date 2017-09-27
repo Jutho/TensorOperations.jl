@@ -25,16 +25,9 @@ function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA
 
     if α == 0
         β == 1 || _scale!(dataC,β,dims)
-    elseif α == 1 && β == 0
-        add_rec!(_one, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
-    elseif α == 1 && β == 1
-        add_rec!(_one, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
-    elseif β == 0
-        add_rec!(α, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
-    elseif β == 1
-        add_rec!(α, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
     else
-        add_rec!(α, dataA, β, dataC, dims, offsetA, offsetC, minstrides)
+        add_rec!(_opfactor(α), dataA, _opfactor(β), dataC,
+                 dims, offsetA, offsetC, minstrides)
     end
     return C
 end
@@ -67,16 +60,9 @@ function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCi
 
     if α == 0
         β == 1 || _scale!(dataC, β, dims)
-    elseif α == 1 && β == 0
-        trace_rec!(_one, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
-    elseif α == 1 && β == 1
-        trace_rec!(_one, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
-    elseif β == 0
-        trace_rec!(α, dataA, _zero, dataC, dims, offsetA, offsetC, minstrides)
-    elseif β == 1
-        trace_rec!(α, dataA, _one, dataC, dims, offsetA, offsetC, minstrides)
     else
-        trace_rec!(α, dataA, β, dataC, dims, offsetA, offsetC, minstrides)
+        trace_rec!(_opfactor(α), dataA, _opfactor(β), dataC,
+                   dims, offsetA, offsetC, minstrides)
     end
     return C
 end
@@ -235,16 +221,9 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     # contract via recursive divide and conquer
     if α == 0
         β == 1 || _scale!(dataC, β, dims)
-    elseif α == 1 && β == 0
-        contract_rec!(_one, dataA, dataB, _zero, dataC, dims, offsetA, offsetB, offsetC, minstrides)
-    elseif α == 1 && β == 1
-        contract_rec!(_one, dataA, dataB, _one, dataC, dims, offsetA, offsetB, offsetC, minstrides)
-    elseif β == 0
-        contract_rec!(α, dataA, dataB, _zero, dataC, dims, offsetA, offsetB, offsetC, minstrides)
-    elseif β == 1
-        contract_rec!(α, dataA, dataB, _one, dataC, dims, offsetA, offsetB, offsetC, minstrides)
     else
-        contract_rec!(α, dataA, dataB, β, dataC, dims, offsetA, offsetB, offsetC, minstrides)
+        contract_rec!(_opfactor(α), dataA, dataB, _opfactor(β), dataC,
+                      dims, offsetA, offsetB, offsetC, minstrides)
     end
     return C
 end
