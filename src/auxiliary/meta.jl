@@ -22,7 +22,7 @@ end
     Expr(:block, meta, ex)
 end
 
-tinvperm(t::NTuple{N,Int}) where {N}= ntuple(n->findfirst(t,n), Val{N})
+tinvperm(t::NTuple{N,Int}) where {N}= ntuple(n->findfirst(equalto(n), t), Val(N))
 
 # Based on Tim Holy's Cartesian
 function _sreplace(ex::Expr, s::Symbol, v)

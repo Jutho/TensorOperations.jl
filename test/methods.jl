@@ -67,10 +67,10 @@ C2 = kron(reshape(B,(25,25)),reshape(A,(25,25)))
 
 # tensorcopy!
 Abig = randn((30,30,30,30))
-A = view(Abig,1+3*(0:9),2+2*(0:6),5+4*(0:6),4+3*(0:8))
+A = view(Abig,1 ⊞ 3*(0:9),2 ⊞ 2*(0:6),5 ⊞ 4*(0:6),4 ⊞ 3*(0:8))
 p = [3,1,4,2]
 Cbig = zeros(Complex128,(50,50,50,50))
-C = view(Cbig,13+(0:6),11+4*(0:9),15+4*(0:8),4+3*(0:6))
+C = view(Cbig,13 ⊞ (0:6),11 ⊞ 4*(0:9),15 ⊞ 4*(0:8),4 ⊞ 3*(0:6))
 Acopy = tensorcopy(A,1:4,1:4)
 Ccopy = tensorcopy(C,1:4,1:4)
 TensorOperations.tensorcopy!(A,1:4,C,p)
@@ -82,7 +82,7 @@ TensorOperations.tensorcopy!(Acopy,1:4,Ccopy,p)
 
 # tensoradd!
 Cbig = zeros(Complex128,(50,50,50,50))
-C = view(Cbig,13+(0:6),11+4*(0:9),15+4*(0:8),4+3*(0:6))
+C = view(Cbig,13 ⊞ (0:6),11 ⊞ 4*(0:9),15 ⊞ 4*(0:8),4 ⊞ 3*(0:6))
 Acopy = tensorcopy(A,1:4,p)
 Ccopy = tensorcopy(C,1:4,1:4)
 alpha = randn()
@@ -96,16 +96,16 @@ Ccopy = beta*Ccopy+alpha*Acopy
 
 # tensortrace!
 Abig = rand((30,30,30,30))
-A = view(Abig,1+3*(0:8),2+2*(0:14),5+4*(0:6),7+2*(0:8))
+A = view(Abig,1 ⊞ 3*(0:8),2 ⊞ 2*(0:14),5 ⊞ 4*(0:6),7 ⊞ 2*(0:8))
 Bbig = rand(Complex128,(50,50))
-B = view(Bbig,13+(0:14),3+5*(0:6))
+B = view(Bbig,13 ⊞ (0:14),3 ⊞ 5*(0:6))
 Acopy = tensorcopy(A,1:4)
 Bcopy = tensorcopy(B,1:2)
 alpha = randn()
 beta = randn()
 TensorOperations.tensortrace!(alpha,A,[:a,:b,:c,:a],beta,B,[:b,:c])
 Bcopy = beta*Bcopy
-for i = 1+(0:8)
+for i = 1 ⊞ (0:8)
     Bcopy += alpha*view(A,i,:,:,i)
 end
 @test vecnorm(B-Bcopy)<eps()*vecnorm(B+Bcopy)*sqrt(length(B))
@@ -116,30 +116,30 @@ end
 
 # tensorcontract!
 Abig = rand((30,30,30,30))
-A = view(Abig,1+3*(0:8),2+2*(0:14),5+4*(0:6),7+2*(0:8))
+A = view(Abig,1 ⊞ 3*(0:8),2 ⊞ 2*(0:14),5 ⊞ 4*(0:6),7 ⊞ 2*(0:8))
 Bbig = rand(Complex128,(50,50,50))
-B = view(Bbig,3+5*(0:6),7+2*(0:7),13+(0:14))
+B = view(Bbig,3 ⊞ 5*(0:6),7 ⊞ 2*(0:7),13 ⊞ (0:14))
 Cbig = rand(Complex64,(40,40,40))
-C = view(Cbig,3+2*(0:8),13+(0:8),7+3*(0:7))
+C = view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
 Acopy = tensorcopy(A,1:4)
 Bcopy = tensorcopy(B,1:3)
 Ccopy = tensorcopy(C,1:3)
 alpha = randn()
 beta = randn()
 Ccopy = beta*Ccopy
-for d = 1+(0:8),a = 1+(0:8),e = 1+(0:7)
-    for b = 1+(0:14),c = 1+(0:6)
+for d = 1 ⊞ (0:8),a = 1 ⊞ (0:8),e = 1 ⊞ (0:7)
+    for b = 1 ⊞ (0:14),c = 1 ⊞ (0:6)
         Ccopy[d,a,e] += alpha*A[a,b,c,d]*conj(B[c,e,b])
     end
 end
 TensorOperations.tensorcontract!(alpha,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',beta,C,[:d,:a,:e];method = :BLAS)
 @test vecnorm(C-Ccopy)<eps(Float32)*vecnorm(C+Ccopy)*sqrt(length(C))
 Cbig = rand(Complex64,(40,40,40))
-C = view(Cbig,3+2*(0:8),13+(0:8),7+3*(0:7))
+C = view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
 Ccopy = tensorcopy(C,1:3)
 Ccopy = beta*Ccopy
-for d = 1+(0:8),a = 1+(0:8),e = 1+(0:7)
-    for b = 1+(0:14),c = 1+(0:6)
+for d = 1 ⊞ (0:8),a = 1 ⊞ (0:8),e = 1 ⊞ (0:7)
+    for b = 1 ⊞ (0:14),c = 1 ⊞ (0:6)
         Ccopy[d,a,e] += alpha*A[a,b,c,d]*conj(B[c,e,b])
     end
 end
