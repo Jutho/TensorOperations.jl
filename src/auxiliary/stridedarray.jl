@@ -25,7 +25,7 @@ corresponding to a selection of those of `op(A)`, where the selection is specifi
 """
 @inline function similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A::StridedArray, ::Type{Val{CA}}=Val{:N}) where {T,N,CA}
     srcdims = size(A)
-    return similar(A, T, ntuple(n->srcdims[indices[n]], Val(N)))
+    return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
 end
 
 """
@@ -39,7 +39,7 @@ selection is specified by `indices` (which contains integers between `1` and
 """
 function similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A::StridedArray, B::StridedArray, ::Type{Val{CA}}=Val{:N}, ::Type{Val{CB}}=Val{:N}) where {T,N,CA,CB}
     srcdims = tuple(size(A)...,size(B)...)
-    return similar(A, T, ntuple(n->srcdims[indices[n]], Val(N)))
+    return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
 end
 
 """

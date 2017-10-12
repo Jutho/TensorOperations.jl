@@ -4,13 +4,9 @@ import Base.Iterators.flatten
 import Base.setindex
 
 if VERSION < v"0.7.0-DEV.843"
-    import Base: Val
-    (::Type{Val})(x) = (Base.@_pure_meta; Val{x}())
-    # Also add methods for Val(x) that were previously Val{x}
-    import Base: reshape
-    reshape(parent::AbstractArray, ndims::Val{N}) where {N} = reshape(parent, Val{N})
-    import Base: ntuple
-    ntuple(f::F, ::Val{N}) where {F,N} = ntuple(f, Val{N})
+    Base.@pure StaticLength(N) = Val{N}
+else
+    Base.@pure StaticLength(N) = Val{N}()
 end
 
 # 0.7.0-DEV.1993
