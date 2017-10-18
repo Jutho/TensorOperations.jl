@@ -105,7 +105,7 @@ Base.:+(s::Number, p::Power) = +(p,s)
 function Base.:+(p1::Power{D,T1}, p2::Poly{D,T2}) where {D,T1,T2}
     T=promote_type(T1,T2)
     coeffs=zeros(T,max(degree(p1),degree(p2))+1)
-    coeffs[(0:degree(p2))+1]=p2.coeffs
+    coeffs[1:(degree(p2)+1)]=p2.coeffs
     coeffs[p1.N+1]+=p1.coeff
     return Poly{D,T}(coeffs)
 end
@@ -113,7 +113,7 @@ Base.:+(p1::Poly{D},p2::Power{D}) where {D}=+(p2,p1)
 function Base.:+(p1::Poly{D,T1}, p2::Poly{D,T2}) where {D,T1,T2}
     T=promote_type(T1,T2)
     coeffs=zeros(T, max(degree(p1),degree(p2))+1)
-    coeffs[(0:degree(p1))+1] = p1.coeffs
+    coeffs[1:(degree(p1)+1)] = p1.coeffs
     for j=0:degree(p2)
         coeffs[j+1] += p2.coeffs[j+1]
     end
@@ -160,3 +160,4 @@ function Base.:<(p1::AbstractPoly{D}, p2::AbstractPoly{D}) where {D}
     end
     return false
 end
+Base.isless(p1::AbstractPoly{D}, p2::AbstractPoly{D}) where {D} = p1 < p2

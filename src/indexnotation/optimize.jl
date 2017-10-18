@@ -9,7 +9,7 @@ function optimaltree(network, optdata::Dict)
     for k = 1:numtensors
         tensorcosts[k] = prod(get(optdata, i, one(costtype)) for i in network[k])
     end
-    initialcost = min(maxcost, maximum(tensorcosts)^2 + zero(costtype)) # just some arbitrary guess
+    initialcost = min(maxcost, maximum(tensorcosts)*minimum(tensorcosts) + zero(costtype)) # just some arbitrary guess
 
     if numindices <= 32
         return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost)
@@ -96,15 +96,15 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
         for i in indn
             if tabletensor[i,1] == 0
                 tabletensor[i,1] = n
-                tableindex[i,1] = findfirst(network[n], allindices[i])
+                tableindex[i,1] = findfirst(equalto(allindices[i]), network[n])
             elseif tabletensor[i,2] == 0
                 tabletensor[i,2] = n
-                tableindex[i,2] = findfirst(network[n], allindices[i])
+                tableindex[i,2] = findfirst(equalto(allindices[i]), network[n])
                 n1 = tabletensor[i,1]
                 adjacencymatrix[n1,n] = true
                 adjacencymatrix[n,n1] = true
             else
-                error("no index should appear more than two times")
+                error("no index should appear more than two times: $i")
             end
         end
     end
