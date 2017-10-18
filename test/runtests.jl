@@ -11,3 +11,4 @@ using TensorOperations
 
 include("methods.jl")
 include("tensor.jl")
+include("tensoropt.jl")
