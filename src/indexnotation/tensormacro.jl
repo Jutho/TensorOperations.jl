@@ -70,11 +70,10 @@ function optdata(ex::Expr)
     cost = Power{:χ}(1,1)
     return Dict{Any, typeof(cost)}(i=>cost for i in allindices)
 end
+
 function optdata(optex::Expr, ex::Expr)
     if optex.head == :tuple
-
         isempty(optex.args) && return nothing
-
         args = optex.args
         if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
             indices = Vector{Any}(length(args))
@@ -110,6 +109,7 @@ function optdata(optex::Expr, ex::Expr)
          error("invalid index cost specification")
      end
  end
+
 function parsecost(ex::Expr)
     if ex.head == :call && ex.args[1] == :*
         return *(map(parsecost, ex.args[2:end])...)
@@ -128,146 +128,122 @@ end
 parsecost(ex::Number) = ex
 parsecost(ex::Symbol) = Power{ex}(1,1)
 
-
 isassignment(ex::Expr) = ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=)
-isdefinition(ex::Expr) = ex.head == :(:=) || (ex.head == :call && ex.args[1] == :(≝))
+function isdefinition(ex::Expr)
+    #TODO: remove when := is removed
+    # if ex.head == :(:=)
+    #     warn(":= will likely be deprecated as assignment operator in Julia, use ≔ (\\coloneq + TAB) or go to http://github.com/Jutho/TensorOperations.jl to suggest ASCII alternatives", once=true, key=:warnaboutcoloneq)
+    # end
+    return ex.head == :(:=) || (ex.head == :call && ex.args[1] == :(≔))
+end
 
 function getlhsrhs(ex::Expr)
     if ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=) || ex.head == :(:=)
         return ex.args[1], ex.args[2]
-    elseif ex.head == :call && ex.args[1] == :(≝)
+    elseif ex.head == :call && ex.args[1] == :(≔)
         return ex.args[2], ex.args[3]
     else
         error("invalid assignment or definition $ex")
     end
 end
 
-function tensorify(ex::Expr, optdata = nothing)
-    # assignment case
-    if isassignment(ex) || isdefinition(ex)
-        #TODO: remove when := is removed
-        # if ex.head == :(:=)
-        #     warn(":= will likely be deprecated as assignment operator in Julia, use ≝ (\\eqdef + TAB) or go to http://github.com/Jutho/TensorOperations.jl to suggest ASCII alternatives", once=true, key=:warnaboutcoloneq)
-        # end
-        lhs, rhs = getlhsrhs(ex)
-        # process left hand side
-        if isa(lhs, Expr) && lhs.head == :ref
-            dst = esc(lhs.args[1])
-            if length(lhs.args) == 2 && lhs.args[2] == :(:)
-                indices = getindices(rhs)
-                if all(isa(i, Integer) && i < 0 for i in indices)
-                    indices = makeindices!(sort(indices, rev=true))
-                else
-                    error("cannot automatically infer index order of left hand side")
-                end
-            else
-                indices = makeindices!(lhs.args[2:end])
-            end
-            src = ex.head == :(-=) ? tensorify(Expr(:call, :-, rhs), optdata) : tensorify(rhs, optdata)
-            if isassignment(ex)
-                value = ex.head == :(=) ? 0 : +1
-                return :(deindexify!($dst, $src, Indices{$(tuple(indices...))}(), $value))
-            else
-                return :($dst = deindexify($src, Indices{$(tuple(indices...))}() ))
-            end
-        elseif isdefinition(ex)
-            # if lhs is not an index expression, there is no difference between assignment and definition
-            ex = Expr(:(=), lhs, rhs)
-        end
-    end
-    # single tensor expression
-    if ex.head == :ref
-        indices = makeindices!(ex.args[2:end])
-        t = esc(ex.args[1])
-        return :(indexify($t, Indices{$(tuple(indices...))}() ))
-    end
-    # tensor contraction: structure contraction order
+function processcontractorder(ex::Expr, optdata)
+    ex = Expr(ex.head, map(e->processcontractorder(e, optdata), ex.args))
     if ex.head == :call && ex.args[1] == :* && length(ex.args) > 3
         network = [getindices(ex.args[k]) for k = 2:length(ex.args)]
+        args = ex.args[2:end]
         if optdata == nothing
             if isnconstyle(network)
                 tree = ncontree(network)
-                ex = tree2expr(ex.args[2:end], tree)
+                ex = tree2expr(args, tree)
+            else
+                ex = Expr(:call, Any[:*, args[1], args[2]])
+                for k = 3:length(args)
+                    ex = Expr(:call, Any[:*, ex, args[k]])
+                end
             end
         else
             tree, = optimaltree(network, optdata)
-            ex = tree2expr(ex.args[2:end], tree)
+            ex = tree2expr(args, tree)
         end
     end
-    # scalar
-    if ex.head == :call && ex.args[1] == :scalar
-        if length(ex.args) != 2
-            error("scalar accepts only a single argument")
-        end
-        src = tensorify(ex.args[2])
-        indices = :(Indices{()}())
-        return :(scalar(deindexify($src, $indices)))
-    end
-    return Expr(ex.head, map(tensorify, ex.args)...)
+    return ex
 end
-tensorify(ex::Symbol) = esc(ex)
-tensorify(ex) = ex
-
-# for any index expression, get the list of uncontracted indices from that expression
-function getindices(ex::Expr)
-    if ex.head == :ref
-        indices = makeindices!(ex.args[2:end])
-        return unique2(indices)
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
-        return getindices(ex.args[2]) # getindices on any of the args[2:end] should yield the same result
-    elseif ex.head == :call && ex.args[1] == :*
-        indices = getindices(ex.args[2])
-        for k = 3:length(ex.args)
-            append!(indices, getindices(ex.args[k]))
-        end
-        return unique2(indices)
-    elseif ex.head == :call && length(ex.args) == 2
-        return getindices(ex.args[2])
-    else
-        return Vector{Any}()
-    end
-end
-getindices(ex) = Vector{Any}()
-
-function getallindices(ex::Expr)
-    if ex.head == :ref
-        return makeindices!(ex.args[2:end])
-    elseif !isempty(ex.args)
-        return unique(mapreduce(getallindices, vcat, ex.args))
-    else
-        return Vector{Any}()
-    end
-end
-getallindices(ex) = Vector{Any}()
-
-# make the arguments of a :ref expression into a proper list of indices of type Int, Char or Symbol
-function makeindices!(list::Vector)
-    for i = 1:length(list)
-        if isa(list[i], Expr)
-            list[i] = makesymbol(list[i])
-        end
-        isa(list[i], Int) || isa(list[i], Symbol) || isa(list[i], Char) || error("cannot make index from $(list[i])")
-    end
-    return list
-end
-# make a symbol from an index that is itself an expression: currently only supports priming
-const prime = Symbol("'")
-function makesymbol(ex::Expr)
-    if ex.head == prime && length(ex.args) == 1
-        if isa(ex.args[1], Symbol) || isa(ex.args[1], Int)
-            return Symbol(ex.args[1], "′")
-        elseif isa(ex.args[1], Expr)
-            return Symbol(makesymbol(ex.args[1]), "′")
-        end
-    # could be extended with other functionality
-    end
-    error("cannot make index from $ex")
-end
+processcontractorder(ex, optdata) = ex
 
 function tree2expr(args, tree)
     if isa(tree, Int)
         return args[tree]
     else
         return Expr(:call, :*, tree2expr(args, tree[1]), tree2expr(args, tree[2]))
+    end
+end
+
+
+function tensorify(ex::Expr, optdata = nothing)
+    # assignment case
+    if isassignment(ex) || isdefinition(ex)
+        lhs, rhs = getlhsrhs(ex)
+        rhs = processcontractorder(rhs, optdata)
+        # process left hand side
+        if istensor(lhs) && istensorexpr(rhs)
+            indices = getindices(rhs)
+
+            if lhs.head = :ref && length(lhs.args) == 2 && lhs.args[2] = :(:)
+                if all(isa(i, Integer) && i < 0 for i in indices)
+                    lhs = Expr(:ref, Any[lhs.args[1], sort(indices, rev=true)...])
+                else
+                    error("cannot automatically infer index order of left hand side")
+                end
+            end
+
+            dst, leftind, rightind = maketensor(lhs)
+            if isassignment(ex)
+                if ex.head == :(=)
+                    return deindexify!(dst, 0, rhs, 1 leftind, rightind)
+                elseif ex.head == :(+=)
+                    return deindexify!(dst, 1, rhs, 1 leftind, rightind)
+                else
+                    return deindexify!(dst, 1, rhs, -1 leftind, rightind)
+                end
+            else
+                return Expr(:(=), dst, deindexify(rhs, leftind, rightind))
+            end
+        elseif isassignment(ex) && isscalar(lhs)
+            if istensorexpr(rhs) && isempty(getindices(rhs))
+                rhs = processcontractorder(rhs, optdata)
+                return Expr(ex.head, lhs, Expr(:call,[:scalar, deindexify(rhs, (), ())]))
+            else
+                return ex
+            end
+        else
+            return ex # likely an error
+        end
+    end
+
+    # constructions of the form: a = @tensor ...
+    if istensorexpr(ex) && isempty(getindices(ex))
+        ex = processcontractorder(ex, optdata)
+        return Expr(:call,[:scalar, deindexify(ex, (), ())])
+    end
+
+    # @tensor begin ... end
+    return Expr(ex.head, map(tensorify, ex.args, optdata)...)
+end
+
+function deindexify!(dst, β, ex::Expr, α, leftind, rightind, conj::Bool = false)
+    if istensor(ex)
+        src, srcleftind, srcrightind = maketensor(ex)
+        srcind = vcat(srcleftind, srcrightind)
+
+        p1 = (map(l->findfirst(equalto(l), srcind), leftind)...)
+        p2 = (map(l->findfirst(equalto(l), srcind), rightind)...)
+
+        conjarg = conj ? :(Val{:C}) : :(Val{:N})
+        return :(add!($α, $A, $conjarg, $β, $C, $p1, $p2))
+    elseif ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2
+        deindexify!(dst, β, ex.args[2], α, leftind, rightind, !conj)
+    elseif ex.head == :call && ex.args[1] == :*
+        
     end
 end
