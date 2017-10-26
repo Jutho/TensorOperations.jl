@@ -3,6 +3,7 @@
 # High-level implementation of tensor operations for StridedArray from Julia
 # Base Library. Checks dimensions and converts to StridedData before passing
 # to low-level (recursive) function.
+add!(α, A::StridedArray, CA::Type{<:Val}, β, C::StridedArray, p1::IndexTuple, p2::IndexTuple) = add!(α, A, CA, β, C, (p1...,p2...))
 
 """
     add!(α, A, conjA, β, C, indCinA)
@@ -38,6 +39,8 @@ function add!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCinA
     end
     return C
 end
+
+trace!(α, A::StridedArray, CA::Type{<:Val}, β, C::StridedArray, p1, p2, cindA1, cindA2) = trace!(α, A, CA, β, C, (p1..., p2...), cindA1, cindA2)
 
 """
     trace!(α, A, conjA, β, C, indCinA, cindA1, cindA2)
@@ -81,6 +84,9 @@ function trace!(α, A::StridedArray, ::Type{Val{CA}}, β, C::StridedArray, indCi
     return C
 end
 
+
+contract!(α, A::StridedArray, CA::Type{<:Val}, B::StridedArray, CB::Type{<:Val}, β, C::StridedArray, oindA, cindA, oindB, cindB, p1, p2, method::Type{<:Val} = Val{:BLAS}) =
+    contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, (p1..., p2...), method)
 """
     contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indCinoAB, [method])
 

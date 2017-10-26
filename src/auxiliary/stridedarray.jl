@@ -13,7 +13,7 @@ numind(A::AbstractArray) = ndims(A)
 numind(::Type{T}) where {T<:AbstractArray} = ndims(T)
 
 
-checkindices(A::StridedArray{<:Any, N}, IA::NTuple{N,Int}) where {N} = true
+checkindices(A::StridedArray{<:Any, N}, IA::IndexTuple{N}) where {N} = true
 
 """
     similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A, conjA=Val{:N}) where {T,N}
@@ -23,10 +23,12 @@ corresponding to a selection of those of `op(A)`, where the selection is specifi
 `indices` (which contains integer between `1` and `numind(A)`) and `op` is `conj` if
 `conjA=Val{:C}` or does nothing if `conjA=Val{:N}` (default).
 """
-@inline function similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A::StridedArray, ::Type{Val{CA}}=Val{:N}) where {T,N,CA}
+@inline function similar_from_indices(::Type{T}, indices::IndexTuple{N}, A::StridedArray, ::Type{Val{CA}}=Val{:N}) where {T,N,CA}
     srcdims = size(A)
     return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
 end
+
+similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A::StridedArray, CA::Type{<:Val}) = similar_from_indices(T, (p1...,p2...), A, CA)
 
 """
     similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A, B, conjA=Val{:N}, conjB={:N}) where {T,N}
@@ -41,6 +43,7 @@ function similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A::StridedArray
     srcdims = tuple(size(A)...,size(B)...)
     return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
 end
+similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A::StridedArray, B::StridedArray, CA::Type{<:Val}, CB::Type{<:Val}) = similar_from_indices(T, (p1...,p2...), A, B, CA, CB)
 
 """
     scalar(C)

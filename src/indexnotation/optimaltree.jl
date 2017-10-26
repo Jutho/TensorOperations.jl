@@ -7,7 +7,7 @@ function optimaltree(network, optdata::Dict)
     maxcost = prod(allcosts)*maximum(allcosts) + zero(costtype) # add zero for type stability: Power -> Poly
     tensorcosts = Vector{costtype}(numtensors)
     for k = 1:numtensors
-        tensorcosts[k] = prod(get(optdata, i, one(costtype)) for i in network[k])
+        tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), *, one(costtype), network[k])
     end
     initialcost = min(maxcost, maximum(tensorcosts)*minimum(tensorcosts) + zero(costtype)) # just some arbitrary guess
 
@@ -211,26 +211,27 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
         treelist[c] = treedict[componentsize][s]
         indexlist[c] = indexdict[componentsize][s]
     end
-    tree = treelist[1]
-    cost = costlist[1]
-    ind = indexlist[1]
+    p  = sortperm(costlist)
+
+    tree = treelist[p[1]]
+    cost = costlist[p[1]]
+    ind = indexlist[p[1]]
     for c = 2:numcomponent
-        tree = (tree, treelist[c])
-        cost = cost + costlist[c] + computecost(allcosts, ind, indexlist[c])
-        ind = _union(ind, indexlist[c])
+        tree = (tree, treelist[p[c]])
+        cost = cost + costlist[p[c]] + computecost(allcosts, ind, indexlist[p[c]])
+        ind = _union(ind, indexlist[p[c]])
     end
     return tree, cost
 end
 
+# For a given adjacency matrix of size n x n, connectedcomponents returns
+# a list componentlist that contains integer vectors, where every integer
+# vector groups the indices of the vertices of a connected component of the
+# graph encoded by A. The number of connected components is given by
+# length(componentlist).
+#
+# Used as auxiliary function to analyze contraction graph in contract.
 function connectedcomponents(A::AbstractMatrix{Bool})
-    # For a given adjacency matrix of size n x n, connectedcomponents returns
-    # a list componentlist that contains integer vectors, where every integer
-    # vector groups the indices of the vertices of a connected component of the
-    # graph encoded by A. The number of connected components is given by
-    # length(componentlist).
-    #
-    # Used as auxiliary function to analyze contraction graph in contract.
-
     n=size(A,1)
     assert(size(A,2)==n)
 

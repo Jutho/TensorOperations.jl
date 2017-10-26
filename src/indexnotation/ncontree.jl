@@ -8,14 +8,14 @@ function isnconstyle(network::Vector)
     while length(allindices) > 0
         i = pop!(allindices)
         if i > 0 # positive labels represent contractions or traces and should appear twice
-            k = findnext(allindices, i, 1)
-            l = findnext(allindices, i, k+1)
+            k = findfirst(equalto(i), allindices)
+            l = findnext(equalto(i), allindices)
             if k == 0 || l != 0
                 return false
             end
             deleteat!(allindices, k)
         elseif i < 0 # negative labels represent open indices and should appear once
-            findnext(allindices, i, 1) == 0 || return false
+            findfirst(equalto(i), allindices) == 0 || return false
         else # i == 0
             return false
         end
