@@ -1,3 +1,4 @@
+__precompile__(true)
 module TensorOperations
 
 import Base.Iterators.flatten
@@ -20,11 +21,32 @@ end
     export equalto
 end
 
+@static if !isdefined(Base, Symbol("@nospecialize"))
+    # 0.7
+    macro nospecialize(arg)
+        earg = esc(arg)
+        if isa(arg, Symbol)
+            return :($earg::ANY)
+        end
+        return earg
+    end
+    export @nospecialize
+end
+
+@static if !isdefined(Base, Symbol("BitSet"))
+    const BitSet = Base.IntSet
+else
+    const BitSet = Base.BitSet
+end
+
+
 
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
 
 export @tensor, @tensoropt, @optimalcontractiontree
+
+const IndexTuple{N} = NTuple{N,Int}
 
 # Auxiliary functions
 #---------------------
@@ -47,17 +69,18 @@ include("implementation/strides.jl")
 # Index notation
 #----------------
 include("indexnotation/tensormacro.jl")
-include("indexnotation/nconstyle.jl")
+include("indexnotation/tensorexpressions.jl")
+include("indexnotation/ncontree.jl")
+include("indexnotation/optimaltree.jl")
 include("indexnotation/poly.jl")
-include("indexnotation/optimize.jl")
-include("indexnotation/indexedobject.jl")
-include("indexnotation/sum.jl")
-include("indexnotation/product.jl")
 
 # Functions
 #----------
 include("functions/simple.jl")
 include("functions/inplace.jl")
 
-
+precompile(tensorify, (Expr,))
+precompile(optdata,(Expr,))
+precompile(optdata,(Expr,Expr))
+#
 end # module

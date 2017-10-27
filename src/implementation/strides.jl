@@ -2,7 +2,7 @@
 #
 # Implements the stride calculations of the various problems
 
-@generated function add_strides(dims::NTuple{N,Int}, stridesA::NTuple{N,Int}, stridesC::NTuple{N,Int}) where N
+@generated function add_strides(dims::IndexTuple{N}, stridesA::IndexTuple{N}, stridesC::IndexTuple{N}) where N
     minstridesex = Expr(:tuple,[:(min(stridesA[$d],stridesC[$d])) for d = 1:N]...)
     quote
         minstrides = $minstridesex
@@ -16,7 +16,7 @@
     end
 end
 
-@generated function trace_strides(dims::NTuple{NA,Int}, stridesA::NTuple{NA,Int}, stridesC::NTuple{NC,Int}) where {NA,NC}
+@generated function trace_strides(dims::IndexTuple{NA}, stridesA::IndexTuple{NA}, stridesC::IndexTuple{NC}) where {NA,NC}
     M = div(NA-NC,2)
     dimsex = Expr(:tuple,[:(dims[$d]) for d=1:(NC+M)]...)
     stridesAex = Expr(:tuple,[:(stridesA[$d]) for d = 1:NC]...,[:(stridesA[$(NC+d)]+stridesA[$(NC+M+d)]) for d = 1:M]...)
@@ -34,8 +34,8 @@ end
     end
 end
 
-@generated function contract_strides(dimsA::NTuple{NA, Int}, dimsB::NTuple{NB, Int},
-    stridesA::NTuple{NA, Int}, stridesB::NTuple{NB, Int}, stridesC::NTuple{NC, Int}) where {NA, NB, NC}
+@generated function contract_strides(dimsA::IndexTuple{NA}, dimsB::IndexTuple{NB},
+    stridesA::IndexTuple{NA}, stridesB::IndexTuple{NB}, stridesC::IndexTuple{NC}) where {NA, NB, NC}
     meta = Expr(:meta, :inline)
     cN = div(NA+NB-NC, 2)
     oNA = NA - cN

@@ -106,10 +106,10 @@ Cbig=zeros(Complex128,(50,50,50,50))
 C=view(Cbig,13 ⊞ (0:6),11 ⊞ 4*(0:9),15 ⊞ 4*(0:8),4 ⊞ 3*(0:6))
 Acopy=permutedims(copy(A), p)
 Ccopy=copy(C)
-alpha=randn()
-beta=randn()
-@tensor C[3,1,4,2] = beta*C[3,1,4,2] + alpha*A[1,2,3,4]
-Ccopy=beta*Ccopy+alpha*Acopy
+α=randn()
+β=randn()
+@tensor C[3,1,4,2] = β*C[3,1,4,2] + α*A[1,2,3,4]
+Ccopy=β*Ccopy+α*Acopy
 @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
 @test_throws TensorOperations.IndexError begin
     @tensor C[3,1,4,2] = 0.5*C[3,1,4,2] + 1.2*A[1,2,3]
@@ -127,23 +127,23 @@ Bbig=rand(Complex128,(50,50))
 B=view(Bbig,13 ⊞ (0:14),3 ⊞ 5*(0:6))
 Acopy=copy(A)
 Bcopy=copy(B)
-alpha=randn()
-@tensor B[b,c] += alpha*A[a,b,c,a]
+α=randn()
+@tensor B[b,c] += α*A[a,b,c,a]
 for i=1 ⊞ (0:8)
-    Bcopy+=alpha*view(A,i,:,:,i)
+    Bcopy+=α*view(A,i,:,:,i)
 end
 @test vecnorm(B-Bcopy)<eps()*vecnorm(B+Bcopy)*sqrt(length(B))
 @test_throws TensorOperations.IndexError begin
-    @tensor B[b,c] += alpha*A[a,b,c]
+    @tensor B[b,c] += α*A[a,b,c]
 end
 @test_throws DimensionMismatch begin
-    @tensor B[c,b] += alpha*A[a,b,c,a]
+    @tensor B[c,b] += α*A[a,b,c,a]
 end
 @test_throws TensorOperations.IndexError begin
-    @tensor B[c,b] += alpha*A[a,b,a,a]
+    @tensor B[c,b] += α*A[a,b,a,a]
 end
 @test_throws DimensionMismatch begin
-    @tensor B[c,b] += alpha*A[a,b,a,c]
+    @tensor B[c,b] += α*A[a,b,a,c]
 end
 
 Abig=rand((30,30,30,30))
@@ -155,13 +155,13 @@ C=view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
 Acopy=copy(A)
 Bcopy=copy(B)
 Ccopy=copy(C)
-alpha=randn()
+α=randn()
 for d=1 ⊞ (0:8),a=1 ⊞ (0:8),e=1 ⊞ (0:7)
     for b=1 ⊞ (0:14),c=1 ⊞ (0:6)
-        Ccopy[d,a,e] -=alpha*A[a,b,c,d]*conj(B[c,e,b])
+        Ccopy[d,a,e] -=α*A[a,b,c,d]*conj(B[c,e,b])
     end
 end
-@tensor C[d,a,e] -= alpha*A[a,b,c,d]*conj(B[c,e,b])
+@tensor C[d,a,e] -= α*A[a,b,c,d]*conj(B[c,e,b])
 @test vecnorm(C-Ccopy)<eps(Float32)*vecnorm(C+Ccopy)*sqrt(length(C))
 Cbig=rand(Complex64,(40,40,40))
 C=view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
@@ -169,22 +169,22 @@ Ccopy=copy(C)
 
 for d=1 ⊞ (0:8),a=1 ⊞ (0:8),e=1 ⊞ (0:7)
     for b=1 ⊞ (0:14),c=1 ⊞ (0:6)
-        Ccopy[d,a,e] += alpha*A[a,b,c,d]*conj(B[c,e,b])
+        Ccopy[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
     end
 end
-@tensor C[d,a,e] += alpha*A[a,b,c,d]*conj(B[c,e,b])
+@tensor C[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
 @test vecnorm(C-Ccopy)<eps(Float32)*vecnorm(C+Ccopy)*sqrt(length(C))
 @test_throws TensorOperations.IndexError begin
-    @tensor C[d,a,e] += alpha*A[a,b,c,a]*B[c,e,b]
+    @tensor C[d,a,e] += α*A[a,b,c,a]*B[c,e,b]
 end
 @test_throws TensorOperations.IndexError begin
-    @tensor C[d,a,e] += alpha*A[a,b,c,d]*B[c,b]
+    @tensor C[d,a,e] += α*A[a,b,c,d]*B[c,b]
 end
 @test_throws TensorOperations.IndexError begin
-    @tensor C[d,e] += alpha*A[a,b,c,d]*B[c,e,b]
+    @tensor C[d,e] += α*A[a,b,c,d]*B[c,e,b]
 end
 @test_throws DimensionMismatch begin
-    @tensor C[d,e,a] += alpha*A[a,b,c,d]*B[c,e,b]
+    @tensor C[d,e,a] += α*A[a,b,c,d]*B[c,e,b]
 end
 
 D=10;
