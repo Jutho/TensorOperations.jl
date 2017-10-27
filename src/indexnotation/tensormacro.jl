@@ -296,7 +296,7 @@ function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
             poA = ((1:length(oindA))...)
-            pcA = (((length(oindA)+1):(length(oindA)+length(indA)))...)
+            pcA = ((length(oindA)+1:length(indA))...)
         end
         if isgeneraltensor(ex.args[3])
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
@@ -310,7 +310,7 @@ function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
             pcB = ((1:length(cind))...)
-            poB = (((length(cind)+1):(length(cind)+length(oindB)))...)
+            poB = ((length(cind)+1:length(indB))...)
         end
         oindAB = vcat(oindA, oindB)
         p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
@@ -318,7 +318,7 @@ function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
-            !(isperm((p1...,p2...))) && length(oindAB) == length(p1)+length(p2)
+            !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
             err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...)) and $(tuple(indB...)))"
             return :(throw(IndexError($err)))
         end
@@ -392,7 +392,7 @@ function deindexify(ex::Expr, leftind, rightind)
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
             poA = ((1:length(oindA))...)
-            pcA = (((length(oindA)+1):(length(oindA)+length(indA)))...)
+            pcA = ((length(oindA)+1:length(indA))...)
         end
         if isgeneraltensor(ex.args[3]) && !hastraceindices(ex.args[3])
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
@@ -406,7 +406,7 @@ function deindexify(ex::Expr, leftind, rightind)
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
             pcB = ((1:length(cind))...)
-            poB = (((length(cind)+1):(length(cind)+length(oindB)))...)
+            poB = ((length(cind)+1:length(indB))...)
         end
         oindAB = vcat(oindA, oindB)
         p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
