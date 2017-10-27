@@ -1,6 +1,6 @@
 # TensorOperations.jl
 
-[![TensorOperations](http://pkg.julialang.org/badges/TensorOperations_0.5.svg)](http://pkg.julialang.org/?pkg=TensorOperations) [![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl) [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md) [![Coverage Status](https://coveralls.io/repos/github/Jutho/TensorOperations.jl/badge.svg?branch=master)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master) [![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
+[![TensorOperations](http://pkg.julialang.org/badges/TensorOperations_0.6.svg)](http://pkg.julialang.org/?pkg=TensorOperations) [![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl) [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md) [![Coverage Status](https://coveralls.io/repos/github/Jutho/TensorOperations.jl/badge.svg?branch=master)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master) [![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
 
 Fast tensor operations using a convenient index notation.
 
