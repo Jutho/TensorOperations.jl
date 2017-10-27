@@ -39,7 +39,7 @@ selection is specified by `indices` (which contains integers between `1` and
     `numind(A)+numind(B)` and `op` is `conj` if `conjA` or `conjB` equal `Val{:C}`
     or does nothing if `conjA` or `conjB` equal `Val{:N}` (default).
 """
-function similar_from_indices(::Type{T}, indices::NTuple{N,Int}, A::StridedArray, B::StridedArray, ::Type{Val{CA}}=Val{:N}, ::Type{Val{CB}}=Val{:N}) where {T,N,CA,CB}
+function similar_from_indices(::Type{T}, indices::IndexTuple{N}, A::StridedArray, B::StridedArray, ::Type{Val{CA}}=Val{:N}, ::Type{Val{CB}}=Val{:N}) where {T,N,CA,CB}
     srcdims = tuple(size(A)...,size(B)...)
     return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
 end

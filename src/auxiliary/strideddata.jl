@@ -17,11 +17,11 @@ import Base.StridedReshapedArray
 
 StridedSubArray{T,N,A<:Union{DenseArray{T},StridedReshapedArray{T}},I<:Tuple{Vararg{Union{Base.RangeIndex, Base.AbstractCartesianIndex}}}} =  SubArray{T,N,A,I}
 
-StridedData(a::Array{T}, strides::NTuple{N,Int} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
+StridedData(a::Array{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
     StridedData{N,T,C}(vec(a), strides, 1)
-StridedData(a::StridedReshapedArray{T}, strides::NTuple{N,Int} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
+StridedData(a::StridedReshapedArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
     StridedData{N,T,C}(vec(a.parent), strides, 1)
-StridedData(a::StridedSubArray{T}, strides::NTuple{N,Int} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
+StridedData(a::StridedSubArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
     StridedData{N,T,C}(vec(a.parent), strides, Base.first_index(a))
 
 Base.getindex(a::NormalStridedData, i) = a.data[i]
@@ -31,16 +31,16 @@ Base.setindex!(a::NormalStridedData, v, i) = (@inbounds a.data[i] = v)
 Base.setindex!(a::ConjugatedStridedData, v, i) = (@inbounds a.data[i] = conj(v))
 
 # set dimensions dims[d]==1 for all d where a.strides[d] == 0.
-@generated function _filterdims(dims::NTuple{N,Int}, a::StridedData{N}) where {N}
+@generated function _filterdims(dims::IndexTuple{N}, a::StridedData{N}) where {N}
     meta = Expr(:meta,:inline)
     ex = Expr(:tuple,[:(a.strides[$d]==0 ? 1 : dims[$d]) for d=1:N]...)
     Expr(:block,meta,ex)
 end
 
 # initial scaling of a block specified by dims
-_scale!(C::StridedData{N}, β::One, dims::NTuple{N,Int}, offset::Int=0) where {N} = C
+_scale!(C::StridedData{N}, β::One, dims::IndexTuple{N}, offset::Int=0) where {N} = C
 
-@generated function _scale!(C::StridedData{N}, β::Zero, dims::NTuple{N,Int}, offset::Int=0) where {N}
+@generated function _scale!(C::StridedData{N}, β::Zero, dims::IndexTuple{N}, offset::Int=0) where {N}
     meta = Expr(:meta,:inline)
     quote
         $meta
@@ -52,7 +52,7 @@ _scale!(C::StridedData{N}, β::One, dims::NTuple{N,Int}, offset::Int=0) where {N
     end
 end
 
-@generated function _scale!(C::StridedData{N}, β::Number, dims::NTuple{N,Int}, offset::Int=0) where {N}
+@generated function _scale!(C::StridedData{N}, β::Number, dims::IndexTuple{N}, offset::Int=0) where {N}
     meta = Expr(:meta,:inline)
     quote
         $meta

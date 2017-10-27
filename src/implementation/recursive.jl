@@ -7,7 +7,7 @@
 
 const BASELENGTH=2048
 
-function add_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int}) where N
+function add_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::IndexTuple{N}, offsetA::Int, offsetC::Int, minstrides::IndexTuple{N}) where N
     if 2*prod(dims) <= BASELENGTH
         add_micro!(α, A, β, C, dims, offsetA, offsetC)
     else
@@ -24,7 +24,7 @@ function add_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, 
     return C
 end
 
-function trace_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N, Int}, offsetA::Int, offsetC::Int, minstrides::NTuple{N, Int}) where N
+function trace_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::IndexTuple{N}, offsetA::Int, offsetC::Int, minstrides::IndexTuple{N}) where N
     if prod(dims) + prod(_filterdims(dims,C)) <= BASELENGTH
         trace_micro!(α, A, β, C, dims, offsetA, offsetC)
     else
@@ -46,7 +46,7 @@ function trace_rec!(α, A::StridedData{N}, β, C::StridedData{N}, dims::NTuple{N
 end
 
 function contract_rec!(α, A::StridedData{N}, B::StridedData{N}, β, C::StridedData{N},
-    dims::NTuple{N, Int}, offsetA::Int, offsetB::Int, offsetC::Int, minstrides::NTuple{N, Int}) where N
+    dims::IndexTuple{N}, offsetA::Int, offsetB::Int, offsetC::Int, minstrides::IndexTuple{N}) where N
 
     odimsA = _filterdims(_filterdims(dims, A), C)
     odimsB = _filterdims(_filterdims(dims, B), C)
