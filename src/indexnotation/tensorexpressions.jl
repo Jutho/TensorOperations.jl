@@ -70,6 +70,12 @@ function isgeneraltensor(ex)
     return false
 end
 
+function hastraceindices(ex)
+    obj,leftind, rightind, = makegeneraltensor(ex)
+    allind = vcat(leftind,rightind)
+    return length(allind) != length(unique(allind))
+end
+
 # test for a scalar expression, i.e. no indices
 function isscalarexpr(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
