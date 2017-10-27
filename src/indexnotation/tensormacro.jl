@@ -139,7 +139,7 @@ function optdata(optex::Expr, ex::Expr)
  end
 
 # functions for parsing and processing tensor expressions
-function tensorify(ex::Expr, optdata = nothing)
+function tensorify(ex::Expr, @nospecialize(optdata) = nothing)
     # assignment case
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhsrhs(ex)
@@ -179,7 +179,7 @@ function tensorify(ex::Expr, optdata = nothing)
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
                 rhs = processcontractorder(rhs, optdata)
-                return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(rhs, (), ())))
+                return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(rhs, [], [])))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, makescalar(lhs), makescalar(rhs))
             end
@@ -198,14 +198,14 @@ function tensorify(ex::Expr, optdata = nothing)
             return :(throw(IndexError($err)))
         end
         ex = processcontractorder(ex, optdata)
-        return Expr(:call, :scalar, deindexify(ex, (), ()))
+        return Expr(:call, :scalar, deindexify(ex, [], []))
     end
 
     # @tensor begin ... end
     return Expr(ex.head, map(x->tensorify(x, optdata), ex.args)...)
 end
-tensorify(ex::Symbol, optdata = nothing) = esc(ex)
-tensorify(ex, optdata = nothing) = ex
+tensorify(ex::Symbol, @nospecialize(optdata) = nothing) = esc(ex)
+tensorify(ex,  @nospecialize(optdata) = nothing) = ex
 
 function processcontractorder(ex::Expr, optdata)
     ex = Expr(ex.head, map(e->processcontractorder(e, optdata), ex.args)...)
@@ -240,7 +240,7 @@ function tree2expr(args, tree)
 end
 
 # deindexify!: parse tensor operations
-function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
+function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
     if isgeneraltensor(ex)
         src, srcleftind, srcrightind, α2, conj = makegeneraltensor(ex)
         srcind = vcat(srcleftind, srcrightind)
@@ -325,7 +325,7 @@ function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
         return :(contract!($α*$αA*$αB, $A, $conjA, $B, $conjB, $β, $dst, $poA, $pcA, $poB, $pcB, $p1, $p2))
     end
 end
-function deindexify(ex::Expr, leftind, rightind)
+function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
     if isgeneraltensor(ex)
         src, srcleftind, srcrightind, α, conj = makegeneraltensor(ex)
         srcind = vcat(srcleftind, srcrightind)

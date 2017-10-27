@@ -22,7 +22,7 @@ function optimaltree(network, optdata::Dict)
     end
 end
 
-storeset(::Type{IntSet}, ints, maxint) = sizehint!(IntSet(ints), maxint)
+storeset(::Type{BitSet}, ints, maxint) = sizehint!(BitSet(ints), maxint)
 function storeset(::Type{BitVector}, ints, maxint)
     set = falses(maxint)
     set[ints] = true
@@ -38,16 +38,16 @@ function storeset(::Type{T}, ints, maxint) where {T<:Unsigned}
 end
 _intersect(s1::T, s2::T) where {T<:Unsigned} = s1 & s2
 _intersect(s1::BitVector, s2::BitVector) = s1 .& s2
-_intersect(s1::IntSet, s2::IntSet) = intersect(s1, s2)
+_intersect(s1::BitSet, s2::BitSet) = intersect(s1, s2)
 _union(s1::T, s2::T) where {T<:Unsigned} = s1 | s2
 _union(s1::BitVector, s2::BitVector) = s1 .| s2
-_union(s1::IntSet, s2::IntSet) = union(s1, s2)
+_union(s1::BitSet, s2::BitSet) = union(s1, s2)
 _setdiff(s1::T, s2::T) where {T<:Unsigned} = s1 & (~s2)
 _setdiff(s1::BitVector, s2::BitVector) = s1 .& (.~s2)
-_setdiff(s1::IntSet, s2::IntSet) = setdiff(s1, s2)
+_setdiff(s1::BitSet, s2::BitSet) = setdiff(s1, s2)
 _isemptyset(s::Unsigned) = iszero(s)
 _isemptyset(s::BitVector) = !any(s)
-_isemptyset(s::IntSet) = isempty(s)
+_isemptyset(s::BitSet) = isempty(s)
 
 function computecost(allcosts, ind1::T, ind2::T) where {T<:Unsigned}
     cost = one(eltype(allcosts))
@@ -70,7 +70,7 @@ function computecost(allcosts, ind1::BitVector, ind2::BitVector)
     end
     return cost
 end
-function computecost(allcosts, ind1::IntSet, ind2::IntSet)
+function computecost(allcosts, ind1::BitSet, ind2::BitSet)
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
     for n in ind

@@ -161,7 +161,7 @@ end
 function makescalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(deindexify(ex.args[2],(),()))))
+        return :(scalar($(deindexify(ex.args[2],[],[]))))
     else
         return Expr(ex.head, map(makescalar, ex.args)...)
     end
