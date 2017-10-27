@@ -296,7 +296,7 @@ function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
             poA = ((1:length(oindA))...)
-            pcA = ((length(oindA)+1:length(indA))...)
+            pcA = (((length(oindA)+1):(length(oindA)+length(indA)))...)
         end
         if isgeneraltensor(ex.args[3])
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
@@ -310,7 +310,7 @@ function deindexify!(dst, β, ex::Expr, α, leftind, rightind)
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
             pcB = ((1:length(cind))...)
-            poB = ((length(cind)+1:length(cindB))...)
+            poB = (((length(cind)+1):(length(cind)+length(oindB)))...)
         end
         oindAB = vcat(oindA, oindB)
         p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
@@ -342,10 +342,12 @@ function deindexify(ex::Expr, leftind, rightind)
                 err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
                 return :(throw(IndexError($err)))
             end
+            αsym = gensym()
+            dstsym = gensym()
             return :(begin
-                α = $α
-                dst = similar_from_indices(promote_type(eltype($src),typeof(α)), $p1, $p2, $src, $conjarg)
-                trace!(α, $src, $conjarg, 0, dst, $p1, $p2, $q1, $q2)
+                $αsym = $α
+                $dstsym = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                trace!($αsym, $src, $conjarg, 0, $dstsym, $p1, $p2, $q1, $q2)
             end)
         else
             if !isperm((p1...,p2...)) ||
@@ -353,10 +355,12 @@ function deindexify(ex::Expr, leftind, rightind)
                 err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
                 return :(throw(IndexError($err)))
             end
+            αsym = gensym()
+            dstsym = gensym()
             return :(begin
-                α = $α
-                dst = similar_from_indices(promote_type(eltype($src),typeof(α)), $p1, $p2, $src, $conjarg)
-                add!(α, $src, $conjarg, 0, dst, $p1, $p2)
+                $αsym = $α
+                $dstsym = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                add!($αsym, $src, $conjarg, 0, $dstsym, $p1, $p2)
             end)
         end
     elseif ex.head == :call && ex.args[1] == :+ # addition: add one by one
@@ -388,7 +392,7 @@ function deindexify(ex::Expr, leftind, rightind)
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
             poA = ((1:length(oindA))...)
-            pcA = ((length(oindA)+1:length(indA))...)
+            pcA = (((length(oindA)+1):(length(oindA)+length(indA)))...)
         end
         if isgeneraltensor(ex.args[3]) && !hastraceindices(ex.args[3])
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
@@ -402,7 +406,7 @@ function deindexify(ex::Expr, leftind, rightind)
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
             pcB = ((1:length(cind))...)
-            poB = ((length(cind)+1:length(cindB))...)
+            poB = (((length(cind)+1):(length(cind)+length(oindB)))...)
         end
         oindAB = vcat(oindA, oindB)
         p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
@@ -413,16 +417,20 @@ function deindexify(ex::Expr, leftind, rightind)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
-            !(isperm((p1...,p2...))) && length(oindAB) == length(p1)+length(p2)
+            !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
             err = "contract: $(tuple(leftind..., rightind...)) from $(tuple(indA...)) and $(tuple(indB...)))"
             return :(throw(IndexError($err)))
         end
+        Asym = gensym()
+        Bsym = gensym()
+        αsym = gensym()
+        dstsym = gensym()
         return :(begin
-            A = $A
-            B = $B
-            α = $αA * $αB
-            dst = similar_from_indices(promote_type(eltype(A), eltype(B), typeof(α)), $q1, $q2, A, B, $conjA, $conjB)
-            contract!(α, A, $conjA, B, $conjB, 0, dst, $poA, $pcA, $poB, $pcB, $p1, $p2)
+            $Asym = $A
+            $Bsym = $B
+            $αsym = $αA * $αB
+            $dstsym = similar_from_indices(promote_type(eltype($Asym), eltype($Bsym), typeof($αsym)), $q1, $q2, $Asym, $Bsym, $conjA, $conjB)
+            contract!($αsym, $Asym, $conjA, $Bsym, $conjB, 0, $dstsym, $poA, $pcA, $poB, $pcB, $p1, $p2)
         end)
     end
     throw(ArgumentError())
