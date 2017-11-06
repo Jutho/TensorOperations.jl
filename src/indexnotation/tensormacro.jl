@@ -411,9 +411,6 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
         oindAB = vcat(oindA, oindB)
         p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
         p2 = (map(l->findfirst(equalto(l), oindAB), rightind)...)
-        indAB = vcat(indA, indB)
-        q1 = (map(l->findfirst(equalto(l), indAB), leftind)...)
-        q2 = (map(l->findfirst(equalto(l), indAB), rightind)...)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
@@ -429,7 +426,7 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             $Asym = $A
             $Bsym = $B
             $αsym = $αA * $αB
-            $dstsym = similar_from_indices(promote_type(eltype($Asym), eltype($Bsym), typeof($αsym)), $q1, $q2, $Asym, $Bsym, $conjA, $conjB)
+            $dstsym = similar_from_indices(promote_type(eltype($Asym), eltype($Bsym), typeof($αsym)), $poA, $poB, $p1, $p2, $Asym, $Bsym, $conjA, $conjB)
             contract!($αsym, $Asym, $conjA, $Bsym, $conjB, 0, $dstsym, $poA, $pcA, $poB, $pcB, $p1, $p2)
         end)
     end

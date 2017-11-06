@@ -35,16 +35,18 @@ end
 
 # test for a simple tensor object indexed by valid indices
 function istensor(ex)
-    if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_vcat)
+    if isa(ex, Expr) && ex.head == :ref
         # check object
+        if isa(ex.args[1], Expr) && ex.head == :ref
+            if all(isindex, ex.args[2:end])
+                ex = ex.args[1]
+            else
+                return false
+            end
+        end
         if isa(ex.args[1], Symbol) ||
             (isa(ex.args[1], Expr) && ex.args[1].head == prime) # currently we only support adjoint on tensor objects
-            #check indices
-            if length(ex.args) >= 2 && isa(ex.args[2], Expr) && ex.args[2].head == :parameters
-                return all(isindex, ex.args[2].args) && all(isindex, ex.args[3:end])
-            else
-                return all(isindex, ex.args[2:end])
-            end
+            return all(isindex, ex.args[2:end])
         end
     end
     return false
@@ -114,18 +116,20 @@ end
 
 # extract the tensor object itself, as well as its left and right indices
 function maketensor(ex)
-    if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_vcat)
+    if isa(ex, Expr) && ex.head == :ref
+        if isa(ex.args[1], Expr) && ex.head == :ref
+            rightind = map(makeindex, ex.args[2:end])
+            ex = ex.args[1]
+        else
+            rightind = Any[]
+        end
         # check object
         if isa(ex.args[1], Symbol) ||
             (isa(ex.args[1], Expr) && ex.args[1].head == prime) # currently we only support adjoint
             #check indices
             object = esc(ex.args[1])
-            if length(ex.args) >= 2 && isa(ex.args[2], Expr) && ex.args[2].head == :parameters
-                leftind = map(makeindex, ex.args[3:end])
-                rightind = map(makeindex, ex.args[2].args)
-            else
+            if ex.head == :ref
                 leftind = map(makeindex, ex.args[2:end])
-                rightind = Any[]
             end
             return (object, leftind, rightind)
         end

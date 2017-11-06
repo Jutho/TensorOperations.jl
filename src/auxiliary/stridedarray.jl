@@ -23,9 +23,8 @@ corresponding to a selection of those of `op(A)`, where the selection is specifi
 `indices` (which contains integer between `1` and `numind(A)`) and `op` is `conj` if
 `conjA=Val{:C}` or does nothing if `conjA=Val{:N}` (default).
 """
-@inline function similar_from_indices(::Type{T}, indices::IndexTuple{N}, A::StridedArray, ::Type{Val{CA}}=Val{:N}) where {T,N,CA}
-    srcdims = size(A)
-    return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
+function similar_from_indices(T::Type, indices::IndexTuple, A::StridedArray, ::Type{<:Val}=Val{:N})
+    return similar(A, T, map(n->size(A,n), indices))
 end
 
 similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A::StridedArray, CA::Type{<:Val}) = similar_from_indices(T, (p1...,p2...), A, CA)
@@ -39,11 +38,13 @@ selection is specified by `indices` (which contains integers between `1` and
     `numind(A)+numind(B)` and `op` is `conj` if `conjA` or `conjB` equal `Val{:C}`
     or does nothing if `conjA` or `conjB` equal `Val{:N}` (default).
 """
-function similar_from_indices(::Type{T}, indices::IndexTuple{N}, A::StridedArray, B::StridedArray, ::Type{Val{CA}}=Val{:N}, ::Type{Val{CB}}=Val{:N}) where {T,N,CA,CB}
-    srcdims = tuple(size(A)...,size(B)...)
-    return similar(A, T, ntuple(n->srcdims[indices[n]], StaticLength(N)))
+function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple, p1::IndexTuple, p2::IndexTuple, A::StridedArray, B::StridedArray, CA::Type{<:Val}, CB::Type{<:Val})
+    odimsA = map(n->size(A,n), poA)
+    odimsB = map(n->size(B,n), poB)
+    odimsAB = (odimsA...,odimsB...)
+    dimsC = map(n->odimsAB[n], (p1...,p2...))
+    return similar(A, T, dimsC)
 end
-similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A::StridedArray, B::StridedArray, CA::Type{<:Val}, CB::Type{<:Val}) = similar_from_indices(T, (p1...,p2...), A, B, CA, CB)
 
 """
     scalar(C)
