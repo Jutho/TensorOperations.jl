@@ -188,6 +188,9 @@ function tensorify(ex::Expr, @nospecialize(optdata) = nothing)
         end
     end
 
+    if ex.head == :block
+        return Expr(ex.head, map(x->tensorify(x, optdata), ex.args)...)
+    end
     # constructions of the form: a = @tensor ...
     if isscalarexpr(ex)
         return makescalar(ex)
@@ -200,9 +203,7 @@ function tensorify(ex::Expr, @nospecialize(optdata) = nothing)
         ex = processcontractorder(ex, optdata)
         return Expr(:call, :scalar, deindexify(ex, [], []))
     end
-
-    # @tensor begin ... end
-    return Expr(ex.head, map(x->tensorify(x, optdata), ex.args)...)
+    error("invalid syntax in @tensor macro: $ex")
 end
 tensorify(ex::Symbol, @nospecialize(optdata) = nothing) = esc(ex)
 tensorify(ex,  @nospecialize(optdata) = nothing) = ex

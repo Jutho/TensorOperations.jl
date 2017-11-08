@@ -9,7 +9,7 @@ function isnconstyle(network::Vector)
         i = pop!(allindices)
         if i > 0 # positive labels represent contractions or traces and should appear twice
             k = findfirst(equalto(i), allindices)
-            l = findnext(equalto(i), allindices)
+            l = findnext(equalto(i), allindices, k+1)
             if k == 0 || l != 0
                 return false
             end
