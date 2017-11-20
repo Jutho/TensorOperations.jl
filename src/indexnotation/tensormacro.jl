@@ -373,6 +373,7 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
     elseif ex.head == :call && ex.args[1] == :- && length(ex.args) == 3 # subtraction: similar
         dst = deindexify(ex.args[2], leftind, rightind)
         deindexify!(dst, 1, ex.args[3], -1, leftind, rightind)
+        return dst
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         @assert istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
         indA = getindices(ex.args[2])
@@ -431,5 +432,5 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             contract!($αsym, $Asym, $conjA, $Bsym, $conjB, 0, $dstsym, $poA, $pcA, $poB, $pcB, $p1, $p2)
         end)
     end
-    throw(ArgumentError())
+    throw(ArgumentError("problem with parsing $ex"))
 end
