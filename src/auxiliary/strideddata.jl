@@ -17,12 +17,12 @@ import Base.StridedReshapedArray
 
 StridedSubArray{T,N,A<:Union{DenseArray{T},StridedReshapedArray{T}},I<:Tuple{Vararg{Union{Base.RangeIndex, Base.AbstractCartesianIndex}}}} =  SubArray{T,N,A,I}
 
-StridedData(a::Array{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
-    StridedData{N,T,C}(vec(a), strides, 1)
-StridedData(a::StridedReshapedArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
-    StridedData{N,T,C}(vec(a.parent), strides, 1)
-StridedData(a::StridedSubArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}) where {N,T,C} =
-    StridedData{N,T,C}(vec(a.parent), strides, Base.first_index(a))
+StridedData(a::Array{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}; offset::Int = 0) where {N,T,C} =
+    StridedData{N,T,C}(vec(a), strides, 1+offset)
+StridedData(a::StridedReshapedArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}; offset::Int = 0) where {N,T,C} =
+    StridedData(a.parent, strides, Val{C}; offset = offset)
+StridedData(a::StridedSubArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}; offset::Int = 0) where {N,T,C} =
+    StridedData(a.parent, strides, Val{C}; offset = offset+Base.first_index(a)-1)
 
 Base.getindex(a::NormalStridedData, i) = a.data[i]
 Base.getindex(a::ConjugatedStridedData, i) = conj(a.data[i])

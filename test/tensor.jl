@@ -195,3 +195,9 @@ C=randn(D,D,D,D);
 @test_throws TensorOperations.IndexError begin
     @tensor C[a,b,c,d] = conj(A[c,a])*B[c,b]
 end
+
+A=reshape(collect(96.0:99.0),2,1,2)
+B=collect(1.0:20.0)
+C=view(reshape(view(reshape(view(B,2:17),2,2,4),:,:,2:3),2,1,4),:,:,1:2)
+@tensor C[a,b,c] = A[a,b,c]
+@test B == vcat(1.0:5.0,96.0:99.0,10.0:20.0)
