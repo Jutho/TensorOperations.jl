@@ -1,4 +1,4 @@
-function optimaltree(network, optdata::Dict)
+function optimaltree(network, optdata::Dict; verbose::Bool = false)
     numtensors = length(network)
     allindices = unique(flatten(network))
     numindices = length(allindices)
@@ -12,13 +12,13 @@ function optimaltree(network, optdata::Dict)
     initialcost = min(maxcost, maximum(tensorcosts)*minimum(tensorcosts) + zero(costtype)) # just some arbitrary guess
 
     if numindices <= 32
-        return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost)
+        return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     elseif numindices <= 64
-        return _optimaltree(UInt64, network, allindices, allcosts, initialcost, maxcost)
+        return _optimaltree(UInt64, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     elseif numindices <= 128
-        return _optimaltree(UInt128, network, allindices, allcosts, initialcost, maxcost)
+        return _optimaltree(UInt128, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     else
-        return _optimaltree(BitVector, network, allindices, allcosts, initialcost, maxcost)
+        return _optimaltree(BitVector, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     end
 end
 
@@ -79,7 +79,7 @@ function computecost(allcosts, ind1::BitSet, ind2::BitSet)
     return cost
 end
 
-function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C, maxcost::C) where {T,S,C}
+function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C, maxcost::C; verbose::Bool = false) where {T,S,C}
     numindices = length(allindices)
     numtensors = length(network)
     indexsets = Array{T}(numtensors)
@@ -145,6 +145,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
             nextcost = maxcost
             # construct all subsets of n tensors that can be constructed with cost <= currentcost
             for n=2:componentsize
+                verbose && println("Constructing subsets of size $n with cost $currentcost")
                 # construct subsets by combining two smaller subsets
                 for k = 1:div(n-1,2)
                     for s1 in keys(costdict[k]), s2 in keys(costdict[n-k])
@@ -197,6 +198,8 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                     end
                 end
             end
+            currentbiggestset = findlast(x->!isempty(x),costdict)
+            verbose && println("Finished at cost $currentcost: maximum subset has size $currentbiggestset")
             if !isempty(costdict[componentsize])
                 break
             end

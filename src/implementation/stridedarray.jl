@@ -136,7 +136,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     if CA == :C
         conjA = 'C'
         pA = (cindA..., oindA...)
-        if isa(A, Array{TC}) && pA == (1:NA...)
+        if isa(A, Array{TC}) && pA == (1:NA...,)
             Amat = reshape(A, (clength, olengthA))
         else
             Apermuted = Array{TC}((cdims..., odimsA...))
@@ -147,9 +147,9 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     else
         conjA = 'N'
         pA = (oindA..., cindA...)
-        if isa(A, Array{TC}) && pA == (1:NA...)
+        if isa(A, Array{TC}) && pA == (1:NA...,)
             Amat = reshape(A, (olengthA, clength))
-        elseif isa(A, Array{TC}) && (cindA..., oindA...) == (1:NA...)
+        elseif isa(A, Array{TC}) && (cindA..., oindA...) == (1:NA...,)
             conjA = 'T'
             Amat = reshape(A, (clength, olengthA))
         else
@@ -164,7 +164,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     if CB == :C
         conjB = 'C'
         pB = (oindB..., cindB...)
-        if isa(B, Array{TC}) && pB == (1:NB...)
+        if isa(B, Array{TC}) && pB == (1:NB...,)
             Bmat = reshape(B, (olengthB, clength))
         else
             Bpermuted = Array{TC}((odimsB..., cdims...))
@@ -175,9 +175,9 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     else
         conjB = 'N'
         pB = (cindB..., oindB...)
-        if  isa(B, Array{TC}) && pB == (1:NB...)
+        if  isa(B, Array{TC}) && pB == (1:NB...,)
             Bmat = reshape(B, (clength, olengthB))
-        elseif isa(B, Array{TC}) && (oindB..., cindB...) == (1:NB...)
+        elseif isa(B, Array{TC}) && (oindB..., cindB...) == (1:NB...,)
             conjB = 'T'
             Bmat = reshape(B, (olengthB, clength))
         else
@@ -189,7 +189,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
     end
 
     # calculate C
-    if isa(C, Array) && indCinoAB == (1:NC...)
+    if isa(C, Array) && indCinoAB == (1:NC...,)
         Cmat = reshape(C, (olengthA, olengthB))
         BLAS.gemm!(conjA, conjB, TC(α), Amat, Bmat, TC(β), Cmat)
     else

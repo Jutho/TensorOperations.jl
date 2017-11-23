@@ -247,13 +247,13 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
         srcind = vcat(srcleftind, srcrightind)
         conjarg = conj ? :(Val{:C}) : :(Val{:N})
 
-        p1 = (map(l->findfirst(equalto(l), srcind), leftind)...)
-        p2 = (map(l->findfirst(equalto(l), srcind), rightind)...)
+        p1 = (map(l->findfirst(equalto(l), srcind), leftind)...,)
+        p2 = (map(l->findfirst(equalto(l), srcind), rightind)...,)
 
         if hastraceindices(ex)
             traceind = unique(setdiff(setdiff(srcind,leftind), rightind))
-            q1 = (map(l->findfirst(equalto(l), srcind), traceind)...)
-            q2 = (map(l->findlast(equalto(l), srcind), traceind)...)
+            q1 = (map(l->findfirst(equalto(l), srcind), traceind)...,)
+            q2 = (map(l->findlast(equalto(l), srcind), traceind)...,)
             if !isperm((p1...,p2...,q1...,q2...)) ||
                 length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
                 err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
@@ -289,38 +289,38 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
             A, indAl, indAr, αA, conj = makegeneraltensor(ex.args[2])
             conjA = conj ? :(Val{:C}) : :(Val{:N})
             indA = vcat(indAl, indAr)
-            poA = (map(l->findfirst(equalto(l), indA), oindA)...)
-            pcA = (map(l->findfirst(equalto(l), indA), cind)...)
+            poA = (map(l->findfirst(equalto(l), indA), oindA)...,)
+            pcA = (map(l->findfirst(equalto(l), indA), cind)...,)
         else
             A = deindexify(ex.args[2], oindA, cind)
             αA = 1
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
-            poA = ((1:length(oindA))...)
-            pcA = ((length(oindA)+1:length(indA))...)
+            poA = ((1:length(oindA))...,)
+            pcA = ((length(oindA)+1:length(indA))...,)
         end
         if isgeneraltensor(ex.args[3])
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
             conjB = conj ? :(Val{:C}) : :(Val{:N})
             indB = vcat(indBl, indBr)
-            poB = (map(l->findfirst(equalto(l), indB), oindB)...)
-            pcB = (map(l->findfirst(equalto(l), indB), cind)...)
+            poB = (map(l->findfirst(equalto(l), indB), oindB)...,)
+            pcB = (map(l->findfirst(equalto(l), indB), cind)...,)
         else
             B = deindexify(ex.args[3], cind, oindB)
             αB = 1
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
-            pcB = ((1:length(cind))...)
-            poB = ((length(cind)+1:length(indB))...)
+            pcB = ((1:length(cind))...,)
+            poB = ((length(cind)+1:length(indB))...,)
         end
         oindAB = vcat(oindA, oindB)
-        p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
-        p2 = (map(l->findfirst(equalto(l), oindAB), rightind)...)
+        p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...,)
+        p2 = (map(l->findfirst(equalto(l), oindAB), rightind)...,)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
             !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
-            err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...)) and $(tuple(indB...)))"
+            err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
             return :(throw(IndexError($err)))
         end
         return :(contract!($α*$αA*$αB, $A, $conjA, $B, $conjB, $β, $dst, $poA, $pcA, $poB, $pcB, $p1, $p2))
@@ -332,12 +332,12 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
         srcind = vcat(srcleftind, srcrightind)
         conjarg = conj ? :(Val{:C}) : :(Val{:N})
 
-        p1 = (map(l->findfirst(equalto(l), srcind), leftind)...)
-        p2 = (map(l->findfirst(equalto(l), srcind), rightind)...)
+        p1 = (map(l->findfirst(equalto(l), srcind), leftind)...,)
+        p2 = (map(l->findfirst(equalto(l), srcind), rightind)...,)
         if hastraceindices(ex)
             traceind = unique(setdiff(setdiff(srcind,leftind),rightind))
-            q1 = (map(l->findfirst(equalto(l), srcind), traceind)...)
-            q2 = (map(l->findlast(equalto(l), srcind), traceind)...)
+            q1 = (map(l->findfirst(equalto(l), srcind), traceind)...,)
+            q2 = (map(l->findlast(equalto(l), srcind), traceind)...,)
             if !isperm((p1...,p2...,q1...,q2...)) ||
                 length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
                 err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
@@ -386,38 +386,38 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             A, indAl, indAr, αA, conj = makegeneraltensor(ex.args[2])
             conjA = conj ? :(Val{:C}) : :(Val{:N})
             indA = vcat(indAl, indAr)
-            poA = (map(l->findfirst(equalto(l), indA), oindA)...)
-            pcA = (map(l->findfirst(equalto(l), indA), cind)...)
+            poA = (map(l->findfirst(equalto(l), indA), oindA)...,)
+            pcA = (map(l->findfirst(equalto(l), indA), cind)...,)
         else
             A = deindexify(ex.args[2], oindA, cind)
             αA = 1
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
-            poA = ((1:length(oindA))...)
-            pcA = ((length(oindA)+1:length(indA))...)
+            poA = ((1:length(oindA))...,)
+            pcA = ((length(oindA)+1:length(indA))...,)
         end
         if isgeneraltensor(ex.args[3]) && !hastraceindices(ex.args[3])
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
             conjB = conj ? :(Val{:C}) : :(Val{:N})
             indB = vcat(indBl, indBr)
-            poB = (map(l->findfirst(equalto(l), indB), oindB)...)
-            pcB = (map(l->findfirst(equalto(l), indB), cind)...)
+            poB = (map(l->findfirst(equalto(l), indB), oindB)...,)
+            pcB = (map(l->findfirst(equalto(l), indB), cind)...,)
         else
             B = deindexify(ex.args[3], cind, oindB)
             αB = 1
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
-            pcB = ((1:length(cind))...)
-            poB = ((length(cind)+1:length(indB))...)
+            pcB = ((1:length(cind))...,)
+            poB = ((length(cind)+1:length(indB))...,)
         end
         oindAB = vcat(oindA, oindB)
-        p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...)
-        p2 = (map(l->findfirst(equalto(l), oindAB), rightind)...)
+        p1 = (map(l->findfirst(equalto(l), oindAB), leftind)...,)
+        p2 = (map(l->findfirst(equalto(l), oindAB), rightind)...,)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
             !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
-            err = "contract: $(tuple(leftind..., rightind...)) from $(tuple(indA...)) and $(tuple(indB...)))"
+            err = "contract: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
             return :(throw(IndexError($err)))
         end
         Asym = gensym()

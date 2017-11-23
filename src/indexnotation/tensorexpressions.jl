@@ -35,16 +35,21 @@ end
 
 # test for a simple tensor object indexed by valid indices
 function istensor(ex)
-    if isa(ex, Expr) && ex.head == :ref
-        # check object
-        if isa(ex.args[1], Expr) && ex.args[1].head == :ref
-            if all(isindex, ex.args[2:end])
-                ex = ex.args[1]
-            else
-                return false
-            end
-        end
+    if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_hcat)
         return all(isindex, ex.args[2:end])
+    elseif isa(ex, Expr) && ex.head == :typed_vcat
+        length(ex.args) == 3 || return false
+        if isa(ex.args[2], Expr) && ex.args[2].head == :row
+            all(isindex, ex.args[2].args) || return false
+        else
+            isindex(ex.args[2]) || return false
+        end
+        if isa(ex.args[3], Expr) && ex.args[3].head == :row
+            all(isindex, ex.args[3].args) || return false
+        else
+            isindex(ex.args[3]) || return false
+        end
+        return true
     end
     return false
 end
@@ -113,15 +118,28 @@ end
 
 # extract the tensor object itself, as well as its left and right indices
 function maketensor(ex)
-    if isa(ex, Expr) && ex.head == :ref
-        if isa(ex.args[1], Expr) && ex.args[1].head == :ref
-            rightind = map(makeindex, ex.args[2:end])
-            ex = ex.args[1]
-        else
-            rightind = Any[]
-        end
+    if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_hcat)
         object = esc(ex.args[1])
         leftind = map(makeindex, ex.args[2:end])
+        rightind = Any[]
+        return (object, leftind, rightind)
+    elseif isa(ex, Expr) && ex.head == :typed_vcat
+        length(ex.args) == 3 || throw(ArgumentError())
+        object = esc(ex.args[1])
+        if isa(ex.args[2], Expr) && ex.args[2].head == :row
+            leftind = map(makeindex, ex.args[2].args)
+        elseif ex.args == :_
+            leftind = Any[]
+        else
+            leftind = Any[makeindex(ex.args[2])]
+        end
+        if isa(ex.args[3], Expr) && ex.args[3].head == :row
+            rightind = map(makeindex, ex.args[3].args)
+        elseif ex.args == :_
+            rightind = Any[]
+        else
+            rightind = Any[makeindex(ex.args[3])]
+        end
         return (object, leftind, rightind)
     end
     throw(ArgumentError())
@@ -165,14 +183,9 @@ makescalar(ex) = ex
 
 # for any tensor expression, get the list of uncontracted indices that would remain after evaluating that expression
 function getindices(ex::Expr)
-    if ex.head == :ref || ex.head == :typed_vcat
-        if length(ex.args) >= 2 && isa(ex.args[2], Expr) && ex.args[2].head == :parameter
-            leftind = map(makeindex, ex.args[3:end])
-            rightind = map(makeindex, ex.args[2].args)
-            return unique2(vcat(leftind, rightind))
-        else
-            return unique2(map(makeindex, ex.args[2:end]))
-        end
+    if istensor(ex)
+        _,leftind,rightind = maketensor(ex)
+        return unique2(vcat(leftind, rightind))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         return getindices(ex.args[2]) # getindices on any of the args[2:end] should yield the same result
     elseif ex.head == :call && ex.args[1] == :*
@@ -191,14 +204,9 @@ getindices(ex) = Vector{Any}()
 
 # get all unique indices appearing in a tensor expression
 function getallindices(ex::Expr)
-    if ex.head == :ref || ex.head == :typed_vcat
-        if length(ex.args) >= 2 && isa(ex.args[2], Expr) && ex.args[2].head == :parameter
-            leftind = map(makeindex, ex.args[3:end])
-            rightind = map(makeindex, ex.args[2].args)
-            return unique(vcat(leftind, rightind))
-        else
-            return unique(map(makeindex, ex.args[2:end]))
-        end
+    if istensor(ex)
+        _,leftind,rightind = maketensor(ex)
+        return unique(vcat(leftind, rightind))
     elseif !isempty(ex.args)
         return unique(mapreduce(getallindices, vcat, ex.args))
     else
