@@ -275,8 +275,9 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
         end
         return dst
     elseif ex.head == :call && ex.args[1] == :- && length(ex.args) == 3 # subtraction: similar
-        deindexify!(dst, β, ex.args[2], α, leftind, rightind)
-        deindexify!(dst, 1, ex.args[3], Expr(:call, :-, α), leftind, rightind)
+        dst = deindexify!(dst, β, ex.args[2], α, leftind, rightind)
+        dst = deindexify!(dst, 1, ex.args[3], Expr(:call, :-, α), leftind, rightind)
+        return dst
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         @assert istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
         indA = getindices(ex.args[2])
@@ -372,7 +373,7 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
         return dst
     elseif ex.head == :call && ex.args[1] == :- && length(ex.args) == 3 # subtraction: similar
         dst = deindexify(ex.args[2], leftind, rightind)
-        deindexify!(dst, 1, ex.args[3], -1, leftind, rightind)
+        dst = deindexify!(dst, 1, ex.args[3], -1, leftind, rightind)
         return dst
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         @assert istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
