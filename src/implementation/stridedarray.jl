@@ -139,7 +139,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
         if isa(A, Array{TC}) && pA == (1:NA...,)
             Amat = reshape(A, (clength, olengthA))
         else
-            Apermuted = Array{TC}((cdims..., odimsA...))
+            Apermuted = Array{TC}(uninitialized, (cdims..., odimsA...))
             # tensorcopy!(A, 1:NA, Apermuted, pA)
             add!(1, A, Val{:N}, 0, Apermuted, pA)
             Amat = reshape(Apermuted, (clength, olengthA))
@@ -153,7 +153,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
             conjA = 'T'
             Amat = reshape(A, (clength, olengthA))
         else
-            Apermuted = Array{TC}((odimsA..., cdims...))
+            Apermuted = Array{TC}(uninitialized, (odimsA..., cdims...))
             # tensorcopy!(A, 1:NA, Apermuted, pA)
             add!(1, A, Val{:N}, 0, Apermuted, pA)
             Amat = reshape(Apermuted, (olengthA, clength))
@@ -167,7 +167,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
         if isa(B, Array{TC}) && pB == (1:NB...,)
             Bmat = reshape(B, (olengthB, clength))
         else
-            Bpermuted = Array{TC}((odimsB..., cdims...))
+            Bpermuted = Array{TC}(uninitialized, (odimsB..., cdims...))
             # tensorcopy!(B, 1:NB, Bpermuted, pB)
             add!(1, B, Val{:N}, 0, Bpermuted, pB)
             Bmat = reshape(Bpermuted, (olengthB, clength))
@@ -181,7 +181,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
             conjB = 'T'
             Bmat = reshape(B, (olengthB, clength))
         else
-            Bpermuted = Array{TC}((cdims..., odimsB...))
+            Bpermuted = Array{TC}(uninitialized, (cdims..., odimsB...))
             # tensorcopy!(B, 1:NB, Bpermuted, pB)
             add!(1, B, Val{:N}, 0, Bpermuted, pB)
             Bmat = reshape(Bpermuted, (clength, olengthB))
@@ -193,7 +193,7 @@ function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type
         Cmat = reshape(C, (olengthA, olengthB))
         BLAS.gemm!(conjA, conjB, TC(α), Amat, Bmat, TC(β), Cmat)
     else
-        Cmat = Array{TC}(olengthA, olengthB)
+        Cmat = Array{TC}(uninitialized, (olengthA, olengthB))
         BLAS.gemm!(conjA, conjB, TC(1), Amat, Bmat, TC(0), Cmat)
         add!(α, reshape(Cmat, (odimsA..., odimsB...)), Val{:N}, β, C, indCinoAB)
     end

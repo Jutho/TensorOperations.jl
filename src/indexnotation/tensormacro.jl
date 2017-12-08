@@ -139,7 +139,7 @@ function optdata(optex::Expr, ex::Expr)
  end
 
 # functions for parsing and processing tensor expressions
-function tensorify(ex::Expr, @nospecialize(optdata) = nothing)
+function tensorify(ex::Expr, optdata = nothing)
     # assignment case
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhsrhs(ex)
@@ -205,8 +205,8 @@ function tensorify(ex::Expr, @nospecialize(optdata) = nothing)
     end
     error("invalid syntax in @tensor macro: $ex")
 end
-tensorify(ex::Symbol, @nospecialize(optdata) = nothing) = esc(ex)
-tensorify(ex,  @nospecialize(optdata) = nothing) = ex
+tensorify(ex::Symbol, optdata = nothing) = esc(ex)
+tensorify(ex, optdata = nothing) = ex
 
 function processcontractorder(ex::Expr, optdata)
     ex = Expr(ex.head, map(e->processcontractorder(e, optdata), ex.args)...)

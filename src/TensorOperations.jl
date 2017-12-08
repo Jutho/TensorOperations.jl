@@ -10,36 +10,7 @@ else
     Base.@pure StaticLength(N) = Val{N}()
 end
 
-# 0.7.0-DEV.1993
-@static if !isdefined(Base, :EqualTo)
-    struct EqualTo{T} <: Function
-        x::T
-        EqualTo(x::T) where {T} = new{T}(x)
-    end
-    (f::EqualTo)(y) = isequal(f.x, y)
-    const equalto = EqualTo
-    export equalto
-end
-
-@static if !isdefined(Base, Symbol("@nospecialize"))
-    # 0.7
-    macro nospecialize(arg)
-        earg = esc(arg)
-        if isa(arg, Symbol)
-            return :($earg::ANY)
-        end
-        return earg
-    end
-    export @nospecialize
-end
-
-@static if !isdefined(Base, Symbol("BitSet"))
-    const BitSet = Base.IntSet
-else
-    const BitSet = Base.BitSet
-end
-
-
+using Compat
 
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!

@@ -5,7 +5,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
     costtype = valtype(optdata)
     allcosts = [get(optdata, i, one(costtype)) for i in allindices]
     maxcost = prod(allcosts)*maximum(allcosts) + zero(costtype) # add zero for type stability: Power -> Poly
-    tensorcosts = Vector{costtype}(numtensors)
+    tensorcosts = Vector{costtype}(uninitialized, numtensors)
     for k = 1:numtensors
         tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), *, one(costtype), network[k])
     end
@@ -82,7 +82,7 @@ end
 function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C, maxcost::C; verbose::Bool = false) where {T,S,C}
     numindices = length(allindices)
     numtensors = length(network)
-    indexsets = Array{T}(numtensors)
+    indexsets = Array{T}(uninitialized, numtensors)
 
     tabletensor = zeros(Int, (numindices,2))
     tableindex = zeros(Int, (numindices,2))
@@ -112,18 +112,18 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     numcomponent = length(componentlist)
 
     # generate output structures
-    costlist = Vector{C}(numcomponent)
-    treelist = Vector{Any}(numcomponent)
-    indexlist = Vector{T}(numcomponent)
+    costlist = Vector{C}(uninitialized, numcomponent)
+    treelist = Vector{Any}(uninitialized, numcomponent)
+    indexlist = Vector{T}(uninitialized, numcomponent)
 
     # run over components
     for c=1:numcomponent
         # find optimal contraction for every component
         component = componentlist[c]
         componentsize = length(component)
-        costdict = Array{Dict{T, C}}(componentsize)
-        treedict = Array{Dict{T, Any}}(componentsize)
-        indexdict = Array{Dict{T, T}}(componentsize)
+        costdict = Vector{Dict{T, C}}(uninitialized, componentsize)
+        treedict = Vector{Dict{T, Any}}(uninitialized, componentsize)
+        indexdict = Vector{Dict{T, T}}(uninitialized, componentsize)
 
         for k=1:componentsize
             costdict[k] = Dict{T, C}()
@@ -238,7 +238,7 @@ function connectedcomponents(A::AbstractMatrix{Bool})
     n=size(A,1)
     assert(size(A,2)==n)
 
-    componentlist=Vector{Vector{Int}}()
+    componentlist=Vector{Vector{Int}}(uninitialized, 0)
     assignedlist=falses((n,))
 
     for i=1:n
@@ -250,13 +250,13 @@ function connectedcomponents(A::AbstractMatrix{Bool})
                 j=pop!(checklist)
                 for k=find(A[j,:])
                     if !assignedlist[k]
-                        push!(currentcomponent,k)
+                        push!(currentcomponent, k)
                         push!(checklist,k)
                         assignedlist[k]=true;
                     end
                 end
             end
-            push!(componentlist,currentcomponent)
+            push!(componentlist, currentcomponent)
         end
     end
     return componentlist
