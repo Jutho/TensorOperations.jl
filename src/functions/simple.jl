@@ -48,7 +48,7 @@ function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
     T = promote_type(eltype(A), eltype(B))
     if IA == IC
         C = similar(A, T)
-        copy!(C, A)
+        copyto!(C, A)
     else
         indCinA = add_indices(IA, IC)
         C = similar_from_indices(T, indCinA, (), A, Val{:N})

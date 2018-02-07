@@ -1,5 +1,10 @@
-if VERSION < v"0.7.0-DEV.2005"
+@static if VERSION < v"0.7-"
     const Test = Base.Test
+    const ComplexF32 = Complex64
+    const ComplexF64 = Complex128
+else
+    using Random
+    using LinearAlgebra
 end
 
 # Until problems with .+ transforming ranges to arrays are settled
