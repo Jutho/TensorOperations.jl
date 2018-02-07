@@ -103,7 +103,7 @@ BLAS matrix multiplication by specifying `Val{:BLAS}` (default), or using a nati
 algorithm by specifying `Val{:native}`. The native algorithm does not copy the data
 but is typically slower.
 """
-function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray{TC}, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS}) where {CA,CB,TC<:Base.LinAlg.BlasFloat}
+function contract!(α, A::StridedArray, ::Type{Val{CA}}, B::StridedArray, ::Type{Val{CB}}, β, C::StridedArray{TC}, oindA, cindA, oindB, cindB, indCinoAB, ::Type{Val{:BLAS}}=Val{:BLAS}) where {CA,CB,TC<:BlasFloat}
     NA = ndims(A)
     NB = ndims(B)
     NC = ndims(C)

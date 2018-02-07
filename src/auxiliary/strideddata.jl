@@ -23,6 +23,8 @@ StridedData(a::StridedReshapedArray{T}, strides::IndexTuple{N} = strides(a), ::T
     StridedData(a.parent, strides, Val{C}; offset = offset)
 StridedData(a::StridedSubArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}; offset::Int = 0) where {N,T,C} =
     StridedData(a.parent, strides, Val{C}; offset = offset+Base.first_index(a)-1)
+StridedData(a::AbstractArray{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}; offset::Int = 0) where {N,T,C} =
+    StridedData(Base.parent(a), strides, Val{C}; offset = offset+Base.first_index(a)-1)
 
 Base.getindex(a::NormalStridedData, i) = a.data[i]
 Base.getindex(a::ConjugatedStridedData, i) = conj(a.data[i])

@@ -65,7 +65,7 @@ end
 function computecost(allcosts, ind1::BitVector, ind2::BitVector)
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
-    for n in find(ind)
+    for n in findall(ind)
         cost *= allcosts[n]
     end
     return cost
@@ -91,15 +91,15 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     costfac = maximum(allcosts)
 
     @inbounds for n = 1:numtensors
-        indn = findin(allindices, network[n])
+        indn = findall(occursin(network[n]), allindices)
         indexsets[n] = storeset(T, indn, numindices)
         for i in indn
             if tabletensor[i,1] == 0
                 tabletensor[i,1] = n
-                tableindex[i,1] = findfirst(equalto(allindices[i]), network[n])
+                tableindex[i,1] = _findfirst(equalto(allindices[i]), network[n])
             elseif tabletensor[i,2] == 0
                 tabletensor[i,2] = n
-                tableindex[i,2] = findfirst(equalto(allindices[i]), network[n])
+                tableindex[i,2] = _findfirst(equalto(allindices[i]), network[n])
                 n1 = tabletensor[i,1]
                 adjacencymatrix[n1,n] = true
                 adjacencymatrix[n,n1] = true
@@ -198,7 +198,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                     end
                 end
             end
-            currentbiggestset = findlast(x->!isempty(x),costdict)
+            currentbiggestset = _findlast(x->!isempty(x),costdict)
             verbose && println("Finished at cost $currentcost: maximum subset has size $currentbiggestset")
             if !isempty(costdict[componentsize])
                 break
@@ -248,7 +248,7 @@ function connectedcomponents(A::AbstractMatrix{Bool})
             currentcomponent=[i]
             while !isempty(checklist)
                 j=pop!(checklist)
-                for k=find(A[j,:])
+                for k=findall(A[j,:])
                     if !assignedlist[k]
                         push!(currentcomponent, k)
                         push!(checklist,k)
