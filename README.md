@@ -6,7 +6,7 @@ Fast tensor operations using a convenient index notation.
 
 ## What's new
 
-- Addition of a `@tensoropt` macro that will optimize the contraction order of any product of tensors `A[...]*B[...]*C[...]*...` (see below).
+- Addition of a `@tensoropt` macro that will optimize the contraction order of any product of tensors `A[...]*B[...]*C[...]*...` (see below for usage instructions and [this paper](https://doi.org/10.1103/PhysRevE.90.033315) for more details).
 - The `@tensor` macro will reorganize the contraction order of the so-called NCON style of specifying indices is respected, i.e. all contracted indices are labelled by positive integers and all uncontracted indices are specified by negative integers. In that case, tensors will be contracted in such an order that indices with smaller integer label will
 be contracted first
 - Better overall type stability, both in the `@tensor(opt)` environment and with the function based approach. Even the simple function based syntax can now be made type stable by specifing the indices using tuples.
