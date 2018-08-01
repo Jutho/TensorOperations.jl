@@ -174,12 +174,12 @@ function tensorify(ex::Expr, optdata = nothing)
                     return deindexify!(dst, 1, rhs, -1, leftind, rightind)
                 end
             else
-                return Expr(:(=), dst, deindexify(rhs, leftind, rightind))
+                return Expr(:(=), dst, deindexify(rhs, 1, leftind, rightind))
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
                 rhs = processcontractorder(rhs, optdata)
-                return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(rhs, [], [])))
+                return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(rhs, 1, [], [])))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, makescalar(lhs), makescalar(rhs))
             end
@@ -201,7 +201,7 @@ function tensorify(ex::Expr, optdata = nothing)
             return :(throw(IndexError($err)))
         end
         ex = processcontractorder(ex, optdata)
-        return Expr(:call, :scalar, deindexify(ex, [], []))
+        return Expr(:call, :scalar, deindexify(ex, 1, [], []))
     end
     error("invalid syntax in @tensor macro: $ex")
 end
@@ -247,13 +247,13 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
         srcind = vcat(srcleftind, srcrightind)
         conjarg = conj ? :(Val{:C}) : :(Val{:N})
 
-        p1 = (map(l->_findfirst(equalto(l), srcind), leftind)...,)
-        p2 = (map(l->_findfirst(equalto(l), srcind), rightind)...,)
+        p1 = (map(l->_findfirst(isequal(l), srcind), leftind)...,)
+        p2 = (map(l->_findfirst(isequal(l), srcind), rightind)...,)
 
         if hastraceindices(ex)
             traceind = unique(setdiff(setdiff(srcind,leftind), rightind))
-            q1 = (map(l->_findfirst(equalto(l), srcind), traceind)...,)
-            q2 = (map(l->_findlast(equalto(l), srcind), traceind)...,)
+            q1 = (map(l->_findfirst(isequal(l), srcind), traceind)...,)
+            q2 = (map(l->_findlast(isequal(l), srcind), traceind)...,)
             if !isperm((p1...,p2...,q1...,q2...)) ||
                 length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
                 err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
@@ -279,6 +279,11 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
         dst = deindexify!(dst, 1, ex.args[3], Expr(:call, :-, α), leftind, rightind)
         return dst
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
+        if isscalarexpr(ex.args[2])
+            return deindexify!(dst, β, ex.args[3], Expr(:call, :*, α, ex.args[2]), leftind, rightind)
+        elseif isscalarexpr(ex.args[3])
+            return deindexify!(dst, β, ex.args[2], Expr(:call, :*, α, ex.args[3]), leftind, rightind)
+        end
         @assert istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
         indA = getindices(ex.args[2])
         indB = getindices(ex.args[3])
@@ -290,10 +295,10 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
             A, indAl, indAr, αA, conj = makegeneraltensor(ex.args[2])
             conjA = conj ? :(Val{:C}) : :(Val{:N})
             indA = vcat(indAl, indAr)
-            poA = (map(l->_findfirst(equalto(l), indA), oindA)...,)
-            pcA = (map(l->_findfirst(equalto(l), indA), cind)...,)
+            poA = (map(l->_findfirst(isequal(l), indA), oindA)...,)
+            pcA = (map(l->_findfirst(isequal(l), indA), cind)...,)
         else
-            A = deindexify(ex.args[2], oindA, cind)
+            A = deindexify(ex.args[2], 1, oindA, cind)
             αA = 1
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
@@ -304,10 +309,10 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
             conjB = conj ? :(Val{:C}) : :(Val{:N})
             indB = vcat(indBl, indBr)
-            poB = (map(l->_findfirst(equalto(l), indB), oindB)...,)
-            pcB = (map(l->_findfirst(equalto(l), indB), cind)...,)
+            poB = (map(l->_findfirst(isequal(l), indB), oindB)...,)
+            pcB = (map(l->_findfirst(isequal(l), indB), cind)...,)
         else
-            B = deindexify(ex.args[3], cind, oindB)
+            B = deindexify(ex.args[3], 1, cind, oindB)
             αB = 1
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
@@ -315,8 +320,8 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
             poB = ((length(cind)+1:length(indB))...,)
         end
         oindAB = vcat(oindA, oindB)
-        p1 = (map(l->_findfirst(equalto(l), oindAB), leftind)...,)
-        p2 = (map(l->_findfirst(equalto(l), oindAB), rightind)...,)
+        p1 = (map(l->_findfirst(isequal(l), oindAB), leftind)...,)
+        p2 = (map(l->_findfirst(isequal(l), oindAB), rightind)...,)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
@@ -327,18 +332,18 @@ function deindexify!(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector)
         return :(contract!($α*$αA*$αB, $A, $conjA, $B, $conjB, $β, $dst, $poA, $pcA, $poB, $pcB, $p1, $p2))
     end
 end
-function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
+function deindexify(ex::Expr, α, leftind::Vector, rightind::Vector)
     if isgeneraltensor(ex)
-        src, srcleftind, srcrightind, α, conj = makegeneraltensor(ex)
+        src, srcleftind, srcrightind, α2, conj = makegeneraltensor(ex)
         srcind = vcat(srcleftind, srcrightind)
         conjarg = conj ? :(Val{:C}) : :(Val{:N})
 
-        p1 = (map(l->_findfirst(equalto(l), srcind), leftind)...,)
-        p2 = (map(l->_findfirst(equalto(l), srcind), rightind)...,)
+        p1 = (map(l->_findfirst(isequal(l), srcind), leftind)...,)
+        p2 = (map(l->_findfirst(isequal(l), srcind), rightind)...,)
         if hastraceindices(ex)
             traceind = unique(setdiff(setdiff(srcind,leftind),rightind))
-            q1 = (map(l->_findfirst(equalto(l), srcind), traceind)...,)
-            q2 = (map(l->_findlast(equalto(l), srcind), traceind)...,)
+            q1 = (map(l->_findfirst(isequal(l), srcind), traceind)...,)
+            q2 = (map(l->_findlast(isequal(l), srcind), traceind)...,)
             if !isperm((p1...,p2...,q1...,q2...)) ||
                 length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
                 err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
@@ -347,7 +352,7 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             αsym = gensym()
             dstsym = gensym()
             return :(begin
-                $αsym = $α
+                $αsym = $α*$α2
                 $dstsym = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
                 trace!($αsym, $src, $conjarg, 0, $dstsym, $p1, $p2, $q1, $q2)
             end)
@@ -360,22 +365,27 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             αsym = gensym()
             dstsym = gensym()
             return :(begin
-                $αsym = $α
+                $αsym = $α*$α2
                 $dstsym = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
                 add!($αsym, $src, $conjarg, 0, $dstsym, $p1, $p2)
             end)
         end
     elseif ex.head == :call && ex.args[1] == :+ # addition: add one by one
-        dst = deindexify(ex.args[2], leftind, rightind)
+        dst = deindexify(ex.args[2], α, leftind, rightind)
         for k = 3:length(ex.args)
-            dst = deindexify!(dst, 1, ex.args[k], 1, leftind, rightind)
+            dst = deindexify!(dst, 1, ex.args[k], α, leftind, rightind)
         end
         return dst
     elseif ex.head == :call && ex.args[1] == :- && length(ex.args) == 3 # subtraction: similar
-        dst = deindexify(ex.args[2], leftind, rightind)
-        dst = deindexify!(dst, 1, ex.args[3], -1, leftind, rightind)
+        dst = deindexify(ex.args[2], α, leftind, rightind)
+        dst = deindexify!(dst, 1, ex.args[3], :(-$α), leftind, rightind)
         return dst
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
+        if isscalarexpr(ex.args[2])
+            return deindexify(ex.args[3], Expr(:call, :*, α, ex.args[2]), leftind, rightind)
+        elseif isscalarexpr(ex.args[3])
+            return deindexify(ex.args[2], Expr(:call, :*, α, ex.args[3]), leftind, rightind)
+        end
         @assert istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
         indA = getindices(ex.args[2])
         indB = getindices(ex.args[3])
@@ -387,11 +397,11 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             A, indAl, indAr, αA, conj = makegeneraltensor(ex.args[2])
             conjA = conj ? :(Val{:C}) : :(Val{:N})
             indA = vcat(indAl, indAr)
-            poA = (map(l->_findfirst(equalto(l), indA), oindA)...,)
-            pcA = (map(l->_findfirst(equalto(l), indA), cind)...,)
+            poA = (map(l->_findfirst(isequal(l), indA), oindA)...,)
+            pcA = (map(l->_findfirst(isequal(l), indA), cind)...,)
             finalizeA = false
         else
-            A = deindexify(ex.args[2], oindA, cind)
+            A = deindexify(ex.args[2], 1, oindA, cind)
             αA = 1
             conjA = :(Val{:N})
             indA = vcat(oindA, cind)
@@ -403,11 +413,11 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
             conjB = conj ? :(Val{:C}) : :(Val{:N})
             indB = vcat(indBl, indBr)
-            poB = (map(l->_findfirst(equalto(l), indB), oindB)...,)
-            pcB = (map(l->_findfirst(equalto(l), indB), cind)...,)
+            poB = (map(l->_findfirst(isequal(l), indB), oindB)...,)
+            pcB = (map(l->_findfirst(isequal(l), indB), cind)...,)
             finalizeB = false
         else
-            B = deindexify(ex.args[3], cind, oindB)
+            B = deindexify(ex.args[3], 1, cind, oindB)
             αB = 1
             conjB = :(Val{:N})
             indB = vcat(cind, oindB)
@@ -416,8 +426,8 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
             finalizeB = true
         end
         oindAB = vcat(oindA, oindB)
-        p1 = (map(l->_findfirst(equalto(l), oindAB), leftind)...,)
-        p2 = (map(l->_findfirst(equalto(l), oindAB), rightind)...,)
+        p1 = (map(l->_findfirst(isequal(l), oindAB), leftind)...,)
+        p2 = (map(l->_findfirst(isequal(l), oindAB), rightind)...,)
 
         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
@@ -432,7 +442,7 @@ function deindexify(ex::Expr, leftind::Vector, rightind::Vector)
         return :(begin
             $Asym = $A
             $Bsym = $B
-            $αsym = $αA * $αB
+            $αsym = $α * $αA * $αB
             $dstsym = similar_from_indices(promote_type(eltype($Asym), eltype($Bsym), typeof($αsym)), $poA, $poB, $p1, $p2, $Asym, $Bsym, $conjA, $conjB)
             contract!($αsym, $Asym, $conjA, $Bsym, $conjB, 0, $dstsym, $poA, $pcA, $poB, $pcB, $p1, $p2)
             # $(finalizeA ? :(finalize($Asym)) : nothing)

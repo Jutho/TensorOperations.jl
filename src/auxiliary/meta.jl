@@ -22,7 +22,7 @@ end
     Expr(:block, meta, ex)
 end
 
-tinvperm(t::NTuple{N,Int}) where {N}= ntuple(n->_findfirst(equalto(n), t), StaticLength(N))
+tinvperm(t::NTuple{N,Int}) where {N}= ntuple(n->_findfirst(isequal(n), t), StaticLength(N))
 
 # Based on Tim Holy's Cartesian
 function _sreplace(ex::Expr, s::Symbol, v)
@@ -62,6 +62,11 @@ function _dividebody(N::Int, dmax::Symbol, dims::Symbol, args...)
     ex
 end
 
+if VERSION <= v"0.6.99"
+    rangeexpr(a,b) = Expr(:(:), a, b)
+else
+    rangeexpr(a,b) = Expr(:call, :(:), a, b)
+end
 macro stridedloops(N, dims, args...)
     esc(_stridedloops(N, dims, args...))
 end
@@ -75,7 +80,7 @@ function _stridedloops(N::Int, dims::Symbol, args...)
         pre = [Expr(:(=), Symbol(args[i], d-1), Symbol(args[i], d)) for i in argiter]
         post = [Expr(:(+=), Symbol(args[i], d), Expr(:ref, args[i+2], d)) for i in argiter]
         ex = Expr(:block, pre..., ex, post...)
-        rangeex = Expr(:(:), 1, Expr(:ref, dims, d))
+        rangeex = rangeexpr(1, Expr(:ref, dims, d))
         forex = Expr(:(=), gensym(), rangeex)
         ex = Expr(:for, forex, ex)
         if d==1

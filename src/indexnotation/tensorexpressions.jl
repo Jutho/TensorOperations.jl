@@ -64,7 +64,7 @@ function isgeneraltensor(ex)
         return isgeneraltensor(ex.args[2])
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation
         return isgeneraltensor(ex.args[2])
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication
         if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
             return true
         elseif isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
@@ -173,7 +173,7 @@ end
 function makescalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(deindexify(ex.args[2],[],[]))))
+        return :(scalar($(deindexify(ex.args[2], 1, [], []))))
     else
         return Expr(ex.head, map(makescalar, ex.args)...)
     end

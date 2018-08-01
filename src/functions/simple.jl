@@ -52,7 +52,7 @@ function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
     else
         indCinA = add_indices(IA, IC)
         C = similar_from_indices(T, indCinA, (), A, Val{:N})
-        add_native!(1, A, Val{:N}, 0, C, indCinA)
+        add!(1, A, Val{:N}, 0, C, indCinA)
     end
     indCinB = add_indices(IB, IC)
     add!(1, B, Val{:N}, 1, C, indCinB)

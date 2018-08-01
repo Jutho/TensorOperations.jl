@@ -5,7 +5,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
     costtype = valtype(optdata)
     allcosts = [get(optdata, i, one(costtype)) for i in allindices]
     maxcost = prod(allcosts)*maximum(allcosts) + zero(costtype) # add zero for type stability: Power -> Poly
-    tensorcosts = Vector{costtype}(uninitialized, numtensors)
+        tensorcosts = Vector{costtype}(undef, numtensors)
     for k = 1:numtensors
         tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), *, one(costtype), network[k])
     end
@@ -82,7 +82,7 @@ end
 function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C, maxcost::C; verbose::Bool = false) where {T,S,C}
     numindices = length(allindices)
     numtensors = length(network)
-    indexsets = Array{T}(uninitialized, numtensors)
+    indexsets = Array{T}(undef, numtensors)
 
     tabletensor = zeros(Int, (numindices,2))
     tableindex = zeros(Int, (numindices,2))
@@ -96,10 +96,10 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
         for i in indn
             if tabletensor[i,1] == 0
                 tabletensor[i,1] = n
-                tableindex[i,1] = _findfirst(equalto(allindices[i]), network[n])
+                tableindex[i,1] = _findfirst(isequal(allindices[i]), network[n])
             elseif tabletensor[i,2] == 0
                 tabletensor[i,2] = n
-                tableindex[i,2] = _findfirst(equalto(allindices[i]), network[n])
+                tableindex[i,2] = _findfirst(isequal(allindices[i]), network[n])
                 n1 = tabletensor[i,1]
                 adjacencymatrix[n1,n] = true
                 adjacencymatrix[n,n1] = true
@@ -112,18 +112,18 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     numcomponent = length(componentlist)
 
     # generate output structures
-    costlist = Vector{C}(uninitialized, numcomponent)
-    treelist = Vector{Any}(uninitialized, numcomponent)
-    indexlist = Vector{T}(uninitialized, numcomponent)
+    costlist = Vector{C}(undef, numcomponent)
+    treelist = Vector{Any}(undef, numcomponent)
+    indexlist = Vector{T}(undef, numcomponent)
 
     # run over components
     for c=1:numcomponent
         # find optimal contraction for every component
         component = componentlist[c]
         componentsize = length(component)
-        costdict = Vector{Dict{T, C}}(uninitialized, componentsize)
-        treedict = Vector{Dict{T, Any}}(uninitialized, componentsize)
-        indexdict = Vector{Dict{T, T}}(uninitialized, componentsize)
+        costdict = Vector{Dict{T, C}}(undef, componentsize)
+        treedict = Vector{Dict{T, Any}}(undef, componentsize)
+        indexdict = Vector{Dict{T, T}}(undef, componentsize)
 
         for k=1:componentsize
             costdict[k] = Dict{T, C}()
@@ -238,7 +238,7 @@ function connectedcomponents(A::AbstractMatrix{Bool})
     n=size(A,1)
     assert(size(A,2)==n)
 
-    componentlist=Vector{Vector{Int}}(uninitialized, 0)
+    componentlist=Vector{Vector{Int}}(undef, 0)
     assignedlist=falses((n,))
 
     for i=1:n
