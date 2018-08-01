@@ -91,7 +91,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     costfac = maximum(allcosts)
 
     @inbounds for n = 1:numtensors
-        indn = findall(occursin(network[n]), allindices)
+        indn = findall(in(network[n]), allindices)
         indexsets[n] = storeset(T, indn, numindices)
         for i in indn
             if tabletensor[i,1] == 0
@@ -235,24 +235,24 @@ end
 #
 # Used as auxiliary function to analyze contraction graph in contract.
 function connectedcomponents(A::AbstractMatrix{Bool})
-    n=size(A,1)
-    assert(size(A,2)==n)
+    n = size(A,1)
+    @assert size(A,2) == n
 
-    componentlist=Vector{Vector{Int}}(undef, 0)
-    assignedlist=falses((n,))
+    componentlist = Vector{Vector{Int}}(undef, 0)
+    assignedlist = falses((n,))
 
-    for i=1:n
+    for i = 1:n
         if !assignedlist[i]
-            assignedlist[i]=true
-            checklist=[i]
-            currentcomponent=[i]
+            assignedlist[i] = true
+            checklist = [i]
+            currentcomponent = [i]
             while !isempty(checklist)
-                j=pop!(checklist)
-                for k=findall(A[j,:])
+                j = pop!(checklist)
+                for k = findall(A[j,:])
                     if !assignedlist[k]
                         push!(currentcomponent, k)
                         push!(checklist,k)
-                        assignedlist[k]=true;
+                        assignedlist[k] = true;
                     end
                 end
             end

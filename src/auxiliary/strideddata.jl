@@ -10,12 +10,12 @@ struct StridedData{N,T,C}
     start::Int
 end
 
-NormalStridedData{N,T} =  StridedData{N,T,:N}
-ConjugatedStridedData{N,T} =  StridedData{N,T,:C}
+const NormalStridedData{N,T} = StridedData{N,T,:N}
+const ConjugatedStridedData{N,T} = StridedData{N,T,:C}
 
 import Base.StridedReshapedArray
 
-StridedSubArray{T,N,A<:Union{DenseArray{T},StridedReshapedArray{T}},I<:Tuple{Vararg{Union{Base.RangeIndex, Base.AbstractCartesianIndex}}}} =  SubArray{T,N,A,I}
+const StridedSubArray{T,N,A<:Union{DenseArray{T},StridedReshapedArray{T}},I<:Tuple{Vararg{Union{Base.RangeIndex, Base.AbstractCartesianIndex}}}} = SubArray{T,N,A,I}
 
 StridedData(a::Array{T}, strides::IndexTuple{N} = strides(a), ::Type{Val{C}} = Val{:N}; offset::Int = 0) where {N,T,C} =
     StridedData{N,T,C}(vec(a), strides, 1+offset)

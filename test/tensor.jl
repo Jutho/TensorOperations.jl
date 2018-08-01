@@ -164,10 +164,10 @@
     end
     @tensor C[d,a,e] -= α*A[a,b,c,d]*conj(B[c,e,b])
     @test C ≈ Ccopy
+
     Cbig=rand(ComplexF32,(40,40,40))
     C=view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
     Ccopy=copy(C)
-
     for d=1 ⊞ (0:8),a=1 ⊞ (0:8),e=1 ⊞ (0:7)
         for b=1 ⊞ (0:14),c=1 ⊞ (0:6)
             Ccopy[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
@@ -188,18 +188,16 @@
         @tensor C[d,e,a] += α*A[a,b,c,d]*B[c,e,b]
     end
 
-    D=10;
-    A=randn(Float64, (D,D,D,D));
-    B=randn(Float64, (D,D,D,D));
-    C=randn(Float64, (D,D,D,D));
-
-    @test_throws TensorOperations.IndexError begin
-        @tensor C[a,b,c,d] = conj(A[c,a])*B[c,b]
+    # Example from README.md
+    using TensorOperations
+    α=randn()
+    A=randn(5,5,5,5,5,5)
+    B=randn(5,5,5)
+    C=randn(5,5,5)
+    D=zeros(5,5,5)
+    @tensor begin
+        D[a,b,c] = A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
+        E[a,b,c] := A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
     end
-
-    A=reshape(collect(96.0:99.0),2,1,2)
-    B=collect(1.0:20.0)
-    C=view(reshape(view(reshape(view(B,2:17),2,2,4),:,:,2:3),2,1,4),:,:,1:2)
-    @tensor C[a,b,c] = A[a,b,c]
-    @test B == vcat(1.0:5.0,96.0:99.0,10.0:20.0)
+    @test D == E
 end

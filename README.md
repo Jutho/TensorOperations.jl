@@ -10,7 +10,7 @@ Fast tensor operations using a convenient index notation.
 - The `@tensor` macro will reorganize the contraction order of the so-called NCON style of specifying indices is respected, i.e. all contracted indices are labelled by positive integers and all uncontracted indices are specified by negative integers. In that case, tensors will be contracted in such an order that indices with smaller integer label will
 be contracted first
 - Better overall type stability, both in the `@tensor(opt)` environment and with the function based approach. Even the simple function based syntax can now be made type stable by specifing the indices using tuples.
-- Fully compatible with Julia v0.6 (v0.5 no longer supported).
+- Fully compatible with Julia v0.6 (v0.5 no longer supported); compatible (but with deprecation warnings) with julia v0.7-rc1.
 
 ## Installation
 
