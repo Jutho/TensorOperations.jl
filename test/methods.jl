@@ -6,7 +6,7 @@
     p = randperm(4)
     C1 = permutedims(A,p)
     C2 = @inferred tensorcopy(A,(1:4...,),(p...,))
-    @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+    @test C1 ≈ C2
     @test_throws TensorOperations.IndexError tensorcopy(A,1:3,1:4)
     @test_throws TensorOperations.IndexError tensorcopy(A,[1,2,2,4],1:4)
 
@@ -15,7 +15,7 @@
     p = (3,1,4,2)
     C1 = @inferred tensoradd(A,p,B,(1:4...,))
     C2 = A+permutedims(B,p)
-    @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+    @test C1 ≈ C2
     @test_throws DimensionMismatch tensoradd(A,1:4,B,1:4)
 
     # test tensortrace
@@ -27,7 +27,7 @@
             C2[i] += A[i,j,j]
         end
     end
-    @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+    @test C1 ≈ C2
     A = randn(Float64, (3,20,5,3,20,4,5))
     C1 = @inferred tensortrace(A,(:a,:b,:c,:d,:b,:e,:c),(:e,:a,:d))
     C2 = zeros(4,3,3)
@@ -36,7 +36,7 @@
             C2[i1,i2,i3] += A[i2,j1,j2,i3,j1,i1,j2]
         end
     end
-    @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+    @test C1 ≈ C2
 
     # test tensorcontract
     A = randn(Float64, (3,20,5,3,4))
@@ -47,8 +47,8 @@
     for a = 1:3, b = 1:20, c = 1:5, d = 1:3, e = 1:4, f = 1:6, g = 1:3
         C3[a,g,e,d,f] += A[a,b,c,d,e]*B[c,f,b,g]
     end
-    @test vecnorm(C1-C3)<eps()*sqrt(length(C1))*vecnorm(C1+C3)
-    @test vecnorm(C2-C3)<eps()*sqrt(length(C1))*vecnorm(C2+C3)
+    @test C1 ≈ C3
+    @test C2 ≈ C3
     @test_throws TensorOperations.IndexError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
     @test_throws TensorOperations.IndexError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
 
@@ -57,7 +57,7 @@
     B = rand(ComplexF64,(5,5,5,5))
     C1 = reshape((@inferred tensorproduct(A,(1,2,3,4),B,(5,6,7,8),(1,2,5,6,3,4,7,8))),(5*5*5*5,5*5*5*5))
     C2 = kron(reshape(B,(25,25)),reshape(A,(25,25)))
-    @test vecnorm(C1-C2)<eps()*sqrt(length(C1))*vecnorm(C1+C2)
+    @test C1 ≈ C2
     @test_throws TensorOperations.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
     @test_throws TensorOperations.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
 
@@ -76,7 +76,7 @@
     Ccopy = tensorcopy(C,1:4,1:4)
     TensorOperations.tensorcopy!(A,1:4,C,p)
     TensorOperations.tensorcopy!(Acopy,1:4,Ccopy,p)
-    @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
+    @test C ≈ Ccopy
     @test_throws TensorOperations.IndexError TensorOperations.tensorcopy!(A,1:3,C,p)
     @test_throws DimensionMismatch TensorOperations.tensorcopy!(A,p,C,p)
     @test_throws TensorOperations.IndexError TensorOperations.tensorcopy!(A,1:4,C,[1,1,2,3])
@@ -90,7 +90,7 @@
     β = randn(Float64)
     TensorOperations.tensoradd!(α,A,1:4,β,C,p)
     Ccopy = β*Ccopy+α*Acopy
-    @test vecnorm(C-Ccopy)<eps()*sqrt(length(C))*vecnorm(C+Ccopy)
+    @test C ≈ Ccopy
     @test_throws TensorOperations.IndexError TensorOperations.tensoradd!(1.2,A,1:3,0.5,C,p)
     @test_throws DimensionMismatch TensorOperations.tensoradd!(1.2,A,p,0.5,C,p)
     @test_throws TensorOperations.IndexError TensorOperations.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
@@ -109,7 +109,7 @@
     for i = 1 ⊞ (0:8)
         Bcopy += α*view(A,i,:,:,i)
     end
-    @test vecnorm(B-Bcopy)<eps()*vecnorm(B+Bcopy)*sqrt(length(B))
+    @test B ≈ Bcopy
     @test_throws TensorOperations.IndexError TensorOperations.tensortrace!(α,A,[:a,:b,:c],β,B,[:b,:c])
     @test_throws DimensionMismatch TensorOperations.tensortrace!(α,A,[:a,:b,:c,:a],β,B,[:c,:b])
     @test_throws TensorOperations.IndexError TensorOperations.tensortrace!(α,A,[:a,:b,:a,:a],β,B,[:c,:b])
@@ -134,7 +134,7 @@
         end
     end
     TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e];method = :BLAS)
-    @test vecnorm(C-Ccopy)<eps(Float32)*vecnorm(C+Ccopy)*sqrt(length(C))
+    @test C ≈ Ccopy
     Cbig = rand(ComplexF32,(40,40,40))
     C = view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
     Ccopy = tensorcopy(C,1:3)
@@ -145,7 +145,7 @@
         end
     end
     TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e];method = :native)
-    @test vecnorm(C-Ccopy)<eps(Float32)*vecnorm(C+Ccopy)*sqrt(length(C))
+    @test C ≈ Ccopy
     @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:a],'N',B,[:c,:e,:b],'N',β,C,[:d,:a,:e])
     @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',β,C,[:d,:a,:e])
     @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',β,C,[:d,:e])
