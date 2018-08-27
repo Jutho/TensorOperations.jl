@@ -4,16 +4,15 @@ os:
   - linux
   - osx
 julia:
-  - 0.6
   - 0.7
+  - 1.0
   - nightly
 notifications:
   email: false
 
 matrix:
- allow_failures:
- - julia: 0.7
- - julia: nightly
+  allow_failures:
+  - julia: nightly
 
 after_success:
   # push coverage results to Coveralls and Codecov

@@ -21,9 +21,6 @@ _findnext(args...) = (i = findnext(args...); isa(i, Nothing) ? 0 : i)
 _findlast(args...) = (i = findlast(args...); isa(i, Nothing) ? 0 : i)
 
 
-using Compat
-using Compat: copyto!
-
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
 
