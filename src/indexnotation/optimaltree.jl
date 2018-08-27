@@ -7,7 +7,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
     maxcost = prod(allcosts)*maximum(allcosts) + zero(costtype) # add zero for type stability: Power -> Poly
         tensorcosts = Vector{costtype}(undef, numtensors)
     for k = 1:numtensors
-        tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), *, one(costtype), network[k])
+        tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), *, network[k], init=one(costtype))
     end
     initialcost = min(maxcost, maximum(tensorcosts)*minimum(tensorcosts) + zero(costtype)) # just some arbitrary guess
 
@@ -170,12 +170,12 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                 if iseven(n) # treat the case k = n/2 special
                     k = div(n,2)
                     it = keys(costdict[k])
-                    state1 = start(it)
-                    while !done(it, state1)
-                        s1, nextstate1 = next(it, state1)
-                        state2 = nextstate1
-                        while !done(it, state2)
-                            s2, nextstate2 = next(it, state2)
+                    elstate1 = iterate(it)
+                    while elstate1 !== nothing
+                        s1, nextstate1 = elstate1
+                        elstate2 = iterate(it, nextstate1)
+                        while elstate2 !== nothing
+                            s2, nextstate2 = elstate2
                             if _isemptyset(_intersect(s1, s2)) && get(costdict[n], _union(s1, s2), currentcost) > previouscost
                                 ind1 = indexdict[k][s1]
                                 ind2 = indexdict[k][s2]
@@ -192,9 +192,9 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                                     end
                                 end
                             end
-                            state2 = nextstate2
+                            elstate2 = iterate(it, nextstate2)
                         end
-                        state1 = nextstate1
+                        elstate1 = iterate(it, nextstate1)
                     end
                 end
             end
