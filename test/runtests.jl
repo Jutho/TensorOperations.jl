@@ -1,11 +1,5 @@
-@static if VERSION < v"0.7-"
-    const Test = Base.Test
-    const ComplexF32 = Complex64
-    const ComplexF64 = Complex128
-else
-    using Random
-    using LinearAlgebra
-end
+using Random
+using LinearAlgebra
 
 # Until problems with .+ transforming ranges to arrays are settled
 ⊞(s::Int, r::StepRange{Int,Int}) = (first(r)+s):step(r):(last(r)+s)
