@@ -62,11 +62,7 @@ function _dividebody(N::Int, dmax::Symbol, dims::Symbol, args...)
     ex
 end
 
-if VERSION <= v"0.6.99"
-    rangeexpr(a,b) = Expr(:(:), a, b)
-else
-    rangeexpr(a,b) = Expr(:call, :(:), a, b)
-end
+rangeexpr(a,b) = Expr(:call, :(:), a, b)
 macro stridedloops(N, dims, args...)
     esc(_stridedloops(N, dims, args...))
 end

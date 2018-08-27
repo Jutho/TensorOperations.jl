@@ -1,21 +1,12 @@
-__precompile__(true)
 module TensorOperations
 
 import Base.Iterators.flatten
 import Base.setindex
 
-if VERSION < v"0.7-"
-    Base.@pure StaticLength(N) = Val{N}
-
-    using Base.LinAlg.BlasFloat
-    const Nothing = Void
-else
-    Base.@pure StaticLength(N) = Val{N}()
-
-    using LinearAlgebra
-    using LinearAlgebra.BLAS
-    using LinearAlgebra: BlasFloat
-end
+Base.@pure StaticLength(N) = Val{N}()
+using LinearAlgebra
+using LinearAlgebra.BLAS
+using LinearAlgebra: BlasFloat
 _findfirst(args...) = (i = findfirst(args...); isa(i, Nothing) ? 0 : i)
 _findnext(args...) = (i = findnext(args...); isa(i, Nothing) ? 0 : i)
 _findlast(args...) = (i = findlast(args...); isa(i, Nothing) ? 0 : i)
