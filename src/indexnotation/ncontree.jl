@@ -24,7 +24,7 @@ function isnconstyle(network::Vector)
 end
 
 function ncontree(network::Vector)
-    contractionindices = Vector{Vector{Int}}(length(network))
+    contractionindices = Vector{Vector{Int}}(undef, length(network))
     for k = 1:length(network)
         indices = network[k]
         # trace indices have already been removed, remove open indices by filtering on positive values
