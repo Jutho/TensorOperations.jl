@@ -62,6 +62,8 @@ end
 Base.:*(p1::Power{D}, p2::Power{D}) where {D} = Power{D}(p1.coeff*p2.coeff, degree(p1)+degree(p2))
 Base.:*(p::Power{D}, s::Number) where {D} = Power{D}(p.coeff*s, degree(p))
 Base.:*(s::Number, p::Power) = *(p,s)
+Base.:/(p::Power{D}, s::Number) where {D} = Power{D}(p.coeff/s, degree(p))
+Base.:\(s::Number, p::Power) = /(p,s)
 Base.:^(p::Power{D}, n::Int) where {D} = Power{D}(p.coeff^n, n*degree(p))
 
 struct Poly{D,T} <: AbstractPoly{D,T}
@@ -129,6 +131,8 @@ Base.:*(p1::Power{D}, p2::Poly{D}) where {D} = Poly{D}([p1.coeff*p2[n-degree(p1)
 Base.:*(p1::Poly{D}, p2::Power{D}) where {D} = *(p2,p1)
 Base.:*(p::Poly{D}, s::Number) where {D} = Poly{D}(s*p.coeffs)
 Base.:*(s::Number, p::Poly) = *(p,s)
+Base.:/(p::Poly{D}, s::Number) where {D} = Poly{D}(p.coeffs/s)
+Base.:\(s::Number, p::Poly) = /(p,s)
 function Base.:*(p1::Poly{D}, p2::Poly{D}) where {D}
     N = degree(p1)+degree(p2)
     s = p1[0]*p2[0]

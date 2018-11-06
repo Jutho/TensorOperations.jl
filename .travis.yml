@@ -14,6 +14,18 @@ matrix:
   allow_failures:
   - julia: nightly
 
+env:
+  matrix:
+    - JULIA_NUM_THREADS=1
+    - JULIA_NUM_THREADS=4
+
+## uncomment the following lines to override the default test script
+
 after_success:
-  # push coverage results to Coveralls and Codecov
-  - julia -e 'cd(Pkg.dir("TensorOperations")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder()); Codecov.submit(Codecov.process_folder());'
+  # push coverage results to Codecov and Coveralls
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder()); Coveralls.submit(Coveralls.process_folder())'
+
+env:
+  matrix:
+    - JULIA_NUM_THREADS=1
+    - JULIA_NUM_THREADS=4

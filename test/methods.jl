@@ -1,6 +1,8 @@
 # test simple methods
 #---------------------
-@testset "Method syntax" begin
+withblas = TensorOperations.use_blas() ? "with" : "without"
+withcache = TensorOperations.use_cache() ? "with" : "without"
+@testset "Method syntax $withblas BLAS and $withcache cache" begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3,5,4,6))
         p = randperm(4)
@@ -45,8 +47,8 @@
     @testset "tensorcontract" begin
         A = randn(Float64, (3,20,5,3,4))
         B = randn(Float64, (5,6,20,3))
-        C1 = @inferred tensorcontract(A,(:a,:b,:c,:d,:e),B,(:c,:f,:b,:g),(:a,:g,:e,:d,:f);method = :BLAS)
-        C2 = @inferred tensorcontract(A,(:a,:b,:c,:d,:e),B,(:c,:f,:b,:g),(:a,:g,:e,:d,:f);method = :native)
+        C1 = @inferred tensorcontract(A,(:a,:b,:c,:d,:e),B,(:c,:f,:b,:g),(:a,:g,:e,:d,:f))
+        C2 = @inferred tensorcontract(A,(:a,:b,:c,:d,:e),B,(:c,:f,:b,:g),(:a,:g,:e,:d,:f))
         C3 = zeros(3,3,4,3,6)
         for a = 1:3, b = 1:20, c = 1:5, d = 1:3, e = 1:4, f = 1:6, g = 1:3
             C3[a,g,e,d,f] += A[a,b,c,d,e]*B[c,f,b,g]
@@ -145,18 +147,7 @@
                 Ccopy[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
             end
         end
-        TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e];method = :BLAS)
-        @test C ≈ Ccopy
-        Cbig = rand(ComplexF32,(40,40,40))
-        C = view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
-        Ccopy = tensorcopy(C,1:3)
-        Ccopy = β*Ccopy
-        for d = 1 ⊞ (0:8),a = 1 ⊞ (0:8),e = 1 ⊞ (0:7)
-            for b = 1 ⊞ (0:14),c = 1 ⊞ (0:6)
-                Ccopy[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
-            end
-        end
-        TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e];method = :native)
+        TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e])
         @test C ≈ Ccopy
         @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:a],'N',B,[:c,:e,:b],'N',β,C,[:d,:a,:e])
         @test_throws TensorOperations.IndexError TensorOperations.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',β,C,[:d,:a,:e])

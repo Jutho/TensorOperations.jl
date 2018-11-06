@@ -70,6 +70,14 @@ function isgeneraltensor(ex)
         elseif isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
             return true
         end
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 # scalar multiplication
+        if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
+            return true
+        end
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 # scalar multiplication
+        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
+            return true
+        end
     end
     return false
 end
@@ -101,6 +109,10 @@ function istensorexpr(ex)
         return all(istensorexpr, ex.args[2:end]) # all arguments should be tensor expressions (we are not checking matching indices yet)
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :*
         return any(istensorexpr, ex.args[2:end]) # at least one argument should be a tensor expression
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
+        return istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
+        return istensorexpr(ex.args[3]) && isscalarexpr(ex.args[2])
     end
     return false
 end
@@ -124,18 +136,18 @@ function maketensor(ex)
         rightind = Any[]
         return (object, leftind, rightind)
     elseif isa(ex, Expr) && ex.head == :typed_vcat
-        length(ex.args) == 3 || throw(ArgumentError())
+        length(ex.args) <= 3 || throw(ArgumentError("invalid tensor index expression: $ex"))
         object = esc(ex.args[1])
         if isa(ex.args[2], Expr) && ex.args[2].head == :row
             leftind = map(makeindex, ex.args[2].args)
-        elseif ex.args == :_
+        elseif ex.args[2] == :_
             leftind = Any[]
         else
             leftind = Any[makeindex(ex.args[2])]
         end
-        if isa(ex.args[3], Expr) && ex.args[3].head == :row
+        if length(ex.args) > 2 && isa(ex.args[3], Expr) && ex.args[3].head == :row
             rightind = map(makeindex, ex.args[3].args)
-        elseif ex.args == :_
+        elseif length(ex.args) == 2 || ex.args[3] == :_
             rightind = Any[]
         else
             rightind = Any[makeindex(ex.args[3])]
@@ -166,14 +178,24 @@ function makegeneraltensor(ex)
             (object, leftind, rightind, α, conj) = makegeneraltensor(ex.args[2])
             return (object, leftind, rightind, Expr(:call, :*, α, makescalar(ex.args[3])), conj)
         end
+    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
+        if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
+            (object, leftind, rightind, α, conj) = makegeneraltensor(ex.args[2])
+            return (object, leftind, rightind, Expr(:call, :/, α, makescalar(ex.args[3])), conj)
+        end
+    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
+        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
+            (object, leftind, rightind, α, conj) = makegeneraltensor(ex.args[3])
+            return (object, leftind, rightind, Expr(:call, :\, makescalar(ex.args[2]), α), conj)
+        end
     end
-    throw(ArgumentError())
+    throw(ArgumentError("not a valid generalized tensor expression $ex"))
 end
 
 function makescalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(deindexify(ex.args[2], 1, [], []))))
+        return :(scalar($(deindexify(nothing, 0, ex.args[2], 1, [], [], true))))
     else
         return Expr(ex.head, map(makescalar, ex.args)...)
     end
@@ -194,6 +216,10 @@ function getindices(ex::Expr)
             append!(indices, getindices(ex.args[k]))
         end
         return unique2(indices)
+    elseif ex.head == :call && ex.args[1] == :/
+        indices = getindices(ex.args[2])
+    elseif ex.head == :call && ex.args[1] == :\
+        indices = getindices(ex.args[3])
     elseif ex.head == :call && length(ex.args) == 2
         return getindices(ex.args[2])
     else
@@ -214,3 +240,21 @@ function getallindices(ex::Expr)
     end
 end
 getallindices(ex) = Vector{Any}()
+
+function geteltype(ex::Expr)
+    if istensor(ex)
+        obj,_,_ = maketensor(ex)
+        return Expr(:call, :eltype, obj)
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
+        if length(ex.args) > 2
+            return Expr(:call, :promote_type, map(geteltype, ex.args[2:end])...)
+        else
+            return geteltype(ex.args[2])
+        end
+    elseif ex.head == :call && ex.args[1] == :conj
+        return geteltype(ex.args[2])
+    else
+        throw(ArgumentError("unable to determine eltype"))
+    end
+end
+geteltype(ex) = Expr(:call,:typeof, esc(ex))

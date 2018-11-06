@@ -1,6 +1,6 @@
 function optimaltree(network, optdata::Dict; verbose::Bool = false)
     numtensors = length(network)
-    allindices = unique(flatten(network))
+    allindices = unique(vcat(network...))
     numindices = length(allindices)
     costtype = valtype(optdata)
     allcosts = [get(optdata, i, one(costtype)) for i in allindices]
@@ -87,7 +87,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     tabletensor = zeros(Int, (numindices,2))
     tableindex = zeros(Int, (numindices,2))
 
-    adjacencymatrix=falses(numtensors,numtensors)
+    adjacencymatrix = falses(numtensors,numtensors)
     costfac = maximum(allcosts)
 
     @inbounds for n = 1:numtensors
@@ -198,7 +198,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                     end
                 end
             end
-            currentbiggestset = _findlast(x->!isempty(x),costdict)
+            currentbiggestset = _findlast(x->!isempty(x), costdict)
             verbose && println("Finished at cost $currentcost: maximum subset has size $currentbiggestset")
             if !isempty(costdict[componentsize])
                 break
