@@ -209,9 +209,8 @@ function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{
     osizeA == sizeC.(oindAinC) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
     osizeB == sizeC.(oindBinC) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
 
-    A2′ = permutedims(UnsafeStridedView(A), (oindA..., cindA...))
-    A2 = sreshape(permutedims(UnsafeStridedView(A), (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
     if CA == :N
+        A2 = sreshape(permutedims(UnsafeStridedView(A), (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
         if stride(A2, 1) != 1
             A2 = permutedims(A2, (2,1))
             cA = 'T'
@@ -219,12 +218,12 @@ function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{
             cA = 'N'
         end
     elseif CA == :C
-        A2 = permutedims(A2, (2,1))
+        A2 = sreshape(permutedims(UnsafeStridedView(A), (cindA..., oindA...)), (prod(csizeA), prod(osizeA)))
         cA = 'C'
     end
 
-    B2 = sreshape(permutedims(UnsafeStridedView(B), (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
     if CB == :N
+        B2 = sreshape(permutedims(UnsafeStridedView(B), (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
         if stride(B2, 1) != 1
             B2 = permutedims(B2, (2,1))
             cB = 'T'
@@ -232,7 +231,7 @@ function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{
             cB = 'N'
         end
     elseif CB == :C
-        B2 = permutedims(B2, (2,1))
+        B2 = sreshape(permutedims(UnsafeStridedView(B), (oindB..., cindB...)), (prod(osizeB), prod(csizeB)))
         cB = 'C'
     end
 
