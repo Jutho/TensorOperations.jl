@@ -203,4 +203,21 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         E[a,b,c] := A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
     end
     @test D == E
+
+    # Some tensor network examples
+    @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
+        D1, D2, D3 = 300, 400, 200
+        d1, d2 = 2, 3
+        A1 = randn(T,D1,d1,D2)
+        A2 = randn(T,D2,d2,D3)
+        rhoL = randn(T,D1,D1)
+        rhoR = randn(T,D3,D3)
+        H = randn(T,d1,d2,d1,d2)
+        A12 = reshape(reshape(A1,D1*d1,D2)*reshape(A2,D2,d2*D3),(D1,d1,d2,D3))
+        rA12 = reshape(reshape(rhoL*reshape(A12,(D1,d1*d2*D3)),(D1*d1*d2,D3))*rhoR,(D1,d1,d2,D3))
+        HrA12 = permutedims(reshape(reshape(H,(d1*d2,d1*d2))*reshape(permutedims(rA12,(2,3,1,4)),(d1*d2,D1*D3)),(d1,d2,D1,D3)),(3,1,2,4))
+        E = dot(A12,HrA12)
+        @test E ≈ @tensor scalar(rhoL[a',a]*A1[a,s,b]*A2[b,s',c]*rhoR[c,c']*H[t,t',s,s']*conj(A1[a',t,b'])*conj(A2[b',t',c']))
+    end
+
 end

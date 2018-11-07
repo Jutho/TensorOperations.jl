@@ -142,11 +142,11 @@ function optdata(optex::Expr, ex::Expr)
 
 # functions for parsing and processing tensor expressions
 function tensorify(ex::Expr, optdata = nothing)
+    ex = expandconj(ex)
+    ex = processcontractorder(ex, optdata)
     # assignment case
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhsrhs(ex)
-        rhs = expandconj(rhs)
-        rhs = processcontractorder(rhs, optdata)
         if isa(rhs, Expr) && rhs.head == :call && rhs.args[1] == :throw
             return rhs
         end
@@ -185,7 +185,6 @@ function tensorify(ex::Expr, optdata = nothing)
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                rhs = processcontractorder(rhs, optdata)
                 return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(nothing, 0, rhs, 1, [], [], true)))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, makescalar(lhs), makescalar(rhs))
