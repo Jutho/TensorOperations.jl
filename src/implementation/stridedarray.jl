@@ -190,11 +190,11 @@ function _canreshape(dims::Dims{N}, strides::Dims{N}) where {N}
 end
 
 function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{T}, CB::Symbol, β, C::AbstractArray{T},
-    oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple, p1::IndexTuple, p2::IndexTuple) where {T<:LinearAlgebra.BlasFloat}
+    oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple, oindAinC::IndexTuple, oindBinC::IndexTuple) where {T<:LinearAlgebra.BlasFloat}
 
-    ndims(A) == length(oindA) + length(cindA) || throw(IndexError("Invalid permutation of $NA indices: $((oindA..., cindA...))"))
-    ndims(B) == length(oindB) + length(cindB) || throw(IndexError("Invalid permutation of $NB indices: $((oindB..., cindB...))"))
-    ndims(C) == length(oindA) + length(oindB) == length(p1)+length(p2) || throw(IndexError("Invalid permutation of indices: $((p1..., p2...))"))
+    ndims(A) == length(oindA) + length(cindA) || throw(IndexError("Invalid permutation of $(ndims(A)) indices: $((oindA..., cindA...))"))
+    ndims(B) == length(oindB) + length(cindB) || throw(IndexError("Invalid permutation of $(ndims(B)) indices: $((oindB..., cindB...))"))
+    ndims(C) == length(oindAinC) + length(oindBinC) || throw(IndexError("Invalid permutation of $(ndims(C)) indices: $((oindAinC..., oindBinC...))"))
 
     sizeA = i->size(A, i)
     sizeB = i->size(B, i)
@@ -206,10 +206,8 @@ function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{
     osizeB = sizeB.(oindB)
 
     csizeA == csizeB || throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-    sizeAB = let osize = (osizeA..., osizeB...)
-        i->osize[i]
-    end
-    sizeAB.((p1...,p2...)) == size(C) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
+    osizeA == sizeC.(oindAinC) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
+    osizeB == sizeC.(oindBinC) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
 
     A2′ = permutedims(UnsafeStridedView(A), (oindA..., cindA...))
     A2 = sreshape(permutedims(UnsafeStridedView(A), (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
@@ -238,8 +236,7 @@ function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{
         cB = 'C'
     end
 
-    @assert (p1..., p2...) == (1:ndims(C)...,)
-    C2 = sreshape(UnsafeStridedView(C), (prod(osizeA), prod(osizeB)))
+    C2 = sreshape(permutedims(UnsafeStridedView(C), (oindAinC..., oindBinC...)), (prod(osizeA), prod(osizeB)))
     LinearAlgebra.BLAS.gemm!(cA,cB, convert(T, α), A2, B2, convert(T, β), C2)
 
     return C

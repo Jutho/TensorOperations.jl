@@ -217,6 +217,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         rA12 = reshape(reshape(rhoL*reshape(A12,(D1,d1*d2*D3)),(D1*d1*d2,D3))*rhoR,(D1,d1,d2,D3))
         HrA12 = permutedims(reshape(reshape(H,(d1*d2,d1*d2))*reshape(permutedims(rA12,(2,3,1,4)),(d1*d2,D1*D3)),(d1,d2,D1,D3)),(3,1,2,4))
         E = dot(A12,HrA12)
+        @tensor HrA12′[a,s1,s2,c] := rhoL[a,a']*A1[a',t1,b]*A2[b,t2,c']*rhoR[c',c]*H[s1,s2,t1,t2]
+        @test HrA12 ≈ HrA12′
         @test E ≈ @tensor scalar(rhoL[a',a]*A1[a,s,b]*A2[b,s',c]*rhoR[c,c']*H[t,t',s,s']*conj(A1[a',t,b'])*conj(A2[b',t',c']))
     end
 
