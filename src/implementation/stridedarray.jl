@@ -294,12 +294,14 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
             oindB = _trivtuple(oindB) .+ length(cindB)
         end
         ipC = TupleTools.invperm(indCinoAB)
-        if isblascontractable(C, ipC, (), :D)
+        oindAinC = TupleTools.getindices(ipC, _trivtuple(oindA))
+        oindBinC = TupleTools.getindices(ipC, length(oindA) .+ _trivtuple(oindB))
+        if isblascontractable(C, oindAinC, oindBinC, :D)
             C2 = C
-            unsafe_contract!(α, A2, CA2, B2, CB2, β, C2, oindA, cindA, oindB, cindB, ipC, ())
+            unsafe_contract!(α, A2, CA2, B2, CB2, β, C2, oindA, cindA, oindB, cindB, oindAinC, oindBinC)
         else
-            C2 = similar_from_indices(TC, ipC, (), C, :N)
-            unsafe_contract!(1, A2, CA2, B2, CB2, 0, C2, oindA, cindA, oindB, cindB, _trivtuple((oindA..., oindB...)), ())
+            C2 = similar_from_indices(TC, oindAinC, oindBinC, C, :N)
+            unsafe_contract!(1, A2, CA2, B2, CB2, 0, C2, oindA, cindA, oindB, cindB, _trivtuple(oindA), length(oindA) .+ _trivtuple(oindB))
             add!(α, C2, :N, β, C, indCinoAB, ())
         end
     else
