@@ -35,7 +35,7 @@ end
 
 # A cache for temporaries of tensor contractions
 const __defaultcachelength__ = 50
-const cache = LRU{Tuple{Symbol,Int},Any}(__defaultcachelength__)
+const cache = LRU{Symbol,Any}(__defaultcachelength__)
 use_cache() = true
 
 function disable_cache()
