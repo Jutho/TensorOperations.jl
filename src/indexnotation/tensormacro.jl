@@ -405,6 +405,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     sympcB = gensym()
     symconjA = gensym()
     symconjB = gensym()
+    symTC = gensym()
 
     # prepare tensors or tensor expressions
     if dst === nothing
@@ -416,7 +417,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
-        initA = deindexify(nothing, 0, exA, Expr(:call,:one, TC), oindA, cind, true)
+        initA = deindexify(nothing, 0, exA, Expr(:call,:one, symTC), oindA, cind, true)
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
         initA = quote
@@ -434,13 +435,13 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = quote
-            if !use_blas() || (isblascontractable($A, $poA, $pcA, $conjA) && eltype($A) == $TC)
+            if !use_blas() || !($symTC <: $(BLAS.BlasFloat)) || (isblascontractable($A, $poA, $pcA, $conjA) && eltype($A) == $symTC)
                 $symA = $A
                 $sympoA = $poA
                 $sympcA = $pcA
                 $symconjA = $conjA
             else
-                $symA = cached_similar_from_indices($(QuoteNode(symA)), $TC, $poA, $pcA, $A, $conjA)
+                $symA = cached_similar_from_indices($(QuoteNode(symA)), $symTC, $poA, $pcA, $A, $conjA)
                 add!(1, $A, $conjA, 0, $symA, $poA, $pcA)
                 $sympoA = $(((1:length(poA))...,))
                 $sympcA = $(length(poA) .+ ((1:length(pcA))...,))
@@ -450,7 +451,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     end
 
     if !isgeneraltensor(exB) || hastraceindices(exB)
-        initB = deindexify(nothing, 0, exB, Expr(:call,:one, TC), oindB, cind, true)
+        initB = deindexify(nothing, 0, exB, Expr(:call,:one, symTC), oindB, cind, true)
         poB = ((1:length(oindB))...,)
         pcB = length(oindB) .+ ((1:length(cind))...,)
         initB = quote
@@ -467,13 +468,13 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         pcB = (map(l->_findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
         initB = quote
-            if !use_blas() || (isblascontractable($B, $pcB, $poB, $conjB) && eltype($B) == $TC)
+            if !use_blas() || !($symTC <: $(BLAS.BlasFloat)) || (isblascontractable($B, $pcB, $poB, $conjB) && eltype($B) == $symTC)
                 $symB = $B
                 $sympcB = $pcB
                 $sympoB = $poB
                 $symconjB = $conjB
             else
-                $symB = cached_similar_from_indices($(QuoteNode(symB)), $TC, $pcB, $poB, $B, $conjB)
+                $symB = cached_similar_from_indices($(QuoteNode(symB)), $symTC, $pcB, $poB, $B, $conjB)
                 add!(1, $B, $conjB, 0, $symB, $pcB, $poB)
                 $sympcB = $(((1:length(pcB))...,))
                 $sympoB = $(length(pcB) .+ ((1:length(poB))...,))
@@ -493,9 +494,9 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $TC, $sympoA, $sympoB, $p1, $p2, $symA, $symB, $symconjA, $symconjB))
+            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $sympoA, $sympoB, $p1, $p2, $symA, $symB, $symconjA, $symconjB))
         else
-            initC = :($symC = similar_from_indices($TC, $sympoA, $sympoB, $p1, $p2, $symA, $symB, $symconjA, $symconjB))
+            initC = :($symC = similar_from_indices($symTC, $sympoA, $sympoB, $p1, $p2, $symA, $symB, $symconjA, $symconjB))
         end
     else
         initC = :($symC = $dst)
@@ -507,7 +508,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     ip1s = ((1:length(oindA))...,)
     ip2s = length(oindA) .+ ((1:length(oindB))...,)
     contractex = quote
-        if !use_blas()
+        if !use_blas() || !($symTC <: $(BLAS.BlasFloat))
             $symC2 = $symC
             contract!($α*$αA*$αB, $symA, $symconjA, $symB, $symconjB, $β, $symC2, $sympoA, $sympcA, $sympoB, $sympcB, $p1, $p2)
         elseif isblascontractable($symC, $ip1, $ip2, :D)
@@ -520,6 +521,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         end
     end
     return quote
+        $symTC = $TC
         $initA
         $initB
         $initC
