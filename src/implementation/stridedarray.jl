@@ -78,12 +78,17 @@ contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol, β, C:
 
 # actual implementations for AbstractArray with ind = (indleft..., indright...)
 
+Base.@pure function similartype(A, T, sz)
+    Core.Compiler.return_type(similar, Tuple{typeof(A), Type{T}, typeof(sz)})
+end
+
 function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::AbstractArray, CA::Symbol) where {T,N}
     sz = map(n->size(A, n), ind)
-    if C !== nothing && isa(C, Array) && sz == size(C) && T == eltype(C)
-        return C::Array{T, N}
+    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
+        CT = similartype(A, T, sz)
+        return C::CT
     else
-        return Array{T, N}(undef, sz)
+        return similar(A, T, sz)
     end
 end
 function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple, ind::IndexTuple{N},
@@ -94,10 +99,11 @@ function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexT
     sz = let osz = (oszA..., oszB...)
         map(n->osz[n], ind)
     end
-    if C !== nothing && isa(C, Array) && sz == size(C) && T == eltype(C)
-        return C::Array{T, N}
+    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
+        CT = similartype(A, T, sz)
+        return C::CT
     else
-        return Array{T, N}(undef, sz)
+        return similar(A, T, sz)
     end
 end
 
@@ -164,19 +170,19 @@ end
 
 function isblascontractable(A::AbstractArray{T,N}, p1::IndexTuple, p2::IndexTuple, C::Symbol) where {T,N}
     T <: LinearAlgebra.BlasFloat || return false
-    strideA = let s = strides(Strided.UnsafeStridedView(A))
-        i->s[i]
-    end
-    sizeA = let s = size(A)
-        i-> s[i]
-    end
+    @unsafe_strided A isblascontractable(A, p1, p2, C)
+end
+function isblascontractable(A::AbstractStridedView{T,N}, p1::IndexTuple, p2::IndexTuple, C::Symbol) where {T,N}
+    T <: LinearAlgebra.BlasFloat || return false
+    strideA = i->stride(A, i)
+    sizeA = i->size(A,i)
 
     canreshape1, s1 = _canreshape(sizeA.(p1), strideA.(p1))
     canreshape2, s2 = _canreshape(sizeA.(p2), strideA.(p2))
 
     if C == :D # destination
-        return canreshape1 && canreshape2 && s1 == 1
-    elseif C == :C # conjugated
+        return A.op == identity && canreshape1 && canreshape2 && s1 == 1
+    elseif (C == :C && A.op == identity) || (C == :N && A.op == conj)# conjugated
         return canreshape1 && canreshape2 && s2 == 1
     else
         return canreshape1 && canreshape2 && (s1 == 1 || s2 == 1)
@@ -209,34 +215,31 @@ function unsafe_contract!(α, A::AbstractArray{T}, CA::Symbol, B::AbstractArray{
     osizeA == sizeC.(oindAinC) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
     osizeB == sizeC.(oindBinC) || throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
 
-    if CA == :N
-        A2 = sreshape(permutedims(UnsafeStridedView(A), (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
-        if stride(A2, 1) != 1
-            A2 = permutedims(A2, (2,1))
-            cA = 'T'
+    @unsafe_strided A B C begin
+        if CA == :N && CB == :N
+            A2 = sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
+            B2 = sreshape(permutedims(B, (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
+            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)), (prod(osizeA), prod(osizeB)))
+            mul!(C2, A2, B2, α, β)
+        elseif CA == :C && CB == :N
+            A2 = conj(sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA))))
+            B2 = sreshape(permutedims(B, (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
+            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)), (prod(osizeA), prod(osizeB)))
+            mul!(C2, A2, B2, α, β)
+        elseif CA == :N && CB == :C
+            A2 = sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
+            B2 = conj(sreshape(permutedims(B, (cindB..., oindB...)), (prod(csizeB), prod(osizeB))))
+            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)), (prod(osizeA), prod(osizeB)))
+            mul!(C2, A2, B2, α, β)
+        elseif CA == :C && CB == :C
+            A2 = conj(sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA))))
+            B2 = conj(sreshape(permutedims(B, (cindB..., oindB...)), (prod(csizeB), prod(osizeB))))
+            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)), (prod(osizeA), prod(osizeB)))
+            mul!(C2, A2, B2, α, β)
         else
-            cA = 'N'
+            throw(ArgumentError("unknown conjugation flag $CA and $CB"))
         end
-    elseif CA == :C
-        A2 = sreshape(permutedims(UnsafeStridedView(A), (cindA..., oindA...)), (prod(csizeA), prod(osizeA)))
-        cA = 'C'
     end
-
-    if CB == :N
-        B2 = sreshape(permutedims(UnsafeStridedView(B), (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
-        if stride(B2, 1) != 1
-            B2 = permutedims(B2, (2,1))
-            cB = 'T'
-        else
-            cB = 'N'
-        end
-    elseif CB == :C
-        B2 = sreshape(permutedims(UnsafeStridedView(B), (oindB..., cindB...)), (prod(osizeB), prod(csizeB)))
-        cB = 'C'
-    end
-
-    C2 = sreshape(permutedims(UnsafeStridedView(C), (oindAinC..., oindBinC...)), (prod(osizeA), prod(osizeB)))
-    LinearAlgebra.BLAS.gemm!(cA,cB, convert(T, α), A2, B2, convert(T, β), C2)
 
     return C
 end
@@ -305,10 +308,10 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         end
     else
         ipC = TupleTools.invperm(indCinoAB)
-        GC.@preserve A B C begin
-            AS = sreshape(permutedims(UnsafeStridedView(A), (oindA..., cindA...)), (osizeA..., one.(osizeB)..., csizeA...))
-            BS = sreshape(permutedims(UnsafeStridedView(B), (oindB..., cindB...)), (one.(osizeA)..., osizeB..., csizeB...))
-            CS = sreshape(permutedims(UnsafeStridedView(C), ipC), (osizeA..., osizeB..., one.(csizeA)...))
+        @unsafe_strided A B C begin
+            AS = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., one.(osizeB)..., csizeA...))
+            BS = sreshape(permutedims(B, (oindB..., cindB...)), (one.(osizeA)..., osizeB..., csizeB...))
+            CS = sreshape(permutedims(C, ipC), (osizeA..., osizeB..., one.(csizeA)...))
             totsize = (osizeA..., osizeB..., csizeA...)
             if α != 1
                 if β == 0
