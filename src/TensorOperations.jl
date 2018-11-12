@@ -10,7 +10,7 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 # export macro API
 export @tensor, @tensoropt, @optimalcontractiontree
 
-export enable_blas, disable_blas, enable_cache, disable_cache
+export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
@@ -40,16 +40,47 @@ const __defaultcachelength__ = 50
 const cache = LRU{Symbol,Any}(__defaultcachelength__)
 use_cache() = true
 
+"""
+    disable_cache()
+
+Disable the cache for further use; does not clear its current contents.
+"""
 function disable_cache()
-    resize!(cache, 0)
     @eval TensorOperations use_cache() = false
     return
 end
-function enable_cache(;length = __defaultcachelength__)
+
+"""
+    enable_cache([length])
+
+(Re)-enable the cache for further use; optionally set a new maximum length.
+"""
+function enable_cache()
+    @eval TensorOperations use_cache() = true
+    return
+end
+function enable_cache(length)
     resize!(cache, length)
     @eval TensorOperations use_cache() = true
     return
 end
+
+"""
+    clear_cache([length])
+
+Clear the current contents of the cache.
+"""
+function clear_cache()
+    empty!(cache)
+    return
+end
+
+"""
+    cachesize()
+
+Compute the current memory size of all the objects in the cache.
+"""
+cachesize() = isempty(cache) ? 0 : sum(Base.summarysize, values(cache))
 
 # Index notation
 #----------------

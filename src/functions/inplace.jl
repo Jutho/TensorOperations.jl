@@ -47,25 +47,18 @@ function tensortrace!(α, A, IA::Tuple, β, C, IC::Tuple)
     return C
 end
 
+"""
+    tensorcontract!(α, A, labelsA, conjA, B, labelsB, conjB, β, C, labelsC)
 
-# Updates C as β*C+α*contract(A, B), whereby the contraction pattern
-# is specified by IA, IB and IC. The iterables IA(B, C)
-# should contain a unique label for every index of array A(B, C), such that
-# common I of A and B correspond to indices that will be contracted.
-# Common I between A and C or B and C indicate the position of the
-# uncontracted indices of A and B with respect to the indices of C, such
-# that the output array of the contraction can be added to C. Every label
-# should thus appear exactly twice in the union of IA, IB and
-# IC and the associated indices of the tensors should have identical
-# size.
-# Array A and/or B can be also conjugated by setting conjA and/or conjB
-# equal  to 'C' instead of 'N'.
-# The parametric argument method can be specified to choose between two
-# different contraction strategies:
-# -> method = :BLAS : permutes tensors (requires extra memory) and then
-#                   calls built-in (typically BLAS) multiplication
-# -> method = :native : memory-free native julia tensor contraction
-
+Replaces `C` with `β C + α A * B`, where some indices of array `A` are contracted with corresponding
+indices in array `B` by assigning them identical labels in the iterables `labelsA` and `labelsB`.
+The arguments `conjA` and `conjB` should be of type `Char` and indicate whether the data of
+arrays `A` and `B`, respectively, need to be conjugated (value `'C'`) or not (value `'N'`).
+Every label should appear exactly twice in the union of `labelsA`, `labelsB` and `labelsC`,
+either in the intersection of `labelsA` and `labelsB` (for indices that need to be contracted)
+or in the interaction of either `labelsA` or `labelsB` with `labelsC`, for indicating the order
+in which the open indices should be match to the indices of the output array `C`.
+"""
 function tensorcontract!(α, A, IA::Tuple, conjA, B, IB::Tuple, conjB, β, C, IC::Tuple)
 
     conjA == 'N' || conjA == 'C' || throw(ArgumentError("Value of conjA should be 'N' or 'C' instead of $conjA"))
@@ -78,6 +71,11 @@ function tensorcontract!(α, A, IA::Tuple, conjA, B, IB::Tuple, conjB, β, C, IC
     return C
 end
 
+"""
+    tensorproduct!(α, A, labelsA, B, labelsB, β, C, labelsC)
+
+Replaces C with `β C + α A * B` without any indices being contracted.
+"""
 function tensorproduct!(α, A, IA::Tuple, B, IB::Tuple, β, C, IC::Tuple)
     isempty(intersect(IA, IB)) || throw(LabelError("not a valid tensor product"))
     tensorcontract!(α, A, IA, 'N', B, IB, 'N', β, C, IC)

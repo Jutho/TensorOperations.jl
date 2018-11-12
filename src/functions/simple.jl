@@ -11,14 +11,15 @@ tensorcontract(A, IA, B, IB, IC = symdiff(IA, IB)) =
 tensorproduct(A, IA, B, IB, IC = vcat(IA, IB)) = tensorproduct(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
 
 """
-    tensorcopy(A, IA, IC=IA)
+    tensorcopy(A, IA, IC = IA)
 
 Creates a copy of `A`, where the dimensions of `A` are assigned indices from the
 iterable `IA` and the indices of the copy are contained in `IC`. Both iterables
 should contain the same elements in a different order.
 
 The result of this method is equivalent to `permutedims(A, p)` where p is the permutation
-such that `IC=IA[p]`. The implementation of tensorcopy is however more efficient on average.
+such that `IC = IA[p]`. The implementation of `tensorcopy` is however more efficient on average,
+especially if `Threads.nthreads() > 1`.
 """
 function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     indCinA = add_indices(IA, IC)
@@ -28,7 +29,7 @@ function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
 end
 
 """
-    tensoradd(A, IA, B, IB, IC::Tuple=IA)
+    tensoradd(A, IA, B, IB, IC = IA)
 
 Returns the result of adding arrays `A` and `B` where the iterabels `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
@@ -68,7 +69,7 @@ function tensortrace(A, IA::Tuple, IC::Tuple)
 end
 
 """
-    tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
+    tensorcontract(A, IA, B, IB[, IC])
 
 Contract indices of array `A` with corresponding indices in array `B` by assigning
 them identical labels in the iterables `IA` and `IB`. The indices of the resulting
@@ -76,8 +77,8 @@ array correspond to the indices that only appear in either `IA` or `IB` and can 
 ordered by specifying the optional argument `IC`. The default is to have all open
 indices of array `A` followed by all open indices of array `B`. Note that inner
 contractions of an array should be handled first with `tensortrace`, so that every
-label can appear only once in `labelsA` or `labelsB` seperately, and once (for open
-index) or twice (for contracted index) in the union of `labelsA` and `labelsB`.
+label can appear only once in `IA` or `IB` seperately, and once (for open
+index) or twice (for contracted index) in the union of `IA` and `IB`.
 
 The contraction can be performed by a native Julia algorithm without creating any
 temporaries, or by first permuting the arrays such that the contraction becomes equivalent
@@ -96,10 +97,10 @@ function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
 end
 
 """
-    tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple = (IA..., IB...))
+    tensorproduct(A, IA, B, IB, IC = (IA..., IB...))
 
 Computes the tensor product of two arrays `A` and `B`, i.e. returns a new array `C`
-with `ndims(C)=ndims(A)+ndims(B)`. The indices of the output tensor are related to
+with `ndims(C) = ndims(A)+ndims(B)`. The indices of the output tensor are related to
 those of the input tensors by the pattern specified by the indices. Essentially,
 this is a special case of `tensorcontract` with no indices being contracted over.
 This method checks whether the indices indeed specify a tensor product instead of
