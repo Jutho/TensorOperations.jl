@@ -89,10 +89,17 @@ function parsecost(ex::Expr)
         return ^(map(parsecost, ex.args[2:end])...)
     elseif ex.head == :call && ex.args[1] == :/
         return /(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :big
+        return big(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :float
+        return float(map(parsecost, ex.args[2:end])...)
+    elseif ex.head == :call && ex.args[1] == :Int128
+        return Int128(map(parsecost, ex.args[2:end])...)
     else
         error("invalid index cost specification: $ex")
     end
 end
+parsecost(ex::Int) = ex
 parsecost(ex::Number) = ex
 parsecost(ex::Symbol) = Power{ex}(1,1)
 
@@ -107,8 +114,8 @@ function optdata(optex::Expr, ex::Expr)
         isempty(optex.args) && return nothing
         args = optex.args
         if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
-            indices = Vector{Any}(length(args))
-            costs = Vector{Any}(length(args))
+            indices = Vector{Any}(undef, length(args))
+            costs = Vector{Any}(undef, length(args))
             costtype = typeof(parsecost(args[1].args[3]))
             for k = 1:length(args)
                 if isa(args[k], Expr) && args[k].head == :call && args[k].args[1] == :(=>)

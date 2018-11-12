@@ -10,6 +10,8 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 # export macro API
 export @tensor, @tensoropt, @optimalcontractiontree
 
+export enable_blas, disable_blas, enable_cache, disable_cache
+
 # export function based API
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
