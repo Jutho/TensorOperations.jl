@@ -253,7 +253,10 @@ function geteltype(ex::Expr)
         end
     elseif ex.head == :call && ex.args[1] == :conj
         return geteltype(ex.args[2])
+    elseif isscalarexpr(ex)
+        return :(typeof($ex))
     else
+        # return :(eltype($ex)) # would probably lead to doing the same operation twice
         throw(ArgumentError("unable to determine eltype"))
     end
 end
