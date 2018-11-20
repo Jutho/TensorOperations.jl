@@ -1,15 +1,15 @@
 function optimaltree(network, optdata::Dict; verbose::Bool = false)
     numtensors = length(network)
-    allindices = unique(flatten(network))
+    allindices = unique(vcat(network...))
     numindices = length(allindices)
     costtype = valtype(optdata)
     allcosts = [get(optdata, i, one(costtype)) for i in allindices]
-    maxcost = prod(allcosts)*maximum(allcosts) + zero(costtype) # add zero for type stability: Power -> Poly
-        tensorcosts = Vector{costtype}(undef, numtensors)
+    maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)), maximum(allcosts)), zero(costtype)) # add zero for type stability: Power -> Poly
+    tensorcosts = Vector{costtype}(undef, numtensors)
     for k = 1:numtensors
-        tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), *, network[k], init=one(costtype))
+        tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), mulcost, network[k], init=one(costtype))
     end
-    initialcost = min(maxcost, maximum(tensorcosts)*minimum(tensorcosts) + zero(costtype)) # just some arbitrary guess
+    initialcost = min(maxcost, addcost(mulcost(maximum(tensorcosts),minimum(tensorcosts)),zero(costtype))) # just some arbitrary guess
 
     if numindices <= 32
         return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
@@ -49,13 +49,17 @@ _isemptyset(s::Unsigned) = iszero(s)
 _isemptyset(s::BitVector) = !any(s)
 _isemptyset(s::BitSet) = isempty(s)
 
+addcost(cost1::Integer, cost2::Integer, costs::Vararg{<:Integer}) = Base.Checked.checked_add(cost1, cost2, costs...)
+mulcost(cost1::Integer, cost2::Integer) = Base.Checked.checked_mul(cost1, cost2)
+addcost(cost1, cost2, costs...) = +(cost1, cost2, costs...)
+mulcost(cost1, cost2) = cost1*cost2
 function computecost(allcosts, ind1::T, ind2::T) where {T<:Unsigned}
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
     n = 1
     while !iszero(ind)
         if isodd(ind)
-            cost *= allcosts[n]
+            cost = mulcost(cost,allcosts[n])
         end
         ind = ind>>1
         n += 1
@@ -66,7 +70,7 @@ function computecost(allcosts, ind1::BitVector, ind2::BitVector)
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
     for n in findall(ind)
-        cost *= allcosts[n]
+        cost = mulcost(cost,allcosts[n])
     end
     return cost
 end
@@ -74,7 +78,7 @@ function computecost(allcosts, ind1::BitSet, ind2::BitSet)
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
     for n in ind
-        cost *= allcosts[n]
+        cost = mulcost(cost,allcosts[n])
     end
     return cost
 end
@@ -87,7 +91,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     tabletensor = zeros(Int, (numindices,2))
     tableindex = zeros(Int, (numindices,2))
 
-    adjacencymatrix=falses(numtensors,numtensors)
+    adjacencymatrix = falses(numtensors,numtensors)
     costfac = maximum(allcosts)
 
     @inbounds for n = 1:numtensors
@@ -155,7 +159,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                             cind = _intersect(ind1, ind2)
                             if !_isemptyset(cind)
                                 s = _union(s1, s2)
-                                cost = costdict[k][s1] + costdict[n-k][s2] + computecost(allcosts, ind1, ind2)
+                                cost = addcost(costdict[k][s1], costdict[n-k][s2], computecost(allcosts, ind1, ind2))
                                 if cost <= get(costdict[n], s, currentcost)
                                     costdict[n][s] = cost
                                     indexdict[n][s] = _setdiff(_union(ind1,ind2), cind)
@@ -182,7 +186,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                                 cind = _intersect(ind1, ind2)
                                 if !_isemptyset(cind)
                                     s = _union(s1, s2)
-                                    cost = costdict[k][s1] + costdict[k][s2] + computecost(allcosts, ind1, ind2)
+                                    cost = addcost(costdict[k][s1], costdict[k][s2], computecost(allcosts, ind1, ind2))
                                     if cost <= get(costdict[n], s, currentcost)
                                         costdict[n][s] = cost
                                         indexdict[n][s] = _setdiff(_union(ind1,ind2), cind)
@@ -198,7 +202,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                     end
                 end
             end
-            currentbiggestset = _findlast(x->!isempty(x),costdict)
+            currentbiggestset = _findlast(x->!isempty(x), costdict)
             verbose && println("Finished at cost $currentcost: maximum subset has size $currentbiggestset")
             if !isempty(costdict[componentsize])
                 break
@@ -221,7 +225,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     ind = indexlist[p[1]]
     for c = 2:numcomponent
         tree = (tree, treelist[p[c]])
-        cost = cost + costlist[p[c]] + computecost(allcosts, ind, indexlist[p[c]])
+        cost = addcost(cost, costlist[p[c]], computecost(allcosts, ind, indexlist[p[c]]))
         ind = _union(ind, indexlist[p[c]])
     end
     return tree, cost

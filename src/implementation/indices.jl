@@ -2,18 +2,54 @@
 #
 # Implements the index calculations, i.e. converting the tensor labels into
 # indices specifying the operations
+
+# Auxiliary tools to manipulate tuples
+#--------------------------------------
 import Base.tail
 
-# tuple setdiff, assumes b is completely contained in a or throws error
+# tuple setdiff, assumes b is completely contained in a
 tsetdiff(a::Tuple, b::Tuple{}) = a
-tsetdiff(a::Tuple{Any}, b::Tuple{Any}) = ()
+tsetdiff(a::Tuple{Any}, b::Tuple{Any}) = () #a[1] == b[1] ? () : tseterror()
 tsetdiff(a::Tuple, b::Tuple{Any}) = a[1] == b[1] ? tail(a) : (a[1], tsetdiff(tail(a), b)...)
 tsetdiff(a::Tuple, b::Tuple) = tsetdiff(tsetdiff(a, (b[1],)), tail(b))
+
+@noinline tseterror() = throw(ArgumentError("tuples did not meet requirements"))
 
 # tuple unique: assumes that every element appears exactly twice
 tunique(src::Tuple) = tunique(src, ())
 tunique(src::NTuple{N,Any}, dst::NTuple{N,Any}) where {N} = dst
 tunique(src::Tuple, dst::Tuple) = src[1] in dst ? tunique((tail(src)..., src[1]), dst) : tunique(tail(src), (dst..., src[1]))
+
+# type stable find, returns zero if not found
+_findfirst(args...) = (i = findfirst(args...); i === nothing ? 0 : i)
+_findnext(args...) = (i = findnext(args...); i === nothing ? 0 : i)
+_findlast(args...) = (i = findlast(args...); i === nothing ? 0 : i)
+
+# Auxiliary method to analyze trace indices
+#-------------------------------------------
+"""
+    unique2(itr)
+
+Returns an array containing only those elements that appear exactly once in itr,
+and without any elements that appear more than once.
+"""
+function unique2(itr)
+    out = collect(itr)
+    i = 1
+    while i < length(out)
+        inext = _findnext(isequal(out[i]), out, i+1)
+        if inext == nothing || inext == 0
+            i += 1
+            continue
+        end
+        while !(inext == nothing || inext == 0)
+            deleteat!(out,inext)
+            inext = _findnext(isequal(out[i]), out, i+1)
+        end
+        deleteat!(out,i)
+    end
+    out
+end
 
 # Extract index information
 #---------------------------

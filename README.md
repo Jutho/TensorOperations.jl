@@ -1,8 +1,17 @@
 # TensorOperations.jl
 
-[![TensorOperations](http://pkg.julialang.org/badges/TensorOperations_0.6.svg)](http://pkg.julialang.org/?pkg=TensorOperations) [![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl) [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md) [![Coverage Status](https://coveralls.io/repos/github/Jutho/TensorOperations.jl/badge.svg?branch=master)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master) [![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
+[![Build Status](https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master)](https://travis-ci.org/Jutho/TensorOperations.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/Jutho/TensorOperations.jl?svg=true&branch=master)](https://ci.appveyor.com/project/jutho/tensoroperations-jl/branch/master)
+[![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md)
+[![codecov.io](http://codecov.io/github/Jutho/TensorOperations.jl/coverage.svg?branch=master)](http://codecov.io/github/Jutho/TensorOperations.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/Jutho/TensorOperations.jl/badge.svg?branch=master)](https://coveralls.io/github/Jutho/TensorOperations.jl?branch=master)
 
-Fast tensor operations using a convenient index notation.
+Fast tensor operations using a convenient Einstein index notation.
+
+**TensorOperations v1.0.0 represents a significant rewrite from previous versions.**
+
+While the exported API was left mostly unchanged, there are a few
+breaking changes, especially in the function syntax.
 
 ## What's new
 
@@ -25,7 +34,9 @@ The TensorOperations.jl package provides a convenient macro interface to specify
 TensorOperations.jl is centered around 3 basic tensor operations:
 
 1. **addition:** Add a (possibly scaled version of) one array to another array, where the indices of the both arrays might appear in different orders. This operation combines normal array addition and index permutation. It includes as a special case copying one array into another with permuted indices, and provides a cache-friendly (and thus more efficient) alternative to `permutedims` from Julia Base.
+
 2. **trace or inner contraction:** Perform a trace/contraction over pairs of indices of an array, where the result is a lower-dimensional array.
+
 3. **contraction :** Performs a general contraction of two tensors, where some indices of one array are paired with corresponding indices in a second array. Contains as special case the outer product where no indices are contracted and a new array is created with a number of dimensions that is the sum of the number of dimensions of the two original arrays.
 
 ### Index notation

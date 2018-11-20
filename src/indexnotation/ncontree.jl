@@ -43,7 +43,7 @@ function _ncontree!(partialtrees, contractionindices)
         pop!(partialtrees)
         pop!(contractionindices)
     else
-        let firstind = minimum(flatten(contractionindices))
+        let firstind = minimum(vcat(contractionindices...))
             i1 = _findfirst(x->in(firstind,x), contractionindices)
             i2 = _findnext(x->in(firstind,x), contractionindices, i1+1)
             newindices = unique2(vcat(contractionindices[i1], contractionindices[i2]))

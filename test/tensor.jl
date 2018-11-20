@@ -1,6 +1,8 @@
 # test index notation using @tensor macro
 #-----------------------------------------
-@testset "Index Notation" begin
+withblas = TensorOperations.use_blas() ? "with" : "without"
+withcache = TensorOperations.use_cache() ? "with" : "without"
+@testset "Index Notation $withblas BLAS and $withcache cache" begin
     A = randn(Float64, (3,5,4,6))
     p = (4,1,3,2)
     C1 = permutedims(A, p)
@@ -48,6 +50,7 @@
     for a=1:3, b=1:20, c=1:5, d=1:3, e=1:4, f=1:6, g=1:3
         C2[a,g,e,d,f] += A[a,b,c,d,e]*B[c,f,b,g]
     end
+    @test C1 ≈ C2
     @test_throws TensorOperations.IndexError begin
         @tensor A[a,b,c,d]*B[c,f,b,g]
     end
@@ -81,7 +84,7 @@
         end
     end
     @test D1 ≈ D2
-    @test norm(vec(D1)) ≈ sqrt(abs(@tensor scalar(D1[d,f,h]*conj(D1[d,f,h]))))
+    @test norm(vec(D1)) ≈ sqrt(abs((@tensor scalar(D1[d,f,h]*conj(D1[d,f,h])))))
 
     Abig=randn(Float64, (30,30,30,30))
     A=view(Abig,1 ⊞ 3*(0:9),2 ⊞ 2*(0:6),5 ⊞ 4*(0:6),4 ⊞ 3*(0:8))
@@ -200,4 +203,23 @@
         E[a,b,c] := A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
     end
     @test D == E
+
+    # Some tensor network examples
+    @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
+        D1, D2, D3 = 300, 400, 200
+        d1, d2 = 2, 3
+        A1 = randn(T,D1,d1,D2)
+        A2 = randn(T,D2,d2,D3)
+        rhoL = randn(T,D1,D1)
+        rhoR = randn(T,D3,D3)
+        H = randn(T,d1,d2,d1,d2)
+        A12 = reshape(reshape(A1,D1*d1,D2)*reshape(A2,D2,d2*D3),(D1,d1,d2,D3))
+        rA12 = reshape(reshape(rhoL*reshape(A12,(D1,d1*d2*D3)),(D1*d1*d2,D3))*rhoR,(D1,d1,d2,D3))
+        HrA12 = permutedims(reshape(reshape(H,(d1*d2,d1*d2))*reshape(permutedims(rA12,(2,3,1,4)),(d1*d2,D1*D3)),(d1,d2,D1,D3)),(3,1,2,4))
+        E = dot(A12,HrA12)
+        @tensor HrA12′[a,s1,s2,c] := rhoL[a,a']*A1[a',t1,b]*A2[b,t2,c']*rhoR[c',c]*H[s1,s2,t1,t2]
+        @test HrA12 ≈ HrA12′
+        @test E ≈ @tensor scalar(rhoL[a',a]*A1[a,s,b]*A2[b,s',c]*rhoR[c,c']*H[t,t',s,s']*conj(A1[a',t,b'])*conj(A2[b',t',c']))
+    end
+
 end
