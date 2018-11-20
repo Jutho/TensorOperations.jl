@@ -11,9 +11,4 @@ makedocs(modules=[TensorOperations],
 # Documenter can also automatically deploy documentation to gh-pages.
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
-deploydocs(
-    deps = nothing,
-    make = nothing,
-    target = "build",
-    repo = "github.com/Jutho/TensorOperations.jl.git",
-)
+deploydocs(repo = "github.com/Jutho/TensorOperations.jl.git")

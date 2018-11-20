@@ -28,7 +28,8 @@ Install with the package manager, `pkg> add TensorOperations`.
     via `enable_blas()` and `disable_blas()`. If BLAS is disabled or cannot be applied (e.g.
     non-matching or non-standard numerical types), Strided.jl is also used for the contraction.
 *   A package wide cache for storing temporary arrays that are generated when evaluating complex
-    tensor expressions within the `@tensor` macro.
+    tensor expressions within the `@tensor` macro (based on the implementation of
+    [LRUCache](https://github.com/JuliaCollections/LRUCache.jl)).
 
 ## Tensor operations
 
@@ -59,10 +60,7 @@ more complicated tensor expression is deconstructed.
 
 ## To do list
 
-*   Reimplement cache so that it can be restricted in terms of total memory footprint, instead
-    of just the number of objects it contains.
-
 *   Make cache threadsafe.
 
 *   Make it easier to check contraction order and to splice in runtime information, or optimize
-    based on memory footprint.
+    based on memory footprint or other custom cost functions.

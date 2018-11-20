@@ -3,7 +3,6 @@ module TensorOperations
 using TupleTools
 using Strided
 using Strided: AbstractStridedView, UnsafeStridedView
-using LRUCache
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 
@@ -24,64 +23,6 @@ struct IndexError{S<:AbstractString} <: Exception
     msg::S
 end
 
-# A switch for enabling/disabling the use of BLAS for tensor contractions
-use_blas() = true
-function disable_blas()
-    @eval TensorOperations use_blas() = false
-    return
-end
-function enable_blas()
-    @eval TensorOperations use_blas() = true
-    return
-end
-
-# A cache for temporaries of tensor contractions
-const __defaultcachelength__ = 50
-const cache = LRU{Symbol,Any}(__defaultcachelength__)
-use_cache() = true
-
-"""
-    disable_cache()
-
-Disable the cache for further use; does not clear its current contents.
-"""
-function disable_cache()
-    @eval TensorOperations use_cache() = false
-    return
-end
-
-"""
-    enable_cache([length])
-
-(Re)-enable the cache for further use; optionally set a new maximum length.
-"""
-function enable_cache()
-    @eval TensorOperations use_cache() = true
-    return
-end
-function enable_cache(length)
-    resize!(cache, length)
-    @eval TensorOperations use_cache() = true
-    return
-end
-
-"""
-    clear_cache([length])
-
-Clear the current contents of the cache.
-"""
-function clear_cache()
-    empty!(cache)
-    return
-end
-
-"""
-    cachesize()
-
-Compute the current memory size of all the objects in the cache.
-"""
-cachesize() = isempty(cache) ? 0 : sum(Base.summarysize, values(cache))
-
 # Index notation
 #----------------
 include("indexnotation/tensorcache.jl")
@@ -94,6 +35,7 @@ include("indexnotation/poly.jl")
 # Implementations
 #-----------------
 include("implementation/indices.jl")
+include("implementation/lrucache.jl")
 include("implementation/stridedarray.jl")
 
 # Functions
@@ -101,6 +43,66 @@ include("implementation/stridedarray.jl")
 include("functions/simple.jl")
 include("functions/inplace.jl")
 
+# Global package settings
+#------------------------
+# A switch for enabling/disabling the use of BLAS for tensor contractions
+use_blas() = true
+function disable_blas()
+    @eval TensorOperations use_blas() = false
+    return
+end
+function enable_blas()
+    @eval TensorOperations use_blas() = true
+    return
+end
+
+# A cache for temporaries of tensor contractions
+const cache = LRU{Symbol,Any}()
+use_cache() = true
+
+"""
+    disable_cache()
+
+Disable the cache for further use but does not clear its current contents.
+Also see [`clear_cache()`](@ref)
+"""
+function disable_cache()
+    @eval TensorOperations use_cache() = false
+    return
+end
+
+"""
+    enable_cache(; maxsize::Int = ..., maxrelsize::Real = 0.5)
+
+(Re)-enable the cache for further use; set the maximal size `maxsize` (as number of bytes)
+or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
+`maxsize = floor(Int, maxrelsize * Sys.total_memory())`.
+"""
+function enable_cache(; kwargs...)
+    @eval TensorOperations use_cache() = true
+    setsize!(cache; kwargs...)
+    return
+end
+
+"""
+    clear_cache()
+
+Clear the current contents of the cache.
+"""
+function clear_cache()
+    empty!(cache)
+    return
+end
+
+"""
+    cachesize()
+
+Return the current memory size (in bytes) of all the objects in the cache.
+"""
+cachesize() = cache.currentsize
+
+# Some precompile statements
+#----------------------------
 precompile(tensorify, (Expr,))
 precompile(optdata,(Expr,))
 precompile(optdata,(Expr,Expr))
