@@ -297,9 +297,9 @@ function deindexify(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, is
         else
             return deindexify_contraction(dst, β, ex, α, leftind, rightind, istemporary)
         end
-    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 # multiplication: should be pairwise by now
+    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
         return deindexify(dst, β, ex.args[2], Expr(:call, :/, α, makescalar(ex.args[3])), leftind, rightind, istemporary)
-    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 # multiplication: should be pairwise by now
+    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
         return deindexify(dst, β, ex.args[3], Expr(:call, :\, makescalar(ex.args[2]), α), leftind, rightind, istemporary)
     end
     throw(ArgumentError("problem with parsing $ex"))
@@ -536,127 +536,3 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         $symC
     end
 end
-
-
-#
-#
-# function deindexify(ex::Expr, α, leftind::Vector, rightind::Vector)
-#     if isgeneraltensor(ex)
-#         src, srcleftind, srcrightind, α2, conj = makegeneraltensor(ex)
-#         srcind = vcat(srcleftind, srcrightind)
-#         conjarg = conj ? :(Val{:C}) : :(Val{:N})
-#
-#         p1 = (map(l->_findfirst(isequal(l), srcind), leftind)...,)
-#         p2 = (map(l->_findfirst(isequal(l), srcind), rightind)...,)
-#         if hastraceindices(ex)
-#             traceind = unique(setdiff(setdiff(srcind,leftind),rightind))
-#             q1 = (map(l->_findfirst(isequal(l), srcind), traceind)...,)
-#             q2 = (map(l->_findlast(isequal(l), srcind), traceind)...,)
-#             if !isperm((p1...,p2...,q1...,q2...)) ||
-#                 length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
-#                 err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
-#                 return :(throw(IndexError($err)))
-#             end
-#             αsym = gensym()
-#             dstsym = gensym()
-#             return :(begin
-#                 $αsym = $α*$α2
-#                 $dstsym = _similar_from_indices($(QuoteNode(dstsym)), promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
-#                 trace!($αsym, $src, $conjarg, 0, $dstsym, $p1, $p2, $q1, $q2)
-#             end)
-#         else
-#             if !isperm((p1...,p2...)) ||
-#                 length(srcind) != length(leftind) + length(rightind)
-#                 err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
-#                 return :(throw(IndexError($err)))
-#             end
-#             αsym = gensym()
-#             dstsym = gensym()
-#             return :(begin
-#                 $αsym = $α*$α2
-#                 $dstsym = _similar_from_indices($(QuoteNode(dstsym)), promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
-#                 add!($αsym, $src, $conjarg, 0, $dstsym, $p1, $p2)
-#             end)
-#         end
-#     elseif ex.head == :call && ex.args[1] == :+ # addition: add one by one
-#         dst = deindexify(ex.args[2], α, leftind, rightind)
-#         for k = 3:length(ex.args)
-#             dst = deindexify!(dst, 1, ex.args[k], α, leftind, rightind)
-#         end
-#         return dst
-#     elseif ex.head == :call && ex.args[1] == :- && length(ex.args) == 3 # subtraction: similar
-#         dst = deindexify(ex.args[2], α, leftind, rightind)
-#         dst = deindexify!(dst, 1, ex.args[3], :(-$α), leftind, rightind)
-#         return dst
-#     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
-#         if isscalarexpr(ex.args[2])
-#             return deindexify(ex.args[3], Expr(:call, :*, α, ex.args[2]), leftind, rightind)
-#         elseif isscalarexpr(ex.args[3])
-#             return deindexify(ex.args[2], Expr(:call, :*, α, ex.args[3]), leftind, rightind)
-#         end
-#         @assert istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
-#         indA = getindices(ex.args[2])
-#         indB = getindices(ex.args[3])
-#         cind = intersect(indA, indB)
-#         oindA = setdiff(indA, cind)
-#         oindB = setdiff(indB, cind)
-#
-#         if isgeneraltensor(ex.args[2]) && !hastraceindices(ex.args[2])
-#             A, indAl, indAr, αA, conj = makegeneraltensor(ex.args[2])
-#             conjA = conj ? :(Val{:C}) : :(Val{:N})
-#             indA = vcat(indAl, indAr)
-#             poA = (map(l->_findfirst(isequal(l), indA), oindA)...,)
-#             pcA = (map(l->_findfirst(isequal(l), indA), cind)...,)
-#             finalizeA = false
-#         else
-#             A = deindexify(ex.args[2], 1, oindA, cind)
-#             αA = 1
-#             conjA = :(Val{:N})
-#             indA = vcat(oindA, cind)
-#             poA = ((1:length(oindA))...,)
-#             pcA = ((length(oindA)+1:length(indA))...,)
-#             finalizeA = true
-#         end
-#         if isgeneraltensor(ex.args[3]) && !hastraceindices(ex.args[3])
-#             B, indBl, indBr, αB, conj = makegeneraltensor(ex.args[3])
-#             conjB = conj ? :(Val{:C}) : :(Val{:N})
-#             indB = vcat(indBl, indBr)
-#             poB = (map(l->_findfirst(isequal(l), indB), oindB)...,)
-#             pcB = (map(l->_findfirst(isequal(l), indB), cind)...,)
-#             finalizeB = false
-#         else
-#             B = deindexify(ex.args[3], 1, cind, oindB)
-#             αB = 1
-#             conjB = :(Val{:N})
-#             indB = vcat(cind, oindB)
-#             pcB = ((1:length(cind))...,)
-#             poB = ((length(cind)+1:length(indB))...,)
-#             finalizeB = true
-#         end
-#         oindAB = vcat(oindA, oindB)
-#         p1 = (map(l->_findfirst(isequal(l), oindAB), leftind)...,)
-#         p2 = (map(l->_findfirst(isequal(l), oindAB), rightind)...,)
-#
-#         if !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
-#             !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
-#             !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
-#             err = "contract: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
-#             return :(throw(IndexError($err)))
-#         end
-#         Asym = gensym()
-#         Bsym = gensym()
-#         αsym = gensym()
-#         dstsym = gensym()
-#         return :(begin
-#             $Asym = $A
-#             $Bsym = $B
-#             $αsym = $α * $αA * $αB
-#             $dstsym = _similar_from_indices($(QuoteNode(dstsym)), promote_type(eltype($Asym), eltype($Bsym), typeof($αsym)), $poA, $poB, $p1, $p2, $Asym, $Bsym, $conjA, $conjB)
-#             contract!($αsym, $Asym, $conjA, $Bsym, $conjB, 0, $dstsym, $poA, $pcA, $poB, $pcB, $p1, $p2)
-#             # $(finalizeA ? :(finalize($Asym)) : nothing)
-#             # $(finalizeB ? :(finalize($Bsym)) : nothing)
-#             $dstsym
-#         end)
-#     end
-#     throw(ArgumentError("problem with parsing $ex"))
-# end

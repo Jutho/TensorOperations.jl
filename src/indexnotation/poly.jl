@@ -68,8 +68,16 @@ Base.:^(p::Power{D}, n::Int) where {D} = Power{D}(p.coeff^n, n*degree(p))
 
 struct Poly{D,T} <: AbstractPoly{D,T}
     coeffs::Vector{T}
+    function Poly{D,T}(coeffs::Vector{T}) where {D,T}
+        if length(coeffs) == 0 || coeffs[end] == 0
+            i = findlast(!iszero, coeffs)
+            return i === nothing ? new{D,T}(T[0]) : new{D,T}(coeffs[1:i])
+        else
+            return new{D,T}(coeffs)
+        end
+    end
 end
-degree(p::Poly)=length(p.coeffs)-1
+degree(p::Poly) = max(0,length(p.coeffs)-1)
 Base.getindex(p::Poly{D,T}, i::Int) where {D,T} = (0<=i<=degree(p) ? p.coeffs[i+1] : zero(T))
 Poly{D}(coeffs::Vector{T}) where {D,T} = Poly{D,T}(coeffs)
 Poly{D}(c0::T) where {D,T} = Poly{D,T}([c0])
@@ -78,7 +86,7 @@ Poly{D,T}(c0::Number) where {D,T} = Poly{D,T}([T(c0)])
 Poly{D,T1}(p::Power{D,T2}) where {D,T1,T2} = Poly{D,T1}(vcat(zeros(T1,p.N),T1(p.coeff)))
 
 Base.one(::Type{Poly{D,T}}) where {D,T} = Poly{D,T}([one(T)])
-Base.zero(::Type{Poly{D,T}}) where {D,T} = Poly{D,T}(T[])
+Base.zero(::Type{Poly{D,T}}) where {D,T} = Poly{D,T}([zero(T)])
 
 Base.convert(::Type{Poly{D}}, x::Number) where {D} = Poly{D}([x])
 Base.convert(::Type{Poly{D,T}}, x::Number) where {D,T} = Poly{D,T}(T[x])
@@ -123,7 +131,7 @@ function Base.:+(p1::Poly{D,T1}, p2::Poly{D,T2}) where {D,T1,T2}
 end
 
 Base.:-(p::Poly{D}) where {D} = Poly{D}(-p.coeffs)
-Base.:-(p::Poly{D},s::Number) where {D} = Poly{D}([p[i]+(i==0 ? s : zero(s)) for i=0:degree(p)])
+Base.:-(p::Poly{D},s::Number) where {D} = Poly{D}([p[i]-(i==0 ? s : zero(s)) for i=0:degree(p)])
 Base.:-(s::Number,p::Poly{D}) where {D} = Poly{D}([-p[i]+(i==0 ? s : zero(s)) for i=0:degree(p)])
 Base.:-(p1::Union{Power{D},Poly{D}}, p2::Union{Power{D},Poly{D}}) where {D} = Poly{D}([p1[i]-p2[i] for i=0:max(degree(p1),degree(p2))])
 
@@ -157,6 +165,8 @@ function Base.:(==)(p1::AbstractPoly{D}, p2::AbstractPoly{D}) where {D}
     end
     return true
 end
+Base.:(==)(p1::AbstractPoly, p2::Number) = degree(p1) == 0 && p1[0] == p2
+Base.:(==)(p1::Number, p2::AbstractPoly) = degree(p2) == 0 && p2[0] == p1
 function Base.:<(p1::AbstractPoly{D}, p2::AbstractPoly{D}) where {D}
     for i = max(degree(p1),degree(p2)):-1:0
         p1[i] < p2[i] && return true
