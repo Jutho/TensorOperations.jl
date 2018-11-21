@@ -143,8 +143,15 @@ LRU(; kwargs...) = LRU{Any, Any}(; kwargs...)
 
 Base.show(io::IO, lru::LRU{K, V}) where {K, V} = print(io,"LRU{$K, $V}($(lru.maxsize))")
 
-Base.iterate(lru::LRU) = iterate(lru.ht)
-Base.iterate(lru::LRU, state) = iterate(lru.ht, state)
+function Base.iterate(lru::LRU, state...)
+    next = iterate(lru.ht, state...)
+    if next === nothing
+        return nothing
+    else
+        (k, node), state = next
+        return k=>node.v, state
+    end
+end
 
 Base.length(lru::LRU) = length(lru.q)
 Base.isempty(lru::LRU) = isempty(lru.q)

@@ -76,10 +76,10 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 
     @testset "tensorcopy!" begin
         Abig = randn(Float64, (30,30,30,30))
-        A = view(Abig,1 ⊞ 3*(0:9),2 ⊞ 2*(0:6),5 ⊞ 4*(0:6),4 ⊞ 3*(0:8))
+        A = view(Abig,1 .+ 3*(0:9),2 .+ 2*(0:6),5 .+ 4*(0:6),4 .+ 3*(0:8))
         p = (3,1,4,2)
         Cbig = zeros(ComplexF64,(50,50,50,50))
-        C = view(Cbig,13 ⊞ (0:6),11 ⊞ 4*(0:9),15 ⊞ 4*(0:8),4 ⊞ 3*(0:6))
+        C = view(Cbig,13 .+ (0:6),11 .+ 4*(0:9),15 .+ 4*(0:8),4 .+ 3*(0:6))
         Acopy = tensorcopy(A,1:4,1:4)
         Ccopy = tensorcopy(C,1:4,1:4)
         TensorOperations.tensorcopy!(A,1:4,C,p)
@@ -92,10 +92,10 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 
     @testset "tensoradd!" begin
         Abig = randn(Float64, (30,30,30,30))
-        A = view(Abig,1 ⊞ 3*(0:9),2 ⊞ 2*(0:6),5 ⊞ 4*(0:6),4 ⊞ 3*(0:8))
+        A = view(Abig,1 .+ 3*(0:9),2 .+ 2*(0:6),5 .+ 4*(0:6),4 .+ 3*(0:8))
         p = (3,1,4,2)
         Cbig = zeros(ComplexF64,(50,50,50,50))
-        C = view(Cbig,13 ⊞ (0:6),11 ⊞ 4*(0:9),15 ⊞ 4*(0:8),4 ⊞ 3*(0:6))
+        C = view(Cbig,13 .+ (0:6),11 .+ 4*(0:9),15 .+ 4*(0:8),4 .+ 3*(0:6))
         Acopy = tensorcopy(A,1:4,p)
         Ccopy = tensorcopy(C,1:4,1:4)
         α = randn(Float64)
@@ -110,16 +110,16 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 
     @testset "tensortrace!" begin
         Abig = rand(Float64, (30,30,30,30))
-        A = view(Abig,1 ⊞ 3*(0:8),2 ⊞ 2*(0:14),5 ⊞ 4*(0:6),7 ⊞ 2*(0:8))
+        A = view(Abig,1 .+ 3*(0:8),2 .+ 2*(0:14),5 .+ 4*(0:6),7 .+ 2*(0:8))
         Bbig = rand(ComplexF64,(50,50))
-        B = view(Bbig,13 ⊞ (0:14),3 ⊞ 5*(0:6))
+        B = view(Bbig,13 .+ (0:14),3 .+ 5*(0:6))
         Acopy = tensorcopy(A,1:4)
         Bcopy = tensorcopy(B,1:2)
         α = randn(Float64)
         β = randn(Float64)
         TensorOperations.tensortrace!(α,A,[:a,:b,:c,:a],β,B,[:b,:c])
         Bcopy = β*Bcopy
-        for i = 1 ⊞ (0:8)
+        for i = 1 .+ (0:8)
             Bcopy += α*view(A,i,:,:,i)
         end
         @test B ≈ Bcopy
@@ -131,19 +131,19 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 
     @testset "tensorcontract!" begin
         Abig = rand(Float64, (30,30,30,30))
-        A = view(Abig,1 ⊞ 3*(0:8),2 ⊞ 2*(0:14),5 ⊞ 4*(0:6),7 ⊞ 2*(0:8))
+        A = view(Abig,1 .+ 3*(0:8),2 .+ 2*(0:14),5 .+ 4*(0:6),7 .+ 2*(0:8))
         Bbig = rand(ComplexF64,(50,50,50))
-        B = view(Bbig,3 ⊞ 5*(0:6),7 ⊞ 2*(0:7),13 ⊞ (0:14))
+        B = view(Bbig,3 .+ 5*(0:6),7 .+ 2*(0:7),13 .+ (0:14))
         Cbig = rand(ComplexF32,(40,40,40))
-        C = view(Cbig,3 ⊞ 2*(0:8),13 ⊞ (0:8),7 ⊞ 3*(0:7))
+        C = view(Cbig,3 .+ 2*(0:8),13 .+ (0:8),7 .+ 3*(0:7))
         Acopy = tensorcopy(A,1:4)
         Bcopy = tensorcopy(B,1:3)
         Ccopy = tensorcopy(C,1:3)
         α = randn(Float64)
         β = randn(Float64)
         Ccopy = β*Ccopy
-        for d = 1 ⊞ (0:8),a = 1 ⊞ (0:8),e = 1 ⊞ (0:7)
-            for b = 1 ⊞ (0:14),c = 1 ⊞ (0:6)
+        for d = 1 .+ (0:8),a = 1 .+ (0:8),e = 1 .+ (0:7)
+            for b = 1 .+ (0:14),c = 1 .+ (0:6)
                 Ccopy[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
             end
         end

@@ -25,7 +25,9 @@ end
 storeset(::Type{BitSet}, ints, maxint) = sizehint!(BitSet(ints), maxint)
 function storeset(::Type{BitVector}, ints, maxint)
     set = falses(maxint)
-    set[ints] = true
+    for i in ints
+        set[i] = true
+    end
     return set
 end
 function storeset(::Type{T}, ints, maxint) where {T<:Unsigned}
