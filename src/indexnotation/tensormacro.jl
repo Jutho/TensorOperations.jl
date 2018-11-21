@@ -99,7 +99,6 @@ function parsecost(ex::Expr)
         error("invalid index cost specification: $ex")
     end
 end
-parsecost(ex::Int) = ex
 parsecost(ex::Number) = ex
 parsecost(ex::Symbol) = Power{ex}(1,1)
 

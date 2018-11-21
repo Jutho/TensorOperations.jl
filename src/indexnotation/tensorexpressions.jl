@@ -8,15 +8,13 @@ function isdefinition(ex::Expr)
     # if ex.head == :(:=)
     #     warn(":= will likely be deprecated as assignment operator in Julia, use ≔ (\\coloneq + TAB) or go to http://github.com/Jutho/TensorOperations.jl to suggest ASCII alternatives", once=true, key=:warnaboutcoloneq)
     # end
-    return ex.head == :(:=) || (ex.head == :call && ex.args[1] == :(≔))
+    return ex.head == :(:=) || ex.head == :(≔)
 end
 
 # get left and right hand side from an expression or definition
 function getlhsrhs(ex::Expr)
-    if ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=) || ex.head == :(:=)
+    if ex.head in (:(=), :(+=), :(-=), :(:=), :(≔))
         return ex.args[1], ex.args[2]
-    elseif ex.head == :call && ex.args[1] == :(≔)
-        return ex.args[2], ex.args[3]
     else
         error("invalid assignment or definition $ex")
     end
@@ -24,7 +22,7 @@ end
 
 # test for a valid index
 function isindex(ex)
-    if isa(ex, Symbol) || isa(ex, Int) || isa(ex, Char)
+    if isa(ex, Symbol) || isa(ex, Int)
         return true
     elseif isa(ex, Expr) && ex.head == prime && length(ex.args) == 1
         return isindex(ex.args[1])
@@ -84,7 +82,7 @@ end
 
 function hastraceindices(ex)
     obj,leftind, rightind, = makegeneraltensor(ex)
-    allind = vcat(leftind,rightind)
+    allind = vcat(leftind, rightind)
     return length(allind) != length(unique(allind))
 end
 
@@ -92,7 +90,7 @@ end
 function isscalarexpr(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         return true
-    elseif ex.head == :ref || ex.head == :typed_vcat
+    elseif ex.head in (:ref, :typed_vcat, :typed_hcat)
         return false
     else
         return all(isscalarexpr, ex.args)
@@ -119,7 +117,7 @@ end
 
 # convert an expression into a valid index
 function makeindex(ex)
-    if isa(ex, Symbol) || isa(ex, Int) || isa(ex, Char)
+    if isa(ex, Symbol) || isa(ex, Int)
         return ex
     elseif isa(ex, Expr) && ex.head == prime && length(ex.args) == 1
         return Symbol(makeindex(ex.args[1]), "′")
@@ -169,7 +167,7 @@ function makegeneraltensor(ex)
         return (object, leftind, rightind, Expr(:call, :-, α), conj)
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation: flip conjugation flag and conjugate scalar factor
         (object, leftind, rightind, α, conj) = makegeneraltensor(ex.args[2])
-        return (object, leftind, rightind, Expr(:call, esc(:conj), α), !conj)
+        return (object, leftind, rightind, Expr(:call, :conj, α), !conj)
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
         if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
             (object, leftind, rightind, α, conj) = makegeneraltensor(ex.args[3])
@@ -196,6 +194,8 @@ function makescalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
         return :(scalar($(deindexify(nothing, 0, ex.args[2], 1, [], [], true))))
+    elseif ex.head == :call
+        return Expr(ex.head, ex.args[1], map(makescalar, ex.args[2:end])...)
     else
         return Expr(ex.head, map(makescalar, ex.args)...)
     end

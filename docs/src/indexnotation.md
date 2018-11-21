@@ -43,7 +43,7 @@ code specifies the same operation as above. Finally, it is also allowed to use p
 Julia's `adjoint` operator) to denote different indices.
 
 ```julia
-@tensor D[å,ß,c'] = A[å,1,'f',c','f',2]*B[2,ß,1] + α*C[c',å,ß]
+@tensor D[å,ß,c'] = A[å,1,-3,c',-3,2]*B[2,ß,1] + α*C[c',å,ß]
 ```
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
