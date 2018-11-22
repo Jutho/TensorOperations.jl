@@ -34,7 +34,7 @@ struct Power{D,T} <: AbstractPoly{D,T}
     N::Int
 end
 degree(p::Power) = p.N
-Base.getindex(p::Power{D,T},i::Int) where {D,T} = (i == p.N ? p.coeff : zero(T))
+Base.getindex(p::Power{D,T},i::Int) where {D,T} = (i == p.N ? p.coeff : zero(p.coeff))
 Power{D}(coeff::T, N::Int = 0) where {D,T} = Power{D,T}(coeff, N)
 
 Base.one(::Type{Power{D,T}}) where {D,T} = Power{D,T}(one(T), 0)
@@ -78,7 +78,7 @@ struct Poly{D,T} <: AbstractPoly{D,T}
     end
 end
 degree(p::Poly) = max(0,length(p.coeffs)-1)
-Base.getindex(p::Poly{D,T}, i::Int) where {D,T} = (0<=i<=degree(p) ? p.coeffs[i+1] : zero(T))
+Base.getindex(p::Poly{D,T}, i::Int) where {D,T} = (0<=i<=degree(p) ? p.coeffs[i+1] : zero(p[0]))
 Poly{D}(coeffs::Vector{T}) where {D,T} = Poly{D,T}(coeffs)
 Poly{D}(c0::T) where {D,T} = Poly{D,T}([c0])
 Poly{D}(p::Power{D,T}) where {D,T} = Poly{D,T}(vcat(zeros(T, p.N), p.coeff))
@@ -94,46 +94,14 @@ Base.convert(::Type{Poly{D}}, p::Power{D}) where {D} = Poly{D}(vcat(fill(zero(p.
 Base.convert(::Type{Poly{D,T}}, p::Power{D}) where {D,T} = Poly{D,T}(vcat(fill(zero(T), p.N), convert(T, p.coeff)))
 Base.convert(::Type{Poly{D,T}}, p::Poly{D}) where {D,T} = Poly{D,T}(convert(Vector{T}, p.coeffs))
 
-Base.:+(p::Poly{D}, s::Number) where {D} = Poly{D}([p[i] + (i == 0 ? s : zero(s)) for i = 0:degree(p)])
-Base.:+(s::Number, p::Poly) = +(p,s)
-function Base.:+(p1::Power{D,T1}, p2::Power{D,T2}) where {D,T1,T2}
-    T = promote_type(T1,T2)
-    coeffs = zeros(T,max(degree(p1),degree(p2))+1)
-    coeffs[p1.N+1] = p1.coeff
-    coeffs[p2.N+1] += p2.coeff
-    return Poly{D,T}(coeffs)
-end
-function Base.:+(p::Power{D,T1}, s::T2) where {D,T1,T2}
-    T = promote_type(T1,T2)
-    coeffs = zeros(T,degree(p)+1)
-    coeffs[p.N+1] = p.coeff
-    coeffs[1] += s
-    return Poly{D,T}(coeffs)
-end
-Base.:+(s::Number, p::Power) = +(p,s)
-
-function Base.:+(p1::Power{D,T1}, p2::Poly{D,T2}) where {D,T1,T2}
-    T = promote_type(T1,T2)
-    coeffs = zeros(T,max(degree(p1),degree(p2))+1)
-    coeffs[1:(degree(p2)+1)] = p2.coeffs
-    coeffs[p1.N+1] += p1.coeff
-    return Poly{D,T}(coeffs)
-end
-Base.:+(p1::Poly{D},p2::Power{D}) where {D}=+(p2,p1)
-function Base.:+(p1::Poly{D,T1}, p2::Poly{D,T2}) where {D,T1,T2}
-    T = promote_type(T1,T2)
-    coeffs = zeros(T, max(degree(p1),degree(p2))+1)
-    coeffs[1:(degree(p1)+1)] = p1.coeffs
-    for j = 0:degree(p2)
-        coeffs[j+1] += p2.coeffs[j+1]
-    end
-    return Poly{D,T}(coeffs)
-end
+Base.:+(p::AbstractPoly{D},s::Number) where {D} = Poly{D}([p[i]+ifelse(i==0, s, zero(s)) for i=0:degree(p)])
+Base.:+(s::Number,p::AbstractPoly) = +(p,s)
+Base.:+(p1::AbstractPoly{D}, p2::AbstractPoly{D}) where {D} = Poly{D}([p1[i]+p2[i] for i=0:max(degree(p1),degree(p2))])
 
 Base.:-(p::Poly{D}) where {D} = Poly{D}(-p.coeffs)
-Base.:-(p::Poly{D},s::Number) where {D} = Poly{D}([p[i]-(i==0 ? s : zero(s)) for i=0:degree(p)])
-Base.:-(s::Number,p::Poly{D}) where {D} = Poly{D}([-p[i]+(i==0 ? s : zero(s)) for i=0:degree(p)])
-Base.:-(p1::Union{Power{D},Poly{D}}, p2::Union{Power{D},Poly{D}}) where {D} = Poly{D}([p1[i]-p2[i] for i=0:max(degree(p1),degree(p2))])
+Base.:-(p::AbstractPoly{D},s::Number) where {D} = Poly{D}([p[i]-ifelse(i==0, s, zero(s)) for i=0:degree(p)])
+Base.:-(s::Number,p::AbstractPoly{D}) where {D} = Poly{D}([-p[i]+ifelse(i==0, s, zero(s)) for i=0:degree(p)])
+Base.:-(p1::AbstractPoly{D}, p2::AbstractPoly{D}) where {D} = Poly{D}([p1[i]-p2[i] for i=0:max(degree(p1),degree(p2))])
 
 Base.:*(p1::Power{D}, p2::Poly{D}) where {D} = Poly{D}([p1.coeff*p2[n-degree(p1)] for n=0:degree(p1)+degree(p2)])
 Base.:*(p1::Poly{D}, p2::Power{D}) where {D} = *(p2,p1)

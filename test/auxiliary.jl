@@ -88,7 +88,7 @@
     end
 
     @testset "parsecost" begin
-        using TensorOperations: parsecost
+        using TensorOperations: parsecost, Power
         @test parsecost(:(3/5)) === 3/5
         @test parsecost(:(5+2)) === 5+2
         @test parsecost(:(Int128(2*8))) === Int128(2*8)
@@ -164,13 +164,13 @@ end
     for i = 1:10
         c[i] = i
     end
+    @test Set(collect(c)) == Set([i=>i for i = 1:10])
     @test haskey(c, 5)
     @test c[5] == 5
     c[5] = 6
     @test c[5] == 6
     @test !haskey(c, 11)
     @test length(c) == 10
-    @test Set(collect(c)) == Set([i=>i for i = 1:10])
     @test !haskey(c, 11)
     @test get!(()->11, c, 10) == 10
     @test c[10] == 10
