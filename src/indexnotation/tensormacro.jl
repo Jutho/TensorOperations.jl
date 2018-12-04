@@ -213,7 +213,7 @@ function tensorify(ex::Expr, optdata = nothing)
             return :(throw(IndexError($err)))
         end
         ex = processcontractorder(ex, optdata)
-        return Expr(:call, :scalar, deindexify(ex, 1, [], []))
+        return Expr(:call, :scalar, deindexify(nothing, 0, ex, 1, [], [], true))
     end
     error("invalid syntax in @tensor macro: $ex")
 end
