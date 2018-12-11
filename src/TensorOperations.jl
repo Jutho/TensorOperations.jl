@@ -25,7 +25,6 @@ end
 
 # Index notation
 #----------------
-include("indexnotation/tensorcache.jl")
 include("indexnotation/tensormacro.jl")
 include("indexnotation/tensorexpressions.jl")
 include("indexnotation/ncontree.jl")
@@ -36,6 +35,7 @@ include("indexnotation/poly.jl")
 #-----------------
 include("implementation/indices.jl")
 include("implementation/lrucache.jl")
+include("implementation/tensorcache.jl")
 include("implementation/stridedarray.jl")
 
 # Functions

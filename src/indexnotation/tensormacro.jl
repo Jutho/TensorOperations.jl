@@ -423,7 +423,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
-        initA = deindexify(nothing, 0, exA, Expr(:call,:one, symTC), oindA, cind, true)
+        initA = deindexify(nothing, 0, exA, Expr(:call, :one, symTC), oindA, cind, true)
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
         initA = quote
@@ -441,18 +441,10 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = quote
-            if !use_blas() || !($symTC <: $(BLAS.BlasFloat)) || (isblascontractable($A, $poA, $pcA, $conjA) && eltype($A) == $symTC)
-                $symA = $A
-                $sympoA = $poA
-                $sympcA = $pcA
-                $symconjA = $conjA
-            else
-                $symA = cached_similar_from_indices($(QuoteNode(symA)), $symTC, $poA, $pcA, $A, $conjA)
-                add!(1, $A, $conjA, 0, $symA, $poA, $pcA)
-                $sympoA = $(((1:length(poA))...,))
-                $sympcA = $(length(poA) .+ ((1:length(pcA))...,))
-                $symconjA = :N
-            end
+            $symA = $A
+            $sympoA = $poA
+            $sympcA = $pcA
+            $symconjA = $conjA
         end
     end
 
@@ -474,18 +466,10 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         pcB = (map(l->_findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
         initB = quote
-            if !use_blas() || !($symTC <: $(BLAS.BlasFloat)) || (isblascontractable($B, $pcB, $poB, $conjB) && eltype($B) == $symTC)
-                $symB = $B
-                $sympcB = $pcB
-                $sympoB = $poB
-                $symconjB = $conjB
-            else
-                $symB = cached_similar_from_indices($(QuoteNode(symB)), $symTC, $pcB, $poB, $B, $conjB)
-                add!(1, $B, $conjB, 0, $symB, $pcB, $poB)
-                $sympcB = $(((1:length(pcB))...,))
-                $sympoB = $(length(pcB) .+ ((1:length(poB))...,))
-                $symconjB = :N
-            end
+            $symB = $B
+            $sympcB = $pcB
+            $sympoB = $poB
+            $symconjB = $conjB
         end
     end
 
@@ -507,31 +491,15 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     else
         initC = :($symC = $dst)
     end
-    symC2 = gensym()
-    indC = (leftind..., rightind...)
-    ip1 = (map(l->_findfirst(isequal(l), indC), oindA)...,)
-    ip2 = (map(l->_findfirst(isequal(l), indC), oindB)...,)
-    ip1s = ((1:length(oindA))...,)
-    ip2s = length(oindA) .+ ((1:length(oindB))...,)
-    contractex = quote
-        if !use_blas() || !($symTC <: $(BLAS.BlasFloat))
-            $symC2 = $symC
-            contract!($α*$αA*$αB, $symA, $symconjA, $symB, $symconjB, $β, $symC2, $sympoA, $sympcA, $sympoB, $sympcB, $p1, $p2)
-        elseif isblascontractable($symC, $ip1, $ip2, :D)
-            $symC2 = $symC
-            unsafe_contract!($α*$αA*$αB, $symA, $symconjA, $symB, $symconjB, $β, $symC2, $sympoA, $sympcA, $sympoB, $sympcB, $ip1, $ip2)
-        else
-            $symC2 = cached_similar_from_indices($(QuoteNode(symC2)), eltype($symC), $sympoA, $sympoB, $ip1s, $ip2s, $symA, $symB, $symconjA, $symconjB)
-            unsafe_contract!(1, $symA, $symconjA, $symB, $symconjB, 0, $symC2, $sympoA, $sympcA, $sympoB, $sympcB, $ip1s, $ip2s)
-            add!($α*$αA*$αB, $symC2, :N, $β, $symC, $p1, $p2)
-        end
-    end
+
     return quote
         $symTC = $TC
         $initA
         $initB
         $initC
-        $contractex
+        contract!($α*$αA*$αB, $symA, $symconjA, $symB, $symconjB, $β, $symC,
+                    $sympoA, $sympcA, $sympoB, $sympcB, $p1, $p2,
+                    $((gensym(),gensym(),gensym())))
         $symC
     end
 end

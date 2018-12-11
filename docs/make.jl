@@ -1,11 +1,17 @@
 using Documenter
+using DocumenterLaTeX
 using TensorOperations
 
 makedocs(modules=[TensorOperations],
-            format=:html,
-            sitename="TensorOperations.jl",
+            format = :latex,
+            sitename = "TensorOperations.jl",
+            authors = "Jutho Haegeman"
             pages = [
-                "Home" => ["index.md", "indexnotation.md", "functions.md", "cache.md", "implementation.md"]
+                "Home" => ["index.md",
+                            "indexnotation.md",
+                            "functions.md",
+                            "cache.md",
+                            "implementation.md"]
             ])
 
 # Documenter can also automatically deploy documentation to gh-pages.
