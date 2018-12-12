@@ -224,4 +224,69 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         @test E ≈ @tensor scalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
 
+    # diagonal matrices
+    @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
+        A = randn(T, 10, 10, 10, 10)
+        @tensor C[3,1,4,2] := A[1,2,3,4]
+        U,S,V = svd(reshape(C, (100, 100)))
+        U2 = reshape(view(U, 1:2:100, :), (5,10,100))
+        S2 = Diagonal(S)
+        V2 = reshape(view(V, 1:2:100, :), (5, 10, 100))
+        @tensor A2[1,2,3,4] := U2[3,1,a]*S2[a,a']*conj(V2[4,2,a'])
+        @test A2 ≈ view(A, :, :, 1:2:10, 1:2:10)
+
+        B = randn(T, 10)
+        @tensor C1[3,1,4,2] := A[a,2,3,4]*Diagonal(B)[a,1]
+        @tensor C2[3,1,4,2] := A[1,a,3,4]*conj(Diagonal(B)[a,2])
+        @tensor C3[3,1,4,2] := conj(A[1,2,a,4])*Diagonal(B)[a,3]
+        @tensor C4[3,1,4,2] := conj(A[1,2,3,a])*conj(Diagonal(B)[a,4])
+        @tensor C1′[3,1,4,2] := Diagonal(B)[a,1]*A[a,2,3,4]
+        @tensor C2′[3,1,4,2] := conj(Diagonal(B)[a,2])*A[1,a,3,4]
+        @tensor C3′[3,1,4,2] := Diagonal(B)[a,3]*conj(A[1,2,a,4])
+        @tensor C4′[3,1,4,2] := conj(Diagonal(B)[a,4])*conj(A[1,2,3,a])
+        @test C1 == C1′
+        @test C2 == C2′
+        @test C3 == C3′
+        @test C4 == C4′
+        for i = 1:10
+            @test C1[:,i,:,:] ≈ permutedims(A[i,:,:,:],(2,3,1))*B[i]
+            @test C2[:,:,:,i] ≈ permutedims(A[:,i,:,:],(2,1,3))*conj(B[i])
+            @test C3[i,:,:,:] ≈ conj(permutedims(A[:,:,i,:],(1,3,2)))*B[i]
+            @test C4[:,:,i,:] ≈ conj(permutedims(A[:,:,:,i],(3,1,2)))*conj(B[i])
+        end
+
+        @tensor D1[1,2] := A[1,2,a,b]*Diagonal(B)[a,b]
+        @tensor D2[1,2] := A[1,b,2,a]*conj(Diagonal(B)[a,b])
+        @tensor D3[1,2] := conj(A[a,2,1,b])*Diagonal(B)[a,b]
+        @tensor D4[1,2] := conj(A[a,1,b,2])*conj(Diagonal(B)[a,b])
+        @tensor D1′[1,2] := Diagonal(B)[a,b]*A[1,2,a,b]
+        @tensor D2′[1,2] := conj(Diagonal(B)[a,b])*A[1,b,2,a]
+        @tensor D3′[1,2] := Diagonal(B)[a,b]*conj(A[a,2,1,b])
+        @tensor D4′[1,2] := conj(Diagonal(B)[a,b])*conj(A[a,1,b,2])
+        @test D1 == D1′
+        @test D2 == D2′
+        @test D3 == D3′
+        @test D4 == D4′
+
+        E1 = zero(D1)
+        E2 = zero(D2)
+        E3 = zero(D3)
+        E4 = zero(D4)
+        for i = 1:10
+            E1[:,:] += A[:,:,i,i]*B[i]
+            E2[:,:] += A[:,i,:,i]*conj(B[i])
+            E3[:,:] += A[i,:,:,i]'*B[i]
+            E4[:,:] += conj(A[i,:,i,:])*conj(B[i])
+        end
+        @test D1 ≈ E1
+        @test D2 ≈ E2
+        @test D3 ≈ E3
+        @test D4 ≈ E4
+
+        F = randn(T,(10,10))
+        @tensor G[a,c,b,d] := F[a,b]*Diagonal(B)[c,d]
+        @test reshape(G,(100,100)) ≈ kron(Diagonal(B), F)
+    end
+
+
 end

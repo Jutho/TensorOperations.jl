@@ -180,18 +180,18 @@ function tensorify(ex::Expr, optdata = nothing)
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return deindexify(dst, 0, rhs, 1, leftind, rightind)
+                    return deindexify(dst, false, rhs, true, leftind, rightind)
                 elseif ex.head == :(+=)
-                    return deindexify(dst, 1, rhs, 1, leftind, rightind)
+                    return deindexify(dst, true, rhs, 1, leftind, rightind)
                 else
-                    return deindexify(dst, 1, rhs, -1, leftind, rightind)
+                    return deindexify(dst, true, rhs, -1, leftind, rightind)
                 end
             else
-                return Expr(:(=), dst, deindexify(nothing, 0, rhs, 1, leftind, rightind, false))
+                return Expr(:(=), dst, deindexify(nothing, false, rhs, true, leftind, rightind, false))
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(nothing, 0, rhs, 1, [], [], true)))
+                return Expr(ex.head, makescalar(lhs), Expr(:call, :scalar, deindexify(nothing, false, rhs, true, [], [], true)))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, makescalar(lhs), makescalar(rhs))
             end
@@ -213,7 +213,7 @@ function tensorify(ex::Expr, optdata = nothing)
             return :(throw(IndexError($err)))
         end
         ex = processcontractorder(ex, optdata)
-        return Expr(:call, :scalar, deindexify(nothing, 0, ex, 1, [], [], true))
+        return Expr(:call, :scalar, deindexify(nothing, false, ex, true, [], [], true))
     end
     error("invalid syntax in @tensor macro: $ex")
 end
@@ -369,7 +369,7 @@ function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector, ri
         end
         αnew = (ex.args[1] == :-) ? Expr(:call, :-, α) : α
         for k = 3:length(ex.args)
-            ex1 = deindexify(dst, 1, ex.args[k], αnew, leftind, rightind)
+            ex1 = deindexify(dst, true, ex.args[k], αnew, leftind, rightind)
             returnex = quote
                 $returnex
                 $ex1
@@ -423,7 +423,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
-        initA = deindexify(nothing, 0, exA, Expr(:call, :one, symTC), oindA, cind, true)
+        initA = deindexify(nothing, false, exA, Expr(:call, :one, symTC), oindA, cind, true)
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
         initA = quote
@@ -449,7 +449,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
     end
 
     if !isgeneraltensor(exB) || hastraceindices(exB)
-        initB = deindexify(nothing, 0, exB, Expr(:call,:one, symTC), oindB, cind, true)
+        initB = deindexify(nothing, false, exB, Expr(:call,:one, symTC), oindB, cind, true)
         poB = ((1:length(oindB))...,)
         pcB = length(oindB) .+ ((1:length(cind))...,)
         initB = quote

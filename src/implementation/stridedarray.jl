@@ -73,8 +73,8 @@ map if `conjA` (`conjB`) equal `:N`. Together, `(oindA..., cindA...)` is a permu
 `(indleft..., indright...)` is a permutation of `1:numind(C)`.
 """
 contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-            β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
-            cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms = nothing) =
+        β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
+        cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms = nothing) =
     contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, (indleft..., indright...))
 
 # actual implementations for AbstractArray with ind = (indleft..., indright...)
@@ -83,7 +83,7 @@ Base.@pure function similartype(A, T, sz)
 end
 
 function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::AbstractArray,
-            CA::Symbol) where {T,N}
+        CA::Symbol) where {T,N}
 
     sz = map(n->size(A, n), ind)
     if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
@@ -94,8 +94,8 @@ function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::Abstr
     end
 end
 function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
-            ind::IndexTuple{N}, A::AbstractArray, B::AbstractArray,
-            CA::Symbol, CB::Symbol) where {T,N}
+        ind::IndexTuple{N}, A::AbstractArray, B::AbstractArray,
+        CA::Symbol, CB::Symbol) where {T,N}
 
     oszA = map(n->size(A,n), poA)
     oszB = map(n->size(B,n), poB)
@@ -113,7 +113,8 @@ end
 scalar(C::AbstractArray) = ndims(C)==0 ? C[1] : throw(DimensionMismatch())
 
 function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
-                β, C::AbstractArray{<:Any, N}, indCinA) where {N}
+        β, C::AbstractArray{<:Any, N}, indCinA) where {N}
+
     N == length(indCinA) || throw(IndexError("Invalid permutation of length $N: $indCinA"))
     if CA == :N
         @unsafe_strided A C _add!(α, A, β, C, (indCinA...,))
@@ -129,7 +130,7 @@ _add!(α, A::UnsafeStridedView{<:Any,N},
     LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
 
 function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArray{<:Any, NC},
-                indCinA, cindA1, cindA2) where {NA,NC}
+        indCinA, cindA1, cindA2) where {NA,NC}
 
     NC == length(indCinA) ||
         throw(IndexError("Invalid selection of $NC out of $NA: $indCinA"))
@@ -146,7 +147,8 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
 end
 
 function _trace!(α, A::UnsafeStridedView, β, C::UnsafeStridedView, indCinA::IndexTuple{NC},
-                    cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
+        cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
+
     sizeA = i->size(A, i)
     strideA = i->stride(A, i)
     tracesize = sizeA.(cindA1)
@@ -178,11 +180,9 @@ function _trace!(α, A::UnsafeStridedView, β, C::UnsafeStridedView, indCinA::In
 end
 
 function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-                    β, C::AbstractArray,
-                    oindA::IndexTuple, cindA::IndexTuple,
-                    oindB::IndexTuple, cindB::IndexTuple,
-                    indCinoAB::IndexTuple,
-                    syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
+        β, C::AbstractArray,
+        oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple,
+        indCinoAB::IndexTuple, syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
 
     pA = (oindA...,cindA...)
     (length(pA) == ndims(A) && TupleTools.isperm(pA)) ||
@@ -267,13 +267,15 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
 end
 
 function isblascontractable(A::AbstractArray{T,N}, p1::IndexTuple, p2::IndexTuple,
-                            C::Symbol) where {T,N}
+        C::Symbol) where {T,N}
+
     T <: LinearAlgebra.BlasFloat || return false
     @unsafe_strided A isblascontractable(A, p1, p2, C)
 end
 
 function isblascontractable(A::AbstractStridedView{T,N}, p1::IndexTuple, p2::IndexTuple,
-                            C::Symbol) where {T,N}
+        C::Symbol) where {T,N}
+
     T <: LinearAlgebra.BlasFloat || return false
     strideA = i->stride(A, i)
     sizeA = i->size(A,i)
@@ -298,9 +300,9 @@ end
 _trivtuple(t::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
 function _blas_contract!(α, A::AbstractArray{T}, CA, B::AbstractArray{T}, CB,
-                            β, C::AbstractArray{T},
-                            oindA, cindA, oindB, cindB, oindAinC, oindBinC) where
-                            {T<:LinearAlgebra.BlasFloat}
+        β, C::AbstractArray{T}, oindA, cindA, oindB, cindB, oindAinC, oindBinC) where
+        {T<:LinearAlgebra.BlasFloat}
+
     sizeA = i->size(A, i)
     sizeB = i->size(B, i)
     sizeC = i->size(C, i)
@@ -351,7 +353,7 @@ function _blas_contract!(α, A::AbstractArray{T}, CA, B::AbstractArray{T}, CB,
 end
 
 function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-                            β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB)
+        β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB)
 
     sizeA = i->size(A, i)
     sizeB = i->size(B, i)
