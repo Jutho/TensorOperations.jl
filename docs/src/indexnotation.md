@@ -39,24 +39,24 @@ valid variable name is valid as a label. Note though that these labels are never
 interpreted as existing Julia variables, but rather are converted into symbols by the
 `@tensor` macro. This means, in particular, that the specific tensor operations defined by
 the code inside the `@tensor` environment are completely specified at compile time.
-Alternatively, one can also choose to specify the labels using literal integer or character
-constants, such that also the following code specifies the same operation as above.
-Finally, it is also allowed to use primes (i.e. Julia's `adjoint` operator) to denote
-different indices.
+Alternatively, one can also choose to specify the labels using literal integer constants,
+such that also the following code specifies the same operation as above. Finally, it is
+also allowed to use primes (i.e. Julia's `adjoint` operator) to denote different indices,
+including using multiple subsequent primes.
 
 ```julia
-@tensor D[å,ß,c'] = A[å,1,-3,c',-3,2]*B[2,ß,1] + α*C[c',å,ß]
+@tensor D[å'',ß,c'] = A[å'',1,-3,c',-3,2]*B[2,ß,1] + α*C[c',å'',ß]
 ```
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
 tensor operations, i.e. [`add!`](@ref), [`trace!`](@ref) and [`contract!`](@ref).
 Temporaries are created where necessary, but will by default be saved to a global cache, so
 that they can be reused upon a next iteration or next call to the function in which the
-`@tensor` call is used. When experimenting in the REPL, it might be better to use
-`disable_cache()`.
+`@tensor` call is used. When experimenting in the REPL where every tensor expression is
+only used a single time, it might be better to use `disable_cache()`, though no real harm
+comes from using the cache (except higher memory usage). By default, the cache is allowed to take up to 50% of the total machine memory, though this is fully configurable.
 
-By default, a contraction of several tensors `A[a,b,c,d,e]*B[b,e,f,g]*C[c,f,i,j]*...` is
-evaluted using pairwise contractions from left to right, i.e. as
+A contraction of several tensors `A[a,b,c,d,e]*B[b,e,f,g]*C[c,f,i,j]*...` is evaluted using pairwise contractions, using Julia's default left to right order, i.e. as
 `( (A[a,b,c,d,e] * B[b,e,f,g]) * C[c,f,i,j]) * ...`. However, if one respects the so-called
 [NCON](https://arxiv.org/abs/1402.0939) style of specifying indices, i.e. positive integers
 for the contracted indices and negative indices for the open indices, the different factors
@@ -71,7 +71,7 @@ instead), and will be chosen as `(-1,-2,-3,-4,-5)`. Any other order is of course
 possible by just specifying it.
 
 Furthermore, there is a `@tensoropt` macro which will optimize the contraction order to
-minimize the total number of multiplications (cost model might change or become choosable
+minimize the total number of multiplications (cost model might change or become configurable
 in the future). The optimal contraction order will be determined at compile time and will
 be hard coded in the macro expansion. The cost/size of the different indices can be
 specified in various ways, and can be integers or some arbitrary polynomial of an abstract

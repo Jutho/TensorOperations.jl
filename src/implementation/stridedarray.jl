@@ -18,10 +18,12 @@ checked_similar_from_indices(C, T::Type, p1::IndexTuple, p2::IndexTuple, A::Abst
                                     A, B, conjA = :N, conjB= :N)
 
 Returns an object similar to `A` which has an `eltype` given by `T` and dimensions/sizes
-corresponding to a selection of those of `op(A)` and `op(B)` concatenated, where the
-selection is specified by `indices` (which contains integers between `1` and
-`numind(A)+numind(B)` and `op` is `conj` if `conjA` or `conjB` equal `:C` or does nothing
-if `conjA` or `conjB` equal `:N` (default).
+corresponding to a selection of those of `opA(A)` and `opB(B)` concatenated. Out of the
+collection of indices in `indoA` of `opA(A)` and `indoB` of `opB(B)`, we construct an
+object whose left (right) indices correspond to indices `indleft` (`indright`) from that
+collection. Furthermore, `C` is a potential candidate for the similar object. If
+`C === nothing`, or its its `eltype` or shape does not match, a new object is allocated and
+returned. Otherwise, `C` is returned.
 """
 checked_similar_from_indices(C, T::Type, poA::IndexTuple, poB::IndexTuple, p1::IndexTuple,
     p2::IndexTuple, A::AbstractArray, B::AbstractArray, CA::Symbol = :N, CB::Symbol = :N) =
@@ -30,8 +32,7 @@ checked_similar_from_indices(C, T::Type, poA::IndexTuple, poB::IndexTuple, p1::I
 """
     scalar(C)
 
-Returns the single element of a tensor-like object with zero dimensions, i.e. if
-`numind(C)==0`.
+Returns the single element of a tensor-like object with zero indices or dimensions.
 """
 function scalar end
 
@@ -41,7 +42,8 @@ function scalar end
 Implements `C = β*C+α*permute(op(A))` where `A` is permuted such that the left (right)
 indices of `C` correspond to the indices `indleft` (`indright`) of `A`, and `op` is `conj`
 if `conjA == :C` or the identity map if `conjA == :N` (default). Together,
-`(indleft..., indright...)` is a permutation of `1:numind(A)`.
+`(indleft..., indright...)` is a permutation of 1 to the number of indices (dimensions) of
+`A`.
 """
 add!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
         indright::IndexTuple) = add!(α, A, CA, β, C, (indleft..., indright...))
@@ -53,7 +55,8 @@ Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially
 such that the left (right) indices of `C` correspond to the indices `indleft` (`indright`)
 of `A`, and indices `cindA1` are contracted with indices `cindA2`. Furthermore, `op` is
 `conj` if `conjA == :C` or the identity map if `conjA=:N` (default). Together,
-`(indleft..., indright..., cind1, cind2)` is a permutation of `1:numind(A)`.
+`(indleft..., indright..., cind1, cind2)` is a permutation of 1 to the number of indices
+(dimensions) of `A`.
 """
 trace!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
         indright::IndexTuple, cind1::IndexTuple, cind2::IndexTuple) =
@@ -68,9 +71,10 @@ the indices `cindA` of `A` are contracted with indices `cindB` of `B`. The open 
 corresponding to indices `indleft` (`indright`) out of `(oindA..., oindB...)`. The
 operation `opA` (`opB`) acts as `conj` if `conjA` (`conjB`) equal `:C` or as the identity
 map if `conjA` (`conjB`) equal `:N`. Together, `(oindA..., cindA...)` is a permutation of
-`1:numind(A)` and `(oindB..., cindB...)` is a permutation of `1:numind(C)`. Furthermore,
-`length(cindA) == length(cindB)`, `length(oindA)+length(oindB) == numind(C)` and
-`(indleft..., indright...)` is a permutation of `1:numind(C)`.
+1 to the number of indices of `A` and `(oindB..., cindB...)` is a permutation of 1 to the
+number of indices of `C`. Furthermore, `length(cindA) == length(cindB)`,
+`length(oindA)+length(oindB)` equals the number of indices of `C` and `(indleft...,
+indright...)` is a permutation of `1` ot the number of indices of `C`.
 """
 contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
         β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,

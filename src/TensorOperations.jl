@@ -47,19 +47,21 @@ include("functions/inplace.jl")
 # Global package settings
 #------------------------
 # A switch for enabling/disabling the use of BLAS for tensor contractions
-use_blas() = true
+const _use_blas = Ref(true)
+use_blas() = _use_blas[]
 function disable_blas()
-    @eval TensorOperations use_blas() = false
+    _use_blas[] = false
     return
 end
 function enable_blas()
-    @eval TensorOperations use_blas() = true
+    _use_blas[] = true
     return
 end
 
 # A cache for temporaries of tensor contractions
 const cache = LRU{Symbol,Any}()
-use_cache() = true
+const _use_cache = Ref(true)
+use_cache() = _use_cache[]
 
 """
     disable_cache()
@@ -68,7 +70,7 @@ Disable the cache for further use but does not clear its current contents.
 Also see [`clear_cache()`](@ref)
 """
 function disable_cache()
-    @eval TensorOperations use_cache() = false
+    _use_cache[] = false
     return
 end
 
@@ -80,7 +82,7 @@ or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
 `maxsize = floor(Int, maxrelsize * Sys.total_memory())`.
 """
 function enable_cache(; kwargs...)
-    @eval TensorOperations use_cache() = true
+    _use_cache[] = true
     setsize!(cache; kwargs...)
     return
 end

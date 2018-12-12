@@ -1,9 +1,7 @@
 using Documenter
-using DocumenterLaTeX
 using TensorOperations
 
 makedocs(modules=[TensorOperations],
-            format = :latex,
             sitename = "TensorOperations.jl",
             authors = "Jutho Haegeman"
             pages = [
