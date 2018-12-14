@@ -34,7 +34,7 @@ valid index. This can be any valid Julia variable name, which is just kept as sy
 literal integer constant, (for legacy reasons, any literal character constant,) or finally
 an `Expr(Symbol("'"),args)`, i.e. an expression of the form `:(a')`. The latter is converted
 to a symbol of the form `Symbol("a′")` when `a` is itself a symbol or integer, or this is
-applied recursively is `a` contains more primes.
+applied recursively if `a` contains more primes.
 
 The implementation for detecting tensors and indices (`istensor`, `isindex`) and actually
 converting them to a useful format (`maketensor`, `makeindex`) are found in
@@ -77,7 +77,7 @@ actual costs are specified, i.e. `@tensoropt` receives a single expression, then
 just assigns the same cost to all indices in the expression. Otherwise, the expression that
 specifies the costs need to be parsed first (`parsecost`). Finally, `@tensoropt` also calls
 `tensorify` passing the optdata as a second optional argument (whose default value
-`nothing`) is used by `@tensor`.
+`nothing` is used by `@tensor`).
 
 The function `tensorify` consists of several steps. Firstly, it canonicalizes the
 expression. Currently, this involves a single pass which expands all `conj` calls of e.g.
@@ -96,8 +96,8 @@ validates the left hand side thereof (i.e. it should satisfy `istensor` and have
 duplicate indices). Then, it generates the corresponding function calls corresponding to the
 index expression by passing onto the `deindexify` function, which takes the signature
 ```julia deindexify(dst, β, ex, α, leftind, rightind, istemporary = false) ``` Here, `dst`
-is the symbol or expression corresponding to the destination object; it's nothing in case of
-a definition (`:=`), i.e. if the object corresponding to the result needs to be
+is the symbol or expression corresponding to the destination object; it's `nothing` in case
+of a definition (`:=`), i.e. if the object corresponding to the result needs to be
 created/allocated. `β` and `α` are `isscalar` expressions, and `deindexify` will create the
 function calls required to update `dst` with multiplying `dst` with `β` and adding `α` times
 the result of the expression `ex` to it; this is supported as a one step process by each of
@@ -140,31 +140,37 @@ multiplied much more efficiently. Only under addition is a generic `Poly` return
 
 ## Building blocks
 
-Under the hood, the implementation is centered around the primitive operations: addition,
-tracing and contraction. These operations are implemented for arbitrary strided arrays from
-Julia Base, i.e. `Array`s, views with ranges thereof, and certain reshape operations. This
-includes certain arrays that can only be determined to be strided on runtime, and does
-therefore not coincide with the type union `StridedArray` from Julia Base. In fact, the
-methods accept `AbstractArray` objects, but convert these to `(Unsafe)StridedView` objects
-from the package [Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this
-package for a more detailed discussion on which arrays are supported and why.
+The `@tensor` macro converts the index expression into a set of function calls corresponding
+to three primitive operations: addition, tracing and contraction. These operations are
+implemented for arbitrary strided arrays from Julia Base, i.e. `Array`s, views with ranges
+thereof, and certain reshape operations. This includes certain arrays that can only be
+determined to be strided on runtime, and does therefore not coincide with the type union
+`StridedArray` from Julia Base. In fact, the methods accept `AbstractArray` objects, but
+convert these to `(Unsafe)StridedView` objects from the package
+[Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a more
+detailed discussion on which arrays are supported and why.
 
-The primitive tensor operations are captured by the following mutating methods
+The primitive tensor operations are captured by the following mutating methods (note that these are not exported)
+
 ```@docs
-add!
-trace!
-contract!
+TensorOperations.add!
+TensorOperations.trace!
+TensorOperations.contract!
 ```
+
 These are the central objects that should be overloaded by custom tensor types that would
-like to be used within the `@tensor` environment.
+like to be used within the `@tensor` environment. They are also used by the function based
+methods discussed in ["Functions"](@ref).
 
 Furthermore, it is essential to be able to construct new tensor objects that are similar to
 existing ones, i.e. to place the result of the computation in case no output is specified.
 In order to reuse temporary objects stored in the global cache, this method also receives a
 candidate similar object, which it can return if it matches the requirements.
+
 ```@docs
-checked_similar_from_indices
+TensorOperations.checked_similar_from_indices
 ```
+
 Note that the type of the cached object is not known to the compiler, as the cache stores
 objects as `Any`. Therefore, the function `checked_similar_from_indices` should try to
 restore the type information. By passing any object retrieved from the cache through this
@@ -173,8 +179,9 @@ function, type stability within the `@tensor` macro can then still be guaranteed
 Finally, there is a particularly simple method `scalar` whose sole purpose is to extract the
 single entry of an object with zero indices, i.e. an instance of `AbstractArray{T,0}` in
 case of Julia Base arrays:
+
 ```@docs
-scalar
+TensorOperations.scalar
 ```
 
 By implementing these five methods for other types that represent some kind of tensor or
