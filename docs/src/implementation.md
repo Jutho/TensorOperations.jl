@@ -45,19 +45,21 @@ indices.
 Furthermore, there is `isscalar` and `makescalar` to detect and process subexpressions that
 will evaluate to a scalar. Finally, there is `isgeneraltensor` and `makegeneraltensor` to
 detect and process a a tensor (indexed object), that is possibly conjugated or multiplied
-with a scalar. This is useful because the primitive tensor operations (i.e. see ["Building
-blocks"](@ref) below), accept a scalar factor and conjugation flag, so that these operations
+with a scalar. This is useful because the primitive tensor operations (i.e. see [Building
+blocks](@ref) below), accept a scalar factor and conjugation flag, so that these operations
 can be done simultaneously and do not need to be evaluated at first (which would require
 additional temporaries). The function `makegeneraltensor` in particular will return the
 indexed object, the list of left indices, the list of right indices, the scalar factor, and
 a flag (`Bool`) that indicates whether the object needs to be conjugated (`true`) or not
 (`false`).
 
-The file `src/indexnotation/tensorexpressions.jl` also contains simple methods to detect
-assignment (`isassignment`) into existing objects (i.e. `=`, `+=` and `-=`) or so-called
-definitions (`isdefinition`), that create a new object (via `:=` or its Unicode variant `≔`,
-obtained as `\coloneq + TAB`). The function `getlhsrhs` will return the left hand side and
-right hand side of an assignment or definition expression separately.
+The file
+[`src/indexnotation/tensorexpressions.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/indexnotation/tensorexpressions.jl)
+also contains simple methods to detect assignment (`isassignment`) into existing objects
+(i.e. `=`, `+=` and `-=`) or so-called definitions (`isdefinition`), that create a new
+object (via `:=` or its Unicode variant `≔`, obtained as `\coloneq + TAB`). The function
+`getlhsrhs` will return the left hand side and right hand side of an assignment or
+definition expression separately.
 
 Finally, there are methods to detect whether the right hand side is a valid tensor
 expression (`istensorexpr`) and to get the indices of a complete tensor expressions. In
@@ -70,14 +72,15 @@ The latter is used to analyze complete tensor contraction graphs.
 
 Actual processing of the complete expression that follows the `@tensor` macro and converting
 it into a list of actual calls to the primitive tensor operations is handled by the
-functions defined in `src/indexnotation/tensormacro.jl`. The integral expression received by
-the `@tensor` macro is passed on to the `tensorify` function. The `@tensoropt` macro will
-first generate the data required to optimize contraction order, by calling `optdata`. If no
-actual costs are specified, i.e. `@tensoropt` receives a single expression, then `optdata`
-just assigns the same cost to all indices in the expression. Otherwise, the expression that
-specifies the costs need to be parsed first (`parsecost`). Finally, `@tensoropt` also calls
-`tensorify` passing the optdata as a second optional argument (whose default value
-`nothing` is used by `@tensor`).
+functions defined in
+[`src/indexnotation/tensormacro.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/indexnotation/tensormacro.jl).
+The integral expression received by the `@tensor` macro is passed on to the `tensorify`
+function. The `@tensoropt` macro will first generate the data required to optimize
+contraction order, by calling `optdata`. If no actual costs are specified, i.e. `@tensoropt`
+receives a single expression, then `optdata` just assigns the same cost to all indices in
+the expression. Otherwise, the expression that specifies the costs need to be parsed first
+(`parsecost`). Finally, `@tensoropt` also calls `tensorify` passing the optdata as a second
+optional argument (whose default value `nothing` is used by `@tensor`).
 
 The function `tensorify` consists of several steps. Firstly, it canonicalizes the
 expression. Currently, this involves a single pass which expands all `conj` calls of e.g.
@@ -126,17 +129,19 @@ right. There is one exception, which is that if the indices follow the NCON conv
 negative integers are used for uncontracted indices and positive integers for contracted
 indices. Then the contraction tree is built such that tensors that share the contraction
 index which is the lowest positive integer are contracted first. Relevant code can be found
-in `src/indexnotation/ncontree.jl`
+in [`src/indexnotation/ncontree.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/indexnotation/ncontree.jl)
 
 When the `@tensoropt` macro was used, `optdata` is a dictionary associating a cost (either a
 number or a polynomial in some abstract scaling parameter) to every index, and this
 information is used to determine the (asymptotically) optimal contraction tree (in terms of
 number of floating point operations). The code for the latter is in
-`src/indexnotation/optimaltree.jl`, with the lightweight polynomial implementation in
-`src/indexnotation/polynomial.jl`. Aside from a generic polynomial type `Poly`, the latter
-also contains a `Power` type which represents a single term of a polynomial (i.e. a scalar
-coefficient and an exponent). This type is closed under multiplication, and can be
-multiplied much more efficiently. Only under addition is a generic `Poly` returned.
+[`src/indexnotation/optimaltree.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/indexnotation/optimaltree.jl),
+with the lightweight polynomial implementation in
+[`src/indexnotation/polynomial.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/indexnotation/poly.jl).
+Aside from a generic polynomial type `Poly`, the latter also contains a `Power` type which
+represents a single term of a polynomial (i.e. a scalar coefficient and an exponent). This
+type is closed under multiplication, and can be multiplied much more efficiently. Only under
+addition is a generic `Poly` returned.
 
 ## Building blocks
 
@@ -160,7 +165,7 @@ TensorOperations.contract!
 
 These are the central objects that should be overloaded by custom tensor types that would
 like to be used within the `@tensor` environment. They are also used by the function based
-methods discussed in ["Functions"](@ref).
+methods discussed in the section [Functions](@ref).
 
 Furthermore, it is essential to be able to construct new tensor objects that are similar to
 existing ones, i.e. to place the result of the computation in case no output is specified.
@@ -184,7 +189,9 @@ case of Julia Base arrays:
 TensorOperations.scalar
 ```
 
+The implementation of all of these methods can be found in [`src/implementation/stridedarray.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/implementation/stridedarray.jl).
+
 By implementing these five methods for other types that represent some kind of tensor or
 multidimensional object, they can be used in combination with the `@tensor` macro. In
 particular, we also provide basic support for contracting a `Diagonal` matrix with an
-arbitrary strided array in `src/implementation/diagonal.jl`.
+arbitrary strided array in [`src/implementation/diagonal.jl`](https://github.com/Jutho/TensorOperations.jl/blob/master/src/implementation/diagonal.jl).
