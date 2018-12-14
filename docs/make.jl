@@ -3,7 +3,7 @@ using TensorOperations
 
 makedocs(modules=[TensorOperations],
             sitename = "TensorOperations.jl",
-            authors = "Jutho Haegeman"
+            authors = "Jutho Haegeman",
             pages = [
                 "Home" => ["index.md",
                             "indexnotation.md",
