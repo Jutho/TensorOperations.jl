@@ -63,7 +63,7 @@ trace!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTup
     trace!(α, A, CA, β, C, (indleft..., indright...), cind1, cind2)
 
 """
-    contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indleft, indright)
+    contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indleft, indright, syms = nothing)
 
 Implements `C = β*C+α*contract(opA(A),opB(B))` where `A` and `B` are contracted, such that
 the indices `cindA` of `A` are contracted with indices `cindB` of `B`. The open indices
@@ -75,11 +75,16 @@ map if `conjA` (`conjB`) equal `:N`. Together, `(oindA..., cindA...)` is a permu
 number of indices of `C`. Furthermore, `length(cindA) == length(cindB)`,
 `length(oindA)+length(oindB)` equals the number of indices of `C` and `(indleft...,
 indright...)` is a permutation of `1` ot the number of indices of `C`.
+
+The final argument `syms` is optional and can be either `nothing`, or a tuple of three
+symbols, which are used to identify temporary objects in the cache to be used for permuting
+`A`, `B` and `C` so as to perform the contraction as a matrix multiplication.
 """
 contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
         β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
         cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms = nothing) =
-    contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, (indleft..., indright...))
+    contract!(α, A, CA, B, CB, β, C,
+                oindA, cindA, oindB, cindB, (indleft..., indright...), syms)
 
 # actual implementations for AbstractArray with ind = (indleft..., indright...)
 Base.@pure function similartype(A, T, sz)
