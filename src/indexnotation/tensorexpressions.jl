@@ -115,6 +115,7 @@ function isscalarexpr(ex::Expr)
 end
 isscalarexpr(ex::Symbol) = true
 isscalarexpr(ex::Number) = true
+isscalarexpr(ex) = false
 
 # test for a tensor expression, i.e. something that can be evaluated to a tensor
 function istensorexpr(ex)

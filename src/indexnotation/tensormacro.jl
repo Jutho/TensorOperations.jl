@@ -248,7 +248,7 @@ function conjexpr(ex::Expr)
 end
 conjexpr(ex::Number) = conj(ex)
 conjexpr(ex::Symbol) = Expr(:call, :conj, ex)
-conjexpr(ex) = error("cannot conjugate $ex")
+conjexpr(ex) = ex
 
 # processcontractorder: convert multi-argument multiplication into tree of pairwise multiplication
 function processcontractorder(ex::Expr, optdata)
