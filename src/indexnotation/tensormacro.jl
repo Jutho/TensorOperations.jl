@@ -222,28 +222,33 @@ tensorify(ex, optdata = nothing) = ex
 
 # expandconj: conjugate individual terms or factors instead of a whole expression
 function expandconj(ex::Expr)
-    if isgeneraltensor(ex)
+    if isgeneraltensor(ex) || isscalarexpr(ex)
         return ex
-    end
-    if ex.head == :call && ex.args[1] == :conj
+    elseif ex.head == :call && ex.args[1] == :conj
         @assert length(ex.args) == 2
-        ex = conjexpr(ex.args[2])
+        return conjexpr(expandconj(ex.args[2]))
+    else
+        return Expr(ex.head, map(expandconj, ex.args)...)
     end
-    ex = Expr(ex.head, map(expandconj, ex.args)...)
 end
 expandconj(ex) = ex
 
 function conjexpr(ex::Expr)
     if ex.head == :call && ex.args[1] == :conj
         return ex.args[2]
-    elseif ex.head == :call
+    elseif isgeneraltensor(ex) || isscalarexpr(ex)
+        return Expr(:call, :conj, ex)
+    elseif ex.head == :call && (ex.args[1] == :* || ex.args[1] == :+ || ex.args[1] == :-)
+        return Expr(ex.head, ex.args[1], map(conjexpr, ex.args[2:end])...)
+    elseif ex.head == :call && (ex.args[1] == :/ || ex.args[1] == :\)
         return Expr(ex.head, ex.args[1], map(conjexpr, ex.args[2:end])...)
     else
-        return Expr(:call, :conj, ex)
+        error("cannot conjugate expression: $ex")
     end
 end
-conjexpr(ex::Number) = Expr(:call, :conj, ex)
-conjexpr(ex) = ex
+conjexpr(ex::Number) = conj(ex)
+conjexpr(ex::Symbol) = Expr(:call, :conj, ex)
+conjexpr(ex) = error("cannot conjugate $ex")
 
 # processcontractorder: convert multi-argument multiplication into tree of pairwise multiplication
 function processcontractorder(ex::Expr, optdata)
@@ -282,7 +287,7 @@ function tree2expr(args, tree)
     end
 end
 
-# deindexify!: parse tensor operations
+# deindexify: parse tensor operations
 function deindexify(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, istemporary = false)
     if isgeneraltensor(ex)
         return deindexify_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)

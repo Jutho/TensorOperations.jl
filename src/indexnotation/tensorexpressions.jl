@@ -32,10 +32,11 @@ function isindex(ex)
 end
 
 # test for a simple tensor object indexed by valid indices
-function istensor(ex)
-    if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_hcat)
+istensor(ex) = false
+function istensor(ex::Expr)
+    if ex.head == :ref || ex.head == :typed_hcat
         return all(isindex, ex.args[2:end])
-    elseif isa(ex, Expr) && ex.head == :typed_vcat
+    elseif ex.head == :typed_vcat
         length(ex.args) == 3 || return false
         if isa(ex.args[2], Expr) && ex.args[2].head == :row
             all(isindex, ex.args[2].args) || return false
@@ -53,26 +54,42 @@ function istensor(ex)
 end
 
 # test for a generalized tensor, i.e. with scalar multiplication and conjugation
-function isgeneraltensor(ex)
+isgeneraltensor(ex) = false
+function isgeneraltensor(ex::Expr)
     if istensor(ex)
         return true
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :+ && length(ex.args) == 2 # unary plus
+    elseif ex.head == :call && ex.args[1] == :+ && length(ex.args) == 2
+        # unary plus
         return isgeneraltensor(ex.args[2])
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :- && length(ex.args) == 2 # unary minus
+    elseif ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
+        # unary minus
         return isgeneraltensor(ex.args[2])
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation
+    elseif ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2
+        # conjugation
         return isgeneraltensor(ex.args[2])
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication
+    elseif ex.head == :call && ex.args[1] == :adjoint && length(ex.args) == 2
+        # adjoint
+        return isgeneraltensor(ex.args[2])
+    elseif ex.head == prime && length(ex.args) == 1
+        # adjoint
+        return isgeneraltensor(ex.args[1])
+    elseif ex.head == :call && ex.args[1] == :transpose && length(ex.args) == 2
+        # conjugation
+        return isgeneraltensor(ex.args[2])
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3
+        # scalar multiplication
         if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
             return true
         elseif isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
             return true
         end
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 # scalar multiplication
+    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
+        # scalar multiplication
         if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
             return true
         end
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 # scalar multiplication
+    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
+        # scalar multiplication
         if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
             return true
         end
