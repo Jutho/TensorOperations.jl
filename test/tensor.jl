@@ -107,7 +107,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     end
 
     Cbig=zeros(ComplexF64, (50,50,50,50))
-    C=view(Cbig,13 .+ (0:6),11 .+ 4 .* (0:9),15 .+ 4 .* (0:8),4 .+ 3 .* (0:6))
+    C=view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
     Acopy=permutedims(copy(A), p)
     Ccopy=copy(C)
     α=randn(Float64)

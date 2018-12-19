@@ -126,16 +126,30 @@ function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
 
     N == length(indCinA) || throw(IndexError("Invalid permutation of length $N: $indCinA"))
     if CA == :N
-        @unsafe_strided A C _add!(α, A, β, C, (indCinA...,))
+        if isbitstype(eltype(A)) && isbitstype(eltype(C))
+            @unsafe_strided A C _add!(α, A, β, C, (indCinA...,))
+        else
+            _add!(α, StridedView(A), β, StridedView(C), (indCinA...,))
+        end
     elseif CA == :C
-        @unsafe_strided A C _add!(α, conj(A), β, C, (indCinA...,))
+        if isbitstype(eltype(A)) && isbitstype(eltype(C))
+            @unsafe_strided A C _add!(α, conj(A), β, C, (indCinA...,))
+        else
+            _add!(α, conj(StridedView(A)), β, StridedView(C), (indCinA...,))
+        end
+    elseif CA == :A
+        if isbitstype(eltype(A)) && isbitstype(eltype(C))
+            @unsafe_strided A C _add!(α, map(adjoint, A), β, C, (indCinA...,))
+        else
+            _add!(α, map(adjoint, StridedView(A)), β, StridedView(C), (indCinA...,))
+        end
     else
         throw(ArgumentError("Unknown conjugation flag: $CA"))
     end
     return C
 end
-_add!(α, A::UnsafeStridedView{<:Any,N},
-        β, C::UnsafeStridedView{<:Any,N}, indCinA::IndexTuple{N}) where N =
+_add!(α, A::AbstractStridedView{<:Any,N},
+        β, C::AbstractStridedView{<:Any,N}, indCinA::IndexTuple{N}) where N =
     LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
 
 function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArray{<:Any, NC},
@@ -146,16 +160,37 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
     NA-NC == 2*length(cindA1) == 2*length(cindA2) ||
         throw(IndexError("invalid number of trace dimension"))
     if CA == :N
-        @unsafe_strided A C _trace!(α, A, β, C, (indCinA...,), (cindA1...,), (cindA2...,))
+        if isbitstype(eltype(A)) && isbitstype(eltype(C))
+            @unsafe_strided A C _trace!(α, A, β, C,
+                (indCinA...,), (cindA1...,), (cindA2...,))
+        else
+            _trace!(α, StridedView(A), β, StridedView(C),
+                (indCinA...,), (cindA1...,), (cindA2...,))
+        end
     elseif CA == :C
-        @unsafe_strided A C _trace!(α, conj(A), β, C, (indCinA...,), (cindA1...,), (cindA2...,))
+        if isbitstype(eltype(A)) && isbitstype(eltype(C))
+            @unsafe_strided A C _trace!(α, conj(A), β, C,
+                (indCinA...,), (cindA1...,), (cindA2...,))
+        else
+            _trace!(α, conj(StridedView(A)), β, StridedView(C),
+                (indCinA...,), (cindA1...,), (cindA2...,))
+        end
+    elseif CA == :A
+        if isbitstype(eltype(A)) && isbitstype(eltype(C))
+            @unsafe_strided A C _trace!(α, map(adjoint, A), β, C,
+                (indCinA...,), (cindA1...,), (cindA2...,))
+        else
+            _trace!(α, map(adjoint, StridedView(A)), β, StridedView(C),
+                (indCinA...,), (cindA1...,), (cindA2...,))
+        end
     else
         throw(ArgumentError("Unknown conjugation flag: $CA"))
     end
     return C
 end
 
-function _trace!(α, A::UnsafeStridedView, β, C::UnsafeStridedView, indCinA::IndexTuple{NC},
+function _trace!(α, A::AbstractStridedView,
+        β, C::AbstractStridedView, indCinA::IndexTuple{NC},
         cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
 
     sizeA = i->size(A, i)
@@ -166,7 +201,11 @@ function _trace!(α, A::UnsafeStridedView, β, C::UnsafeStridedView, indCinA::In
 
     newstrides = (strideA.(indCinA)..., (strideA.(cindA1) .+ strideA.(cindA2))...)
     newsize = (size(C)..., tracesize...)
-    A2 = UnsafeStridedView(A.ptr, newsize, newstrides, A.offset, A.op)
+    if A isa UnsafeStridedView
+        A2 = UnsafeStridedView(A.ptr, newsize, newstrides, A.offset, A.op)
+    else
+        A2 = StridedView(A.parent, newsize, newstrides, A.offset, A.op)
+    end
 
     if α != 1
         if β == 0
@@ -322,38 +361,18 @@ function _blas_contract!(α, A::AbstractArray{T}, CA, B::AbstractArray{T}, CB,
     osizeB = sizeB.(oindB)
 
     @unsafe_strided A B C begin
+        A2 = sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
+        B2 = sreshape(permutedims(B, (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
+        C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)),
+                (prod(osizeA), prod(osizeB)))
         if CA == :N && CB == :N
-            A2 = sreshape(permutedims(A, (oindA..., cindA...)),
-                            (prod(osizeA), prod(csizeA)))
-            B2 = sreshape(permutedims(B, (cindB..., oindB...)),
-                            (prod(csizeB), prod(osizeB)))
-            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)),
-                            (prod(osizeA), prod(osizeB)))
             mul!(C2, A2, B2, α, β)
-        elseif CA == :C && CB == :N
-            A2 = conj(sreshape(permutedims(A, (oindA..., cindA...)),
-                            (prod(osizeA), prod(csizeA))))
-            B2 = sreshape(permutedims(B, (cindB..., oindB...)),
-                            (prod(csizeB), prod(osizeB)))
-            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)),
-                            (prod(osizeA), prod(osizeB)))
-            mul!(C2, A2, B2, α, β)
-        elseif CA == :N && CB == :C
-            A2 = sreshape(permutedims(A, (oindA..., cindA...)),
-                            (prod(osizeA), prod(csizeA)))
-            B2 = conj(sreshape(permutedims(B, (cindB..., oindB...)),
-                            (prod(csizeB), prod(osizeB))))
-            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)),
-                            (prod(osizeA), prod(osizeB)))
-            mul!(C2, A2, B2, α, β)
-        elseif CA == :C && CB == :C
-            A2 = conj(sreshape(permutedims(A, (oindA..., cindA...)),
-                            (prod(osizeA), prod(csizeA))))
-            B2 = conj(sreshape(permutedims(B, (cindB..., oindB...)),
-                            (prod(csizeB), prod(osizeB))))
-            C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)),
-                            (prod(osizeA), prod(osizeB)))
-            mul!(C2, A2, B2, α, β)
+        elseif (CA == :C || CA == :A) && CB == :N
+            mul!(C2, conj(A2), B2, α, β)
+        elseif CA == :N && (CB == :C || CB == :A)
+            mul!(C2, A2, conj(B2), α, β)
+        elseif (CA == :C || CA == :A) && (CB == :C || CB == :A)
+            mul!(C2, conj(A2), conj(B2), α, β)
         else
             throw(ArgumentError("unknown conjugation flag $CA and $CB"))
         end
@@ -374,32 +393,50 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
     osizeB = sizeB.(oindB)
 
     ipC = TupleTools.invperm(indCinoAB)
-    @unsafe_strided A B C begin
-        AS = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., one.(osizeB)..., csizeA...))
-        BS = sreshape(permutedims(B, (oindB..., cindB...)), (one.(osizeA)..., osizeB..., csizeB...))
-        CS = sreshape(permutedims(C, ipC), (osizeA..., osizeB..., one.(csizeA)...))
-        totsize = (osizeA..., osizeB..., csizeA...)
+    if CA == :N
+        opA = identity
+    elseif CA == :C
+        opA = conj
+    elseif CA == :A
+        opA = adjoint
+    else
+        throw(ArgumentError("unknown conjugation flag $CA"))
+    end
+    if CB == :N
+        opB = identity
+    elseif CB == :C
+        opB = conj
+    elseif CB == :A
+        opB = adjoint
+    else
+        throw(ArgumentError("unknown conjugation flag $CB"))
+    end
+
+    let opA = opA, opB = opB, α = α
+        AS = sreshape(permutedims(StridedView(A), (oindA..., cindA...)),
+            (osizeA..., one.(osizeB)..., csizeA...))
+        BS = sreshape(permutedims(StridedView(B), (oindB..., cindB...)),
+            (one.(osizeA)..., osizeB..., csizeB...))
+        CS = sreshape(permutedims(StridedView(C), ipC),
+            (osizeA..., osizeB..., one.(csizeA)...))
+        tsize = (osizeA..., osizeB..., csizeA...)
         if α != 1
+            op1 = (x,y) -> α*opA(x)*opB(y)
             if β == 0
-                Strided._mapreducedim!((x,y)->α*x*y, +, zero, totsize,
-                    (CS, CA == :N ? AS : conj(AS), CB == :N ? BS : conj(BS)))
+                Strided._mapreducedim!(op1, +, zero, tsize, (CS, AS, BS))
             elseif β == 1
-                Strided._mapreducedim!((x,y)->α*x*y, +, nothing, totsize,
-                    (CS, CA == :N ? AS : conj(AS), CB == :N ? BS : conj(BS)))
+                Strided._mapreducedim!(op1, +, nothing, tsize, (CS, AS, BS))
             else
-                Strided._mapreducedim!((x,y)->α*x*y, +, y->β*y, totsize,
-                    (CS, CA == :N ? AS : conj(AS), CB == :N ? BS : conj(BS)))
+                Strided._mapreducedim!(op1, +, y->β*y, tsize, (CS, AS, BS))
             end
         else
+            op2 = (x,y) -> opA(x)*opB(y)
             if β == 0
-                Strided._mapreducedim!(*, +, zero, totsize,
-                    (CS, CA == :N ? AS : conj(AS), CB == :N ? BS : conj(BS)))
+                Strided._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
             elseif β == 1
-                Strided._mapreducedim!(*, +, nothing, totsize,
-                    (CS, CA == :N ? AS : conj(AS), CB == :N ? BS : conj(BS)))
+                Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
             else
-                Strided._mapreducedim!(*, +, y->β*y, totsize,
-                    (CS, CA == :N ? AS : conj(AS), CB == :N ? BS : conj(BS)))
+                Strided._mapreducedim!(op2, +, y->β*y, tsize, (CS, AS, BS))
             end
         end
     end
