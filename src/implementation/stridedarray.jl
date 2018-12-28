@@ -328,22 +328,34 @@ function isblascontractable(A::AbstractStridedView{T,N}, p1::IndexTuple, p2::Ind
     strideA = i->stride(A, i)
     sizeA = i->size(A,i)
 
-    canreshape1, s1 = _canreshape(sizeA.(p1), strideA.(p1))
-    canreshape2, s2 = _canreshape(sizeA.(p2), strideA.(p2))
+    canfuse1, d1, s1 = _canfuse(sizeA.(p1), strideA.(p1))
+    canfuse2, d2, s2 = _canfuse(sizeA.(p2), strideA.(p2))
 
     if C == :D # destination
-        return A.op == identity && canreshape1 && canreshape2 && s1 == 1
+        return A.op == identity && canfuse1 && canfuse2 && s1 == 1
     elseif (C == :C && A.op == identity) || (C == :N && A.op == conj)# conjugated
-        return canreshape1 && canreshape2 && s2 == 1
+        return canfuse1 && canfuse2 && s2 == 1
     else
-        return canreshape1 && canreshape2 && (s1 == 1 || s2 == 1)
+        return canfuse1 && canfuse2 && (s1 == 1 || s2 == 1)
     end
 end
-_canreshape(::Tuple{}, ::Tuple{}) = true, 1, ()
-function _canreshape(dims::Dims{N}, strides::Dims{N}) where {N}
-    t1 = Base.front(dims) .* Base.front(strides)
-    t2 = Base.tail(strides)
-    return (t1 == t2, strides[1])
+
+_canfuse(::Dims{0}, ::Dims{0}) = true, 1, 1
+_canfuse(dims::Dims{1}, strides::Dims{1}) = true, dims[1], strides[1]
+function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
+    if dims[1] == 0
+        return true, 0, 1
+    elseif dims[1] == 1
+        return _canfuse(Base.tail(dims), Base.tail(strides))
+    else
+        b, d, s = _canfuse(Base.tail(dims), Base.tail(strides))
+        if b && (s == dims[1]*strides[1] || d == 1)
+            dnew = dims[1]*d
+            return true, dnew, (dnew == 0 || dnew == 1) ? 1 : strides[1]
+        else
+            return false, dims[1]*d, strides[1]
+        end
+    end
 end
 _trivtuple(t::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
