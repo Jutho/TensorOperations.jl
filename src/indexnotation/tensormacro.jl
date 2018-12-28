@@ -347,7 +347,7 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector, righti
         return quote
             $initex
             trace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
-            $dst
+            # $dst
         end
     else
         if !isperm((p1...,p2...)) ||
@@ -358,7 +358,7 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector, righti
         return quote
             $initex
             add!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
-            $dst
+            # $dst
         end
     end
 end
@@ -382,7 +382,7 @@ function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector, ri
         end
         return quote
             $returnex
-            $dst
+            # $dst
         end
     else
         throw(ArgumentError("unable to deindexify linear combination: $ex"))
@@ -505,6 +505,6 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind
         contract!($α*$αA*$αB, $symA, $symconjA, $symB, $symconjB, $β, $symC,
                     $sympoA, $sympcA, $sympoB, $sympcB, $p1, $p2,
                     $((gensym(),gensym(),gensym())))
-        $symC
+        # $symC
     end
 end
