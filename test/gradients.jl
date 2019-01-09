@@ -2,7 +2,7 @@
 using Flux
 using Flux.Tracker: TrackedArray, gradcheck, back!, data, grad
 
-gradtest(f, dims...) = gradtest(f, rand.(Float64, dims)...) ## from Flux tests
+gradtest(f, dims...) = gradtest(f, rand.(Float64, dims)...) # from Flux tests
 gradtest(f, xs::AbstractArray...) = gradcheck((xs...) -> sum(sin.(f(xs...))), xs...)
 
 @testset "gradients" begin
@@ -111,15 +111,15 @@ gradtest(f, xs::AbstractArray...) = gradcheck((xs...) -> sum(sin.(f(xs...))), xs
         @test gradtest(con16, (3,3,9,9))
 
     end
-    @testset "zygote gradients?" begin
+    # @testset "zygote gradients?" begin
 
-        r32 = randn(3,2);
-        add2(y) = @tensor S[i,j] := 2 * r32[i,j] + 3 * y[j,i]
-        con8b(x) = @tensor K[i,j] := 5 * r32[i,k] * x[k,j]
+    #     r32 = randn(3,2);
+    #     add2(y) = @tensor S[i,j] := 2 * r32[i,j] + 3 * y[j,i]
+    #     con8b(x) = @tensor K[i,j] := 5 * r32[i,k] * x[k,j]
 
-        x23 = rand(2,3);
-        Flux.gradient(x -> sum(sin, add2(x)), x23)[1].data
-        # Zygote.gradient(x -> sum(sin, add2(x)), x23)[1] # huge error!
+    #     x23 = rand(2,3);
+    #     Flux.gradient(x -> sum(sin, add2(x)), x23)[1].data
+    #     Zygote.gradient(x -> sum(sin, add2(x)), x23)[1] # huge error!
 
-    end
+    # end
 end
