@@ -44,6 +44,16 @@ include("implementation/diagonal.jl")
 include("functions/simple.jl")
 include("functions/inplace.jl")
 
+# Gradients
+#----------
+include("gradients/backwards.jl")
+using Requires
+function __init__()
+    @require Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c" include("gradients/flux.jl")
+    @require Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f" include("gradients/zygote.jl")
+end
+
+
 # Global package settings
 #------------------------
 # A switch for enabling/disabling the use of BLAS for tensor contractions
