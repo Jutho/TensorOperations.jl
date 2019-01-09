@@ -3,23 +3,31 @@
 # Connect up gradients for Zygote?
 
 using .Zygote
-using .Zygote: @adjoint
+using .Zygote: @adjoint, @nograd
+
+@nograd similar_from_indices, cached_similar_from_indices
+@nograd dirac, dirac!
+
 
 @adjoint function add!(α, A, conjA, β, C, indCinA)
+	∇VERBOSE && @info "@adjoint add!"
     add!(α, A, conjA, β, C, indCinA),
         Δ -> ∇add(Δ, α, A, conjA, β, C, indCinA)
 end
 
 @adjoint function trace!(α, A, conjA, β, C, indCinA, cindA1, cindA2)
+	∇VERBOSE && @info "@adjoint trace!"
     trace!(α, A, conjA, β, C, indCinA, cindA1, cindA2),
         Δ -> ∇trace(Δ, α, A, conjA, β, C, indCinA, cindA1, cindA2) 
 end
 
 @adjoint function contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indCinoAB, syms)
+	∇VERBOSE && @info "@adjoint contract!"
     contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indCinoAB, syms),
         Δ -> ∇contract(Δ, α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indCinoAB, syms) 
 end
 
+# It's currently not possible to skip the calculation of un-needed gradients, as done in Flux case
 
 function ∇add(Δ, α::Tα, A::TA, conjA, β::Tβ, C::TC, indCinA) where {Tα,TA,Tβ,TC}
 

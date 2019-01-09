@@ -111,15 +111,31 @@ gradtest(f, xs::AbstractArray...) = gradcheck((xs...) -> sum(sin.(f(xs...))), xs
         @test gradtest(con16, (3,3,9,9))
 
     end
-    # @testset "zygote gradients?" begin
+    #=
+    @testset "zygote gradients" begin
 
-    #     r32 = randn(3,2);
-    #     add2(y) = @tensor S[i,j] := 2 * r32[i,j] + 3 * y[j,i]
-    #     con8b(x) = @tensor K[i,j] := 5 * r32[i,k] * x[k,j]
+        using Flux, Zygote, TensorOperations, Test
 
-    #     x23 = rand(2,3);
-    #     Flux.gradient(x -> sum(sin, add2(x)), x23)[1].data
-    #     Zygote.gradient(x -> sum(sin, add2(x)), x23)[1] # huge error!
+        r32 = randn(3,2);
+        add2(y) = @tensor S[i,j] := 2 * r32[i,j] + 3 * y[j,i]
+        con8b(x) = @tensor K[i,j] := 5 * r32[i,k] * x[k,j]
 
-    # end
+        x23 = rand(2,3);
+        f = Flux.gradient(x -> sum(sin, add2(x)), x23)[1].data
+        z = Zygote.gradient(x -> sum(sin, add2(x)), x23)[1]
+        @test f == z
+
+        r33 = rand(3,3);
+        r3399 = randn(3,3,9,9);
+        con16(x) = @tensor K[i,j] := r3399[a,b,j,k] * x[b,a,k,i] + 3.14 * r33[a,b] * x[a,c,k,i] * x[c,b,j,k]
+
+        xx = rand(3,3,9,9);
+        f = Flux.gradient(x -> sum(sin, con16(x)), xx)[1].data;
+        z = Zygote.gradient(x -> sum(sin, con16(x)), xx)[1];
+        @test f == z
+
+        # These do work now... but can one explain this to travis?  ] add Zygote#master IRTools#master 
+
+    end
+    =#
 end
