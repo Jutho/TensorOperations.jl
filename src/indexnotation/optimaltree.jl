@@ -15,7 +15,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
         return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     elseif numindices <= 64
         return _optimaltree(UInt64, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
-    elseif numindices <= 128 && !(Int == Int32) && !Sys.iswindows()
+    elseif numindices <= 128 && !(Int == Int32 && Sys.iswindows())
         return _optimaltree(UInt128, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     else
         return _optimaltree(BitVector, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
