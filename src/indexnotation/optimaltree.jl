@@ -15,7 +15,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
         return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     elseif numindices <= 64
         return _optimaltree(UInt64, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
-    elseif numindices <= 128
+    elseif numindices <= 128 && !(Int == Int32) && !Sys.iswindows()
         return _optimaltree(UInt128, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
     else
         return _optimaltree(BitVector, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
@@ -59,9 +59,9 @@ function computecost(allcosts, ind1::T, ind2::T) where {T<:Unsigned}
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
     n = 1
-    while !iszero(ind)
+    @inbounds while !iszero(ind)
         if isodd(ind)
-            cost = mulcost(cost,allcosts[n])
+            cost = mulcost(cost, allcosts[n])
         end
         ind = ind>>1
         n += 1
@@ -71,16 +71,16 @@ end
 function computecost(allcosts, ind1::BitVector, ind2::BitVector)
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
-    for n in findall(ind)
-        cost = mulcost(cost,allcosts[n])
+    @inbounds for n in findall(ind)
+        cost = mulcost(cost, allcosts[n])
     end
     return cost
 end
 function computecost(allcosts, ind1::BitSet, ind2::BitSet)
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
-    for n in ind
-        cost = mulcost(cost,allcosts[n])
+    @inbounds for n in ind
+        cost = mulcost(cost, allcosts[n])
     end
     return cost
 end
@@ -123,7 +123,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     indexlist = Vector{T}(undef, numcomponent)
 
     # run over components
-    for c=1:numcomponent
+    @inbounds for c=1:numcomponent
         # find optimal contraction for every component
         component = componentlist[c]
         componentsize = length(component)
