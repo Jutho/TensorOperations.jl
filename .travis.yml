@@ -4,20 +4,20 @@ os:
   - linux
   - osx
 julia:
-  - 0.7
+  # - 0.7
   - 1.0
-  - nightly
+  # - nightly
 notifications:
   email: false
 
-matrix:
-  allow_failures:
-  - julia: nightly
-
-env:
-  matrix:
-    - JULIA_NUM_THREADS=1
-    - JULIA_NUM_THREADS=4
+# matrix:
+#   allow_failures:
+#   - julia: nightly
+#
+# env:
+#   matrix:
+#     - JULIA_NUM_THREADS=1
+#     - JULIA_NUM_THREADS=4
 
 ## uncomment the following lines to override the default test script
 
@@ -25,12 +25,12 @@ after_success:
   # push coverage results to Codecov and Coveralls
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder()); Coveralls.submit(Coveralls.process_folder())'
 
-jobs:
-  include:
-    - stage: "Documentation"
-      julia: 1.0
-      os: linux
-      script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-        - julia --project=docs/ docs/make.jl
-      after_success: skip
+# jobs:
+#   include:
+#     - stage: "Documentation"
+#       julia: 1.0
+#       os: linux
+#       script:
+#         - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+#         - julia --project=docs/ docs/make.jl
+#       after_success: skip
