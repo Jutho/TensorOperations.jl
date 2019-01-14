@@ -34,7 +34,7 @@ struct Power{D,T} <: AbstractPoly{D,T}
     N::Int
 end
 degree(p::Power) = p.N
-Base.getindex(p::Power{D,T},i::Int) where {D,T} = (i == p.N ? p.coeff : zero(p.coeff))
+Base.getindex(p::Power{D,T}, i::Int) where {D,T} = (i == p.N ? p.coeff : zero(p.coeff))
 Power{D}(coeff::T, N::Int = 0) where {D,T} = Power{D,T}(coeff, N)
 
 Base.one(::Type{Power{D,T}}) where {D,T} = Power{D,T}(one(T), 0)
