@@ -3,7 +3,7 @@ using TensorOperations
 using Random
 using LinearAlgebra
 
-include("gradients.jl"); println("============== DONE GRAD TESTS ==============")
+Random.seed!(1234567)
 
 TensorOperations.enable_blas()
 TensorOperations.enable_cache()
@@ -18,3 +18,5 @@ include("tensor.jl")
 
 include("tensoropt.jl")
 include("auxiliary.jl")
+
+include("gradients.jl")

@@ -16,7 +16,7 @@ end
 
 mutable struct LRUList{K, V}
     first::Union{LRUNode{K, V}, Nothing}
-    size::Int
+    size::Int64
 
     LRUList{K, V}() where {K, V} = new{K, V}(nothing, 0)
 end
@@ -124,18 +124,18 @@ const __maxfraction__ = 0.5
 
 mutable struct LRU{K,V} <: AbstractDict{K,V}
     ht::Dict{K, LRUNode{K, V}}
-    hts::Dict{K, Int}
+    hts::Dict{K, Int64}
     q::LRUList{K, V}
-    currentsize::Int
-    maxsize::Int
+    currentsize::Int64
+    maxsize::Int64
 
-    LRU{K, V}(m::Int) where {K, V} = new{K, V}(Dict{K, V}(), Dict{K, Int}(), LRUList{K, V}(), 0, m)
+    LRU{K, V}(m::Integer) where {K, V} = new{K, V}(Dict{K, V}(), Dict{K, Int64}(), LRUList{K, V}(), 0, m)
 end
-function LRU{K, V}(; maxsize::Int = 0, maxrelsize::Real = 0) where {K, V}
+function LRU{K, V}(; maxsize::Integer = 0, maxrelsize::Real = 0) where {K, V}
     if maxrelsize == 0 && maxsize == 0
-        m = floor(Int, __maxfraction__ * Sys.total_memory())
+        m = floor(Int64, __maxfraction__ * Sys.total_memory())
     else
-        m = max(maxsize, floor(Int, maxrelsize*Sys.total_memory()))
+        m = max(maxsize, floor(Int64, maxrelsize*Sys.total_memory()))
     end
     LRU{K,V}(m)
 end
@@ -215,13 +215,13 @@ function Base.setindex!(lru::LRU{K, V}, v, key) where {K, V}
     return lru
 end
 
-function setsize!(lru::LRU; maxsize::Int = 0, maxrelsize::Real = 0)
+function setsize!(lru::LRU; maxsize::Integer = 0, maxrelsize::Real = 0)
     @assert 0 <= maxsize
     @assert 0 <= maxrelsize < 1
     if maxrelsize == 0 && maxsize == 0
-        m = floor(Int, __maxfraction__ * Sys.total_memory())
+        m = floor(Int64, __maxfraction__ * Sys.total_memory())
     else
-        m = max(maxsize, floor(Int, maxrelsize*Sys.total_memory()))
+        m = max(maxsize, floor(Int64, maxrelsize*Sys.total_memory()))
     end
     lru.maxsize = m
     while lru.currentsize > lru.maxsize
