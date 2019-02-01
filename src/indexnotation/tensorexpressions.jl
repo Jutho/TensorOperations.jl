@@ -148,21 +148,21 @@ end
 function maketensor(ex)
     if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_hcat)
         object = esc(ex.args[1])
-        leftind = map(makeindex, ex.args[2:end])
+        leftind = Any[makeindex(x) for x in ex.args[2:end]]
         rightind = Any[]
         return (object, leftind, rightind)
     elseif isa(ex, Expr) && ex.head == :typed_vcat
         length(ex.args) <= 3 || throw(ArgumentError("invalid tensor index expression: $ex"))
         object = esc(ex.args[1])
         if isa(ex.args[2], Expr) && ex.args[2].head == :row
-            leftind = map(makeindex, ex.args[2].args)
+            leftind = Any[makeindex(x) for x in ex.args[2].args]
         elseif ex.args[2] == :_
             leftind = Any[]
         else
             leftind = Any[makeindex(ex.args[2])]
         end
         if length(ex.args) > 2 && isa(ex.args[3], Expr) && ex.args[3].head == :row
-            rightind = map(makeindex, ex.args[3].args)
+            rightind = Any[makeindex(x) for x in ex.args[3].args]
         elseif length(ex.args) == 2 || ex.args[3] == :_
             rightind = Any[]
         else

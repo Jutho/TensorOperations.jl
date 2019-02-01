@@ -203,6 +203,9 @@ function tensorify(ex::Expr, optdata = nothing)
     if ex.head == :block
         return Expr(ex.head, map(x->tensorify(x, optdata), ex.args)...)
     end
+    if ex.head == :for
+        return Expr(ex.head, esc(ex.args[1]), tensorify(ex.args[2], optdata))
+    end
     # constructions of the form: a = @tensor ...
     if isscalarexpr(ex)
         return makescalar(ex)
@@ -288,7 +291,7 @@ function tree2expr(args, tree)
 end
 
 # deindexify: parse tensor operations
-function deindexify(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, istemporary = false)
+function deindexify(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     if isgeneraltensor(ex)
         return deindexify_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # linear combination
@@ -309,7 +312,7 @@ function deindexify(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, is
     throw(ArgumentError("problem with parsing $ex"))
 end
 
-function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, istemporary = false)
+function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     src, srcleftind, srcrightind, α2, conj = makegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
@@ -362,7 +365,7 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector, righti
         end
     end
 end
-function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, istemporary = false)
+function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # addition: add one by one
         if dst === nothing
             αnew = Expr(:call, :*, α, Expr(:call, :one, geteltype(ex)))
@@ -388,7 +391,7 @@ function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector, ri
         throw(ArgumentError("unable to deindexify linear combination: $ex"))
     end
 end
-function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector, rightind::Vector, istemporary = false)
+function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     @assert ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
         istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
     exA = ex.args[2]
