@@ -413,33 +413,23 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
     symA = gensym()
     symB = gensym()
     symC = gensym()
-    sympoA = gensym()
-    sympcA = gensym()
-    sympoB = gensym()
-    sympcB = gensym()
-    symconjA = gensym()
-    symconjB = gensym()
     symTC = gensym()
 
     # prepare tensors or tensor expressions
     if dst === nothing
         TA = geteltype(exA)
         TB = geteltype(exB)
-        TC = Expr(:call, :promote_type, TA, TB)
+        TC = Expr(:call, :promote_type, TA, TB, :(typeof($α)))
     else
         TC = Expr(:call, :eltype, dst)
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
-        initA = deindexify(nothing, false, exA, Expr(:call, :one, symTC), oindA, cind, true)
+        initA = deindexify(nothing, false, exA, true, oindA, cind, true)
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
-        initA = quote
-            $symA = $initA
-            $sympoA = $poA
-            $sympcA = $pcA
-            $symconjA = :N
-        end
+        conjA = :(:N)
+        initA = Expr(:(=), symA, initA)
         αA = 1
     else
         A, indlA, indrA, αA, conj = makegeneraltensor(exA)
@@ -448,24 +438,15 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
         pcA = (map(l->_findfirst(isequal(l), indA), cind)...,)
         TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
         conjA = conj ? :(:C) : :(:N)
-        initA = quote
-            $symA = $A
-            $sympoA = $poA
-            $sympcA = $pcA
-            $symconjA = $conjA
-        end
+        initA = Expr(:(=), symA, A)
     end
 
     if !isgeneraltensor(exB) || hastraceindices(exB)
-        initB = deindexify(nothing, false, exB, Expr(:call,:one, symTC), oindB, cind, true)
+        initB = deindexify(nothing, false, exB, true, oindB, cind, true)
         poB = ((1:length(oindB))...,)
         pcB = length(oindB) .+ ((1:length(cind))...,)
-        initB = quote
-            $symB = $initB
-            $sympoB = $poB
-            $sympcB = $pcB
-            $symconjB = :N
-        end
+        conjB = :(:N)
+        initB = Expr(:(=), symB, initB)
         αB = 1
     else
         B, indlB, indrB, αB, conj = makegeneraltensor(exB)
@@ -473,12 +454,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
         poB = (map(l->_findfirst(isequal(l), indB), oindB)...,)
         pcB = (map(l->_findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
-        initB = quote
-            $symB = $B
-            $sympcB = $pcB
-            $sympoB = $poB
-            $symconjB = $conjB
-        end
+        initB = Expr(:(=), symB, B)
     end
 
     oindAB = vcat(oindA, oindB)
@@ -492,9 +468,9 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $sympoA, $sympoB, $p1, $p2, $symA, $symB, $symconjA, $symconjB))
+            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
         else
-            initC = :($symC = similar_from_indices($symTC, $sympoA, $sympoB, $p1, $p2, $symA, $symB, $symconjA, $symconjB))
+            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
         end
     else
         initC = :($symC = $dst)
@@ -505,8 +481,8 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
         $initA
         $initB
         $initC
-        contract!($α*$αA*$αB, $symA, $symconjA, $symB, $symconjB, $β, $symC,
-                    $sympoA, $sympcA, $sympoB, $sympcB, $p1, $p2,
+        contract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
+                    $poA, $pcA, $poB, $pcB, $p1, $p2,
                     $((gensym(),gensym(),gensym())))
         # $symC
     end
