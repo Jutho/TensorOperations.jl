@@ -4,6 +4,7 @@ using TensorOperations
 makedocs(modules=[TensorOperations],
             sitename = "TensorOperations.jl",
             authors = "Jutho Haegeman",
+            format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
             pages = [
                 "Home" => ["index.md",
                             "indexnotation.md",
