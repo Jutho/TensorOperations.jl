@@ -22,3 +22,4 @@ function print_tree(io::IO, blk, print_level=0)
 end
 
 Base.getindex(t::BinaryTreeNode, i::Int) = i==1 ? t.left : (i==2 ? t.right : throw(BoundsError(t, i)))
+Base.iterate(t::BinaryTreeNode, args...) = iterate((t.left, t.right), args...)

@@ -1,3 +1,6 @@
+using TensorOperations, Test
+using TensorOperations: BinaryTreeNode
+
 @testset "Optimal contraction order" begin
     _,cost = @optimalcontractiontree A[-1,1,2,3]*B[2,4,5,6]*C[1,5,7,-3]*D[3,8,4,9]*
                                     E[6,9,7,10]*F[-2,8,11,12]*G[10,11,12,-4]
@@ -21,4 +24,11 @@
                                     w[50,78,61,80,52]*x[81,55,83,84,57]*y[56,62,85,86,58]*z[63,82,87,88,59]*
                                     aa[89,90,45,46,51,52,57,58,59,-1,64,65,66,67,68,69,70,71]
     @test cost == TensorOperations.Poly{:χ,Int}([0,0,0,0,0,0,0,4,4,0,0,0,1,1,1,0,1,0,0,0,3,0,3,2,0,2,4])
+end
+
+@testset "BinaryTree" begin
+    t = BinaryTreeNode(BinaryTreeNode(3, 2), 4)
+    l, r = t
+    @test l == BinaryTreeNode(3, 2) == t[1]
+    @test r == 4 == t[2]
 end
