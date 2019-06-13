@@ -1,3 +1,5 @@
+include("binarytree.jl")
+
 function optimaltree(network, optdata::Dict; verbose::Bool = false)
     numtensors = length(network)
     allindices = unique(vcat(network...))
@@ -165,7 +167,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                                 if cost <= get(costdict[n], s, currentcost)
                                     costdict[n][s] = cost
                                     indexdict[n][s] = _setdiff(_union(ind1,ind2), cind)
-                                    treedict[n][s] = (treedict[k][s1], treedict[n-k][s2])
+                                    treedict[n][s] = BinaryTreeNode(treedict[k][s1], treedict[n-k][s2])
                                 elseif currentcost < cost < nextcost
                                     nextcost = cost
                                 end
@@ -192,7 +194,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                                     if cost <= get(costdict[n], s, currentcost)
                                         costdict[n][s] = cost
                                         indexdict[n][s] = _setdiff(_union(ind1,ind2), cind)
-                                        treedict[n][s] = (treedict[k][s1], treedict[k][s2])
+                                        treedict[n][s] = BinaryTreeNode(treedict[k][s1], treedict[k][s2])
                                     elseif currentcost < cost < nextcost
                                         nextcost = cost
                                     end
@@ -226,7 +228,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     cost = costlist[p[1]]
     ind = indexlist[p[1]]
     for c = 2:numcomponent
-        tree = (tree, treelist[p[c]])
+        tree = BinaryTreeNode(tree, treelist[p[c]])
         cost = addcost(cost, costlist[p[c]], computecost(allcosts, ind, indexlist[p[c]]))
         ind = _union(ind, indexlist[p[c]])
     end
