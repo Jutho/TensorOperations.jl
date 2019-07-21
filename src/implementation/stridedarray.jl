@@ -267,9 +267,9 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
             CA2 = CA
         else
             if syms === nothing
-                A2 = similar_from_indices(TC, oindA, cindA, A, CA)
+                A2 = similar_from_indices(TC, oindA, cindA, A, Val{CA})
             else
-                A2 = cached_similar_from_indices(syms[1], TC, oindA, cindA, A, CA)
+                A2 = cached_similar_from_indices(syms[1], TC, oindA, cindA, A, Val{CA})
             end
             add!(1, A, CA, 0, A2, oindA, cindA)
             CA2 = :N
@@ -281,9 +281,9 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
             CB2 = CB
         else
             if syms === nothing
-                B2 = similar_from_indices(TC, cindB, oindB, B, CB)
+                B2 = similar_from_indices(TC, cindB, oindB, B, Val{CB})
             else
-                B2 = cached_similar_from_indices(syms[2], TC, cindB, oindB, B, CB)
+                B2 = cached_similar_from_indices(syms[2], TC, cindB, oindB, B, Val{CB})
             end
             add!(1, B, CB, 0, B2, cindB, oindB)
             CB2 = :N
@@ -299,9 +299,9 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
                                 oindA, cindA, oindB, cindB, oindAinC, oindBinC)
         else
             if syms === nothing
-                C2 = similar_from_indices(TC, oindAinC, oindBinC, C, :N)
+                C2 = similar_from_indices(TC, oindAinC, oindBinC, C, Val{CA})
             else
-                C2 = cached_similar_from_indices(syms[3], TC, oindAinC, oindBinC, C, :N)
+                C2 = cached_similar_from_indices(syms[3], TC, oindAinC, oindBinC, C, Val{CA})
             end
             _blas_contract!(1, A2, CA2, B2, CB2, 0, C2,
                                 oindA, cindA, oindB, cindB,
