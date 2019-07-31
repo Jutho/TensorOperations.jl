@@ -11,7 +11,14 @@ order, unless the so-called NCON style is used (positive integers for contracted
 indices and negative indices for open indices).
 """
 macro tensor(ex::Expr)
-    tensorify(ex)
+    ex = expandconj(ex)
+    ex = processcontractorder(ex, nothing)
+    in, out = extracttensors!(ex)
+    tensors = [:($(esc(v)) = $k) for (k,v) in in]
+    for (k,v) in out
+        haskey(in, k) || push!(tensors, :($(esc(v)) = $k))
+    end
+    return Expr(:block, Expr(:block, tensors...), tensorify(ex))
 end
 
 """
@@ -49,11 +56,26 @@ the optimal contraction order and associated (asymptotic) cost can be obtained u
 `@optimalcontractiontree`.
 """
 macro tensoropt(ex::Expr)
-    tensorify(ex, optdata(ex))
+    ex = expandconj(ex)
+    ex = processcontractorder(ex, optdata(ex))
+    in, out = extracttensors!(ex)
+    tensors = [:($(esc(v)) = $k) for (k,v) in in]
+    for (k,v) in out
+        haskey(in, k) || push!(tensors, :($(esc(v)) = $k))
+    end
+    return Expr(:block, Expr(:block, tensors...), tensorify(ex))
 end
 macro tensoropt(optex::Expr, ex::Expr)
-    tensorify(ex, optdata(optex, ex))
+    ex = expandconj(ex)
+    ex = processcontractorder(ex, optdata(optex, ex))
+    in, out = extracttensors!(ex)
+    tensors = [:($(esc(v)) = $k) for (k,v) in in]
+    for (k,v) in out
+        haskey(in, k) || push!(tensors, :($(esc(v)) = $k))
+    end
+    return Expr(:block, Expr(:block, tensors...), tensorify(ex))
 end
+
 macro optimalcontractiontree(ex::Expr)
     if isassignment(ex) || isdefinition(ex)
         _, ex = getlhsrhs(ex::Expr)
@@ -147,9 +169,7 @@ function optdata(optex::Expr, ex::Expr)
  end
 
 # functions for parsing and processing tensor expressions
-function tensorify(ex::Expr, optdata = nothing)
-    ex = expandconj(ex)
-    ex = processcontractorder(ex, optdata)
+function tensorify(ex::Expr)
     # assignment case
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhsrhs(ex)
@@ -201,10 +221,10 @@ function tensorify(ex::Expr, optdata = nothing)
     end
 
     if ex.head == :block
-        return Expr(ex.head, map(x->tensorify(x, optdata), ex.args)...)
+        return Expr(ex.head, map(x->tensorify(x), ex.args)...)
     end
     if ex.head == :for
-        return Expr(ex.head, esc(ex.args[1]), tensorify(ex.args[2], optdata))
+        return Expr(ex.head, esc(ex.args[1]), tensorify(ex.args[2]))
     end
     # constructions of the form: a = @tensor ...
     if isscalarexpr(ex)
@@ -215,13 +235,41 @@ function tensorify(ex::Expr, optdata = nothing)
             err = "cannot evaluate $ex to a scalar: uncontracted indices"
             return :(throw(IndexError($err)))
         end
-        ex = processcontractorder(ex, optdata)
         return Expr(:call, :scalar, deindexify(nothing, false, ex, true, [], [], true))
     end
     error("invalid syntax in @tensor macro: $ex")
 end
-tensorify(ex::Symbol, optdata = nothing) = esc(ex)
-tensorify(ex, optdata = nothing) = ex
+tensorify(ex::Symbol) = esc(ex)
+tensorify(ex) = ex
+
+function extracttensors!(ex::Expr, in=Dict{Any,Symbol}(), out=Dict{Any,Symbol}())
+    if isdefinition(ex)
+        lhs, rhs = getlhsrhs(ex)
+        extracttensors!(rhs, in, out)
+    elseif isassignment(ex)
+        lhs, rhs = getlhsrhs(ex)
+        extracttensors!(rhs, in, out)
+        if istensor(lhs)
+            obj, = maketensor(lhs)
+            s = get(gensym, in, obj)
+            replacetensorobj!(lhs, s)
+            out[obj] = s
+            if ex.head == :(+=) || ex.head == :(-=)
+                in[obj] = s
+            end
+        end
+    elseif istensor(ex)
+        obj, = maketensor(ex)
+        s = get!(gensym, in, obj)
+        replacetensorobj!(ex, s)
+    else
+        foreach(ex.args) do e
+            extracttensors!(e, in, out)
+        end
+    end
+    return in, out
+end
+extracttensors!(ex, in, out) = (in, out)
 
 # expandconj: conjugate individual terms or factors instead of a whole expression
 function expandconj(ex::Expr)
@@ -320,13 +368,13 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, r
     p1 = (map(l->_findfirst(isequal(l), srcind), leftind)...,)
     p2 = (map(l->_findfirst(isequal(l), srcind), rightind)...,)
 
-    αsym = gensym()
+    αsym = esc(gensym())
     if dst === nothing
-        dst = gensym()
+        dst = esc(gensym())
         if istemporary
             initex = quote
                 $αsym = $α*$α2
-                $dst = cached_similar_from_indices($(QuoteNode(dst)), promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = cached_similar_from_indices($(QuoteNode(dst.args[1])), promote_type(eltype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
             end
         else
             initex = quote
@@ -370,7 +418,7 @@ function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any
         if dst === nothing
             αnew = Expr(:call, :*, α, Expr(:call, :one, geteltype(ex)))
             ex1 = deindexify(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
-            dst = gensym()
+            dst = esc(gensym())
             returnex = :($dst = $ex1)
         else
             returnex = deindexify(dst, β, ex.args[2], α, leftind, rightind, istemporary)
@@ -410,10 +458,10 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
         oindA, oindB = oindB, oindA
     end
 
-    symA = gensym()
-    symB = gensym()
-    symC = gensym()
-    symTC = gensym()
+    symA = esc(gensym())
+    symB = esc(gensym())
+    symC = esc(gensym())
+    symTC = esc(gensym())
 
     # prepare tensors or tensor expressions
     if dst === nothing
@@ -468,7 +516,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC.args[1])), $symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
         else
             initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
         end

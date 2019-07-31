@@ -172,6 +172,18 @@ function maketensor(ex)
     end
     throw(ArgumentError())
 end
+# extract the tensor object itself, as well as its left and right indices
+function replacetensorobj!(ex, s)
+    if isa(ex, Expr) && (ex.head == :ref || ex.head == :typed_hcat)
+        ex.args[1] = s
+        return ex
+    elseif isa(ex, Expr) && ex.head == :typed_vcat
+        length(ex.args) <= 3 || throw(ArgumentError("invalid tensor index expression: $ex"))
+        ex.args[1] = s
+        return ex
+    end
+    throw(ArgumentError())
+end
 
 # extract the tensor object itself, as well as its left and right indices, its scalar factor and its conjugation flag
 function makegeneraltensor(ex)
