@@ -232,7 +232,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 
     # Some tensor network examples
     @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
-        D1, D2, D3 = 300, 400, 200
+        D1, D2, D3 = 30, 40, 20
         d1, d2 = 2, 3
         A1 = randn(T, D1, d1, D2)
         A2 = randn(T, D2, d2, D3)
