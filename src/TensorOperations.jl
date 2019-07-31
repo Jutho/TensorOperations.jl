@@ -62,10 +62,7 @@ function enable_blas()
 end
 
 # A cache for temporaries of tensor contractions
-const __maxfraction__ = 0.5
-
-const cache = LRU{Tuple{Symbol,Int}, Any}(; by = Base.summarysize, maxsize =
-                                        floor(Int, __maxfraction__ * Sys.total_memory()))
+const cache = LRU{Tuple{Symbol,Int}, Any}(; by = Base.summarysize, maxsize = 2^30)
 const _use_cache = Ref(true)
 use_cache() = _use_cache[]
 
@@ -81,15 +78,20 @@ function disable_cache()
 end
 
 """
-    enable_cache(; maxsize::Int = ..., maxrelsize::Real = 0.5)
+    enable_cache(; maxsize::Int = ..., maxrelsize::Real = ...)
 
 (Re)-enable the cache for further use; set the maximal size `maxsize` (as number of bytes)
 or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
-`maxsize = floor(Int, maxrelsize * Sys.total_memory())`.
+`maxsize = floor(Int, maxrelsize * Sys.total_memory())`. Default value is `maxsize = 2^30` bytes, which amounts to 1 gigabyte of memory.
 """
-function enable_cache(; maxrelsize::Real = __maxfraction__,
-                        maxsize::Int = floor(Int64, maxrelsize * Sys.total_memory()))
-    @assert maxsize >= 0
+function enable_cache(; maxsize::Int = -1, maxrelsize::Real = 0.0)
+    if maxsize == -1 && maxrelsize == 0.0
+        maxsize = 2^30
+    elseif maxrelsize > 0
+        maxsize = max(maxsize, floor(Int, maxrelsize*Sys.total_memory()))
+    else
+        @assert maxsize >= 0
+    end
     _use_cache[] = true
     resize!(cache; maxsize = maxsize)
     return

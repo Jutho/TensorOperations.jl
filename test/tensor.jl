@@ -3,6 +3,7 @@
 withblas = TensorOperations.use_blas() ? "with" : "without"
 withcache = TensorOperations.use_cache() ? "with" : "without"
 @testset "Index Notation $withblas BLAS and $withcache cache" begin
+    t0 = time()
     A = randn(Float64, (3,5,4,6))
     p = (4,1,3,2)
     C1 = permutedims(A, p)
@@ -14,6 +15,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws TensorOperations.IndexError begin
         @tensor C[1,2,3,4] := A[1,2,2,4]
     end
+    println("tensorcopy: $(time()-t0) seconds")
+    t0 = time()
 
     B=randn(Float64, (5,6,3,4))
     p=[3,1,4,2]
@@ -23,6 +26,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws DimensionMismatch begin
         @tensor C[1,2,3,4] := A[1,2,3,4] + B[1,2,3,4]
     end
+    println("tensoradd: $(time()-t0) seconds")
+    t0 = time()
 
     A=randn(Float64, (50,100,100))
     @tensor C1[a] := A[a, b', b']
@@ -42,6 +47,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         end
     end
     @test C1 ≈ C2
+    println("tensortrace: $(time()-t0) seconds")
+    t0 = time()
 
     A=randn(Float64, (3,20,5,3,4))
     B=randn(Float64, (5,6,20,3))
@@ -54,6 +61,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws TensorOperations.IndexError begin
         @tensor A[a, b, c, d] * B[c, f, b, g]
     end
+    println("tensorcontract 1: $(time()-t0) seconds")
+    t0 = time()
 
     A=randn(Float64, (5,5,5,5))
     B=rand(ComplexF64, (5,5,5,5))
@@ -63,6 +72,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws TensorOperations.IndexError begin
         @tensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
     end
+    println("tensorcontract 2: $(time()-t0) seconds")
+    t0 = time()
 
     Da=10
     Db=15
@@ -85,6 +96,9 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     end
     @test D1 ≈ D2
     @test norm(vec(D1)) ≈ sqrt(abs((@tensor scalar(D1[d, f, h] * conj(D1[d, f, h])))))
+    println("tensorcontract 3: $(time()-t0) seconds")
+    t0 = time()
+
 
     Abig=randn(Float64, (30,30,30,30))
     A=view(Abig,1 .+ 3 .* (0:9),2 .+ 2 .* (0:6),5 .+ 4 .* (0:6),4 .+ 3 .* (0:8))
@@ -105,6 +119,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws TensorOperations.IndexError begin
         @tensor C[1,1,2,3] = A[1,2,3,4]
     end
+    println("views: $(time()-t0) seconds")
+    t0 = time()
 
     Cbig=zeros(ComplexF64, (50,50,50,50))
     C=view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
@@ -124,6 +140,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws TensorOperations.IndexError  begin
         @tensor C[1,1,2,3] = 0.5 * C[1,1,2,3] + 1.2 * A[1,2,3,4]
     end
+    println("more views: $(time()-t0) seconds")
+    t0 = time()
 
     Abig=rand(Float64, (30,30,30,30))
     A=view(Abig,1 .+ 3 .* (0:8),2 .+ 2 .* (0:14),5 .+ 4 .* (0:6),7 .+ 2 .* (0:8))
@@ -149,6 +167,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws DimensionMismatch begin
         @tensor B[c, b] += α * A[a, b, a, c]
     end
+    println("even more views: $(time()-t0) seconds")
+    t0 = time()
 
     Abig=rand(Float64, (30,30,30,30))
     A=view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6), 7 .+ 2 .* (0:8))
@@ -167,6 +187,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     end
     @tensor C[d, a, e] -= α * A[a, b, c, d] * conj(B[c, e, b])
     @test C ≈ Ccopy
+    println("and some more views: $(time()-t0) seconds")
+    t0 = time()
 
     Cbig=rand(ComplexF32, (40,40,40))
     C=view(Cbig,3 .+ 2 .* (0:8),13 .+ (0:8),7 .+ 3 .* (0:7))
@@ -190,6 +212,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     @test_throws DimensionMismatch begin
         @tensor C[d, e, a] += α * A[a, b, c, d] * B[c, e, b]
     end
+    println("Float32 views: $(time()-t0) seconds")
+    t0 = time()
 
     # Example from README.md
     using TensorOperations
@@ -203,6 +227,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         E[a, b, c] := A[a, e, f, c, f, g] * B[g, b, e] + α * C[c, a, b]
     end
     @test D == E
+    println("readme example: $(time()-t0) seconds")
+    t0 = time()
 
     # Some tensor network examples
     @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
@@ -223,6 +249,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         @test HrA12 ≈ HrA12′
         @test E ≈ @tensor scalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
+    println("tensor network examples: $(time()-t0) seconds")
+    t0 = time()
 
     # diagonal matrices
     @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
@@ -287,6 +315,8 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         @tensor G[a,c,b,d] := F[a,b]*Diagonal(B)[c,d]
         @test reshape(G,(100,100)) ≈ kron(Diagonal(B), F)
     end
+    println("diagonal examples: $(time()-t0) seconds")
+    t0 = time()
 
 
 end
