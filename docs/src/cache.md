@@ -17,12 +17,11 @@ with the function-based interface.
 
 The `@tensor` macro expands the given expression and immediately generates the code to
 create the necessary temporaries. It associates with each of them a random symbol
-(`gensym()`) and uses this as an identifier in a package wide global cache structure
+(`gensym()`) and uses this as an identifier (together with the `Threads.threadid` of where it it is being evaluated) in a package wide global cache structure
 `TensorOperations.cache`, the implementation of which is a least-recently used cache
-dictionary borrowed from the package [LRUCache.jl](https://github.com/JuliaCollections/
-LRUCache.jl), but adapted in such a way that it uses a maximum memory size rather than a
-maximal number of objects. Thereto, it estimates the size of each object added to the cache
-using `Base.summarysize` and, when discards objects once a certain memory limit is reached.
+dictionary from [LRUCache.jl](https://github.com/JuliaCollections/
+LRUCache.jl). Thereto, it estimates the size of each object added to the cache
+using `Base.summarysize` and discards objects once a certain memory limit is reached.
 
 ## Enabling and disabling the cache
 The use of the cache can be enabled or disabled using
@@ -40,6 +39,12 @@ clear_cache
 ```
 
 ## Cache and multithreading
-The `LRU` cache currently used is not thread safe, i.e. if there is any chance that
-different threads will run tensor expressions using the `@tensor` environment, you should
-`disable_cache()`.
+The `LRU` cache currently is thread safe, but requires that temporary objects are allocated
+for every thread that is running `@tensor` expressions. If the same tensor contraction is
+evaluated by several threads (simultaneoulsy or not, this we cannot know), every thread
+needs to have its own set of temporary variables, so the 'same' temporary will be stored in
+the cache multiple times. As indicated above, this is accomplished by associating with
+every temporary a randoms symbol and the `Threads.threadid` of the thread where the
+expression is being evaluated. If you have `JULIA_NUM_THREADS>1` but always run tensor
+expressions on the main execution thread, no additional copies of the temporaries will be
+created.

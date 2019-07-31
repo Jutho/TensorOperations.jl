@@ -5,6 +5,7 @@ using Strided
 using Strided: AbstractStridedView, UnsafeStridedView
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
+using LRUCache
 
 # export macro API
 export @tensor, @tensoropt, @optimalcontractiontree
@@ -36,7 +37,7 @@ include("indexnotation/poly.jl")
 # Implementations
 #-----------------
 include("implementation/indices.jl")
-include("implementation/lrucache.jl")
+#include("implementation/lrucache.jl")
 include("implementation/tensorcache.jl")
 include("implementation/stridedarray.jl")
 include("implementation/diagonal.jl")
@@ -61,7 +62,10 @@ function enable_blas()
 end
 
 # A cache for temporaries of tensor contractions
-const cache = LRU{Symbol,Any}()
+const __maxfraction__ = 0.5
+
+const cache = LRU{Tuple{Symbol,Int}, Any}(; by = Base.summarysize, maxsize =
+                                        floor(Int, __maxfraction__ * Sys.total_memory()))
 const _use_cache = Ref(true)
 use_cache() = _use_cache[]
 
@@ -83,9 +87,11 @@ end
 or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
 `maxsize = floor(Int, maxrelsize * Sys.total_memory())`.
 """
-function enable_cache(; kwargs...)
+function enable_cache(; maxrelsize::Real = __maxfraction__,
+                        maxsize::Int = floor(Int64, maxrelsize * Sys.total_memory()))
+    @assert maxsize >= 0
     _use_cache[] = true
-    setsize!(cache; kwargs...)
+    resize!(cache; maxsize = maxsize)
     return
 end
 
