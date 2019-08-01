@@ -18,7 +18,7 @@ macro tensor(ex::Expr)
     for (k,v) in out
         haskey(in, k) || push!(tensors, :($(esc(v)) = $k))
     end
-    return Expr(:block, Expr(:block, tensors...), tensorify(ex))
+    return Expr(:block, Expr(:block, tensors...), _flatten(tensorify(ex)))
 end
 
 """
@@ -63,7 +63,7 @@ macro tensoropt(ex::Expr)
     for (k,v) in out
         haskey(in, k) || push!(tensors, :($(esc(v)) = $k))
     end
-    return Expr(:block, Expr(:block, tensors...), tensorify(ex))
+    return Expr(:block, Expr(:block, tensors...), _flatten(tensorify(ex)))
 end
 macro tensoropt(optex::Expr, ex::Expr)
     ex = expandconj(ex)
@@ -73,7 +73,7 @@ macro tensoropt(optex::Expr, ex::Expr)
     for (k,v) in out
         haskey(in, k) || push!(tensors, :($(esc(v)) = $k))
     end
-    return Expr(:block, Expr(:block, tensors...), tensorify(ex))
+    return Expr(:block, Expr(:block, tensors...), _flatten(tensorify(ex)))
 end
 
 macro optimalcontractiontree(ex::Expr)
@@ -337,6 +337,29 @@ function tree2expr(args, tree)
         return Expr(:call, :*, tree2expr(args, tree[1]), tree2expr(args, tree[2]))
     end
 end
+
+function _flatten(ex::Expr)
+    head = ex.head
+    args = _flatten.(ex.args)
+    if head == :block
+        newargs = Any[]
+        for e in args
+            if e isa Expr && e.head == :block
+                append!(newargs, e.args)
+            else
+                push!(newargs, e)
+            end
+        end
+        return Expr(:block, newargs...)
+    elseif head == :(=) && args[2] isa Expr && args[2].head == :block
+        newargs = args[2].args
+        newargs[end] = Expr(:(=), args[1], newargs[end])
+        return Expr(:block, newargs...)
+    else
+        return Expr(head, args...)
+    end
+end
+_flatten(e) = e
 
 # deindexify: parse tensor operations
 function deindexify(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
