@@ -62,7 +62,10 @@ function enable_blas()
 end
 
 # A cache for temporaries of tensor contractions
-const cache = LRU{Tuple{Symbol,Int}, Any}(; by = Base.summarysize, maxsize = 2^30)
+memsize(a::Array) = sizeof(a)
+memsize(a) = Base.summarysize(a)
+
+const cache = LRU{Tuple{Symbol,Int}, Any}(; by = memsize, maxsize = 2^30)
 const _use_cache = Ref(true)
 use_cache() = _use_cache[]
 
