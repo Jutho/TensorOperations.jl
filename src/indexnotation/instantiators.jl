@@ -23,7 +23,7 @@ instantiate_eltype(ex) = Expr(:call,:typeof, ex)
 function instantiate_scalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(deindexify(nothing, 0, ex.args[2], 1, [], [], true))))
+        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
     elseif ex.head == :call
         return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
     else
@@ -33,28 +33,28 @@ end
 instantiate_scalar(ex::Symbol) = ex
 instantiate_scalar(ex) = ex
 
-function deindexify(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     if isgeneraltensor(ex)
-        return deindexify_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
+        return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # linear combination
-        return deindexify_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
+        return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         if isscalarexpr(ex.args[2])
-            return deindexify(dst, β, ex.args[3], Expr(:call, :*, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
+            return instantiate(dst, β, ex.args[3], Expr(:call, :*, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
         elseif isscalarexpr(ex.args[3])
-            return deindexify(dst, β, ex.args[2], Expr(:call, :*, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
+            return instantiate(dst, β, ex.args[2], Expr(:call, :*, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
         else
-            return deindexify_contraction(dst, β, ex, α, leftind, rightind, istemporary)
+            return instantiate_contraction(dst, β, ex, α, leftind, rightind, istemporary)
         end
     elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
-        return deindexify(dst, β, ex.args[2], Expr(:call, :/, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
+        return instantiate(dst, β, ex.args[2], Expr(:call, :/, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
     elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
-        return deindexify(dst, β, ex.args[3], Expr(:call, :\, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
+        return instantiate(dst, β, ex.args[3], Expr(:call, :\, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
     end
     throw(ArgumentError("problem with parsing $ex"))
 end
 
-function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
@@ -84,7 +84,7 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, r
         traceind = unique(setdiff(setdiff(srcind,leftind), rightind))
         q1 = (map(l->findfirst(isequal(l), srcind), traceind)...,)
         q2 = (map(l->findlast(isequal(l), srcind), traceind)...,)
-        if any(isnothing, (p1...,p2...,q1...,q2...)) ||
+        if any(x->(x===nothing), (p1...,p2...,q1...,q2...)) ||
             !isperm((p1...,p2...,q1...,q2...)) ||
             length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
             err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
@@ -96,7 +96,7 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, r
             # $dst
         end
     else
-        if any(isnothing, (p1..., p2...)) || !isperm((p1...,p2...)) ||
+        if any(x->(x===nothing), (p1..., p2...)) || !isperm((p1...,p2...)) ||
             length(srcind) != length(leftind) + length(rightind)
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
@@ -108,19 +108,19 @@ function deindexify_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, r
         end
     end
 end
-function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # addition: add one by one
         if dst === nothing
             αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_eltype(ex)))
-            ex1 = deindexify(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
+            ex1 = instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
             dst = gensym()
             returnex = :($dst = $ex1)
         else
-            returnex = deindexify(dst, β, ex.args[2], α, leftind, rightind, istemporary)
+            returnex = instantiate(dst, β, ex.args[2], α, leftind, rightind, istemporary)
         end
         αnew = (ex.args[1] == :-) ? Expr(:call, :-, α) : α
         for k = 3:length(ex.args)
-            ex1 = deindexify(dst, true, ex.args[k], αnew, leftind, rightind)
+            ex1 = instantiate(dst, true, ex.args[k], αnew, leftind, rightind)
             returnex = quote
                 $returnex
                 $ex1
@@ -131,10 +131,10 @@ function deindexify_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any
             # $dst
         end
     else
-        throw(ArgumentError("unable to deindexify linear combination: $ex"))
+        throw(ArgumentError("unable to instantiate linear combination: $ex"))
     end
 end
-function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     @assert ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
         istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
     exA = ex.args[2]
@@ -168,7 +168,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
-        initA = deindexify(nothing, false, exA, true, oindA, cind, true)
+        initA = instantiate(nothing, false, exA, true, oindA, cind, true)
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
         conjA = :(:N)
@@ -185,7 +185,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
     end
 
     if !isgeneraltensor(exB) || hastraceindices(exB)
-        initB = deindexify(nothing, false, exB, true, oindB, cind, true)
+        initB = instantiate(nothing, false, exB, true, oindB, cind, true)
         poB = ((1:length(oindB))...,)
         pcB = length(oindB) .+ ((1:length(cind))...,)
         conjB = :(:N)
@@ -203,7 +203,7 @@ function deindexify_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rig
     oindAB = vcat(oindA, oindB)
     p1 = (map(l->findfirst(isequal(l), oindAB), leftind)...,)
     p2 = (map(l->findfirst(isequal(l), oindAB), rightind)...,)
-    if any(isnothing, (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
+    if any(x->(x===nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
         !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
         !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
         !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))

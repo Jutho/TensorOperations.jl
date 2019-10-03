@@ -94,18 +94,18 @@ function tensorify(ex::Expr)
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return deindexify(dst, false, rhs, true, leftind, rightind)
+                    return instantiate(dst, false, rhs, true, leftind, rightind)
                 elseif ex.head == :(+=)
-                    return deindexify(dst, true, rhs, 1, leftind, rightind)
+                    return instantiate(dst, true, rhs, 1, leftind, rightind)
                 else
-                    return deindexify(dst, true, rhs, -1, leftind, rightind)
+                    return instantiate(dst, true, rhs, -1, leftind, rightind)
                 end
             else
-                return Expr(:(=), dst, deindexify(nothing, false, rhs, true, leftind, rightind, false))
+                return Expr(:(=), dst, instantiate(nothing, false, rhs, true, leftind, rightind, false))
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                return Expr(ex.head, instantiate_scalar(lhs), Expr(:call, :scalar, deindexify(nothing, false, rhs, true, [], [], true)))
+                return Expr(ex.head, instantiate_scalar(lhs), Expr(:call, :scalar, instantiate(nothing, false, rhs, true, [], [], true)))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, instantiate_scalar(lhs), instantiate_scalar(rhs))
             end
@@ -128,7 +128,7 @@ function tensorify(ex::Expr)
             err = "cannot evaluate $ex to a scalar: uncontracted indices"
             return :(throw(IndexError($err)))
         end
-        return Expr(:call, :scalar, deindexify(nothing, false, ex, true, [], [], true))
+        return Expr(:call, :scalar, instantiate(nothing, false, ex, true, [], [], true))
     end
     error("invalid syntax in @tensor macro: $ex")
 end
@@ -143,8 +143,8 @@ tensorify(ex) = ex
 # #
 # #
 # #         β =
-# #         out = Expr(:=, dst, Expr(:call, :deindexify, tensorify(getrhs(ex))),)
-# #         return esc(:($dst = deindexify($rhs, ))
+# #         out = Expr(:=, dst, Expr(:call, :instantiate, tensorify(getrhs(ex))),)
+# #         return esc(:($dst = instantiate($rhs, ))
 # #     if ex.head == :(=) || ex.head == :(:=) || ex.head == :(+=) || ex.head == :(-=)
 # #         lhs = ex.args[1]
 # #         rhs = ex.args[2]
@@ -153,10 +153,10 @@ tensorify(ex) = ex
 # #             src = ex.head == :(-=) ? tensorify(Expr(:call,:-,rhs)) : tensorify(rhs)
 # #             indices = makeindex_expr(lhs)
 # #             if ex.head == :(:=)
-# #                 return :($dst = deindexify($src, $indices))
+# #                 return :($dst = instantiate($src, $indices))
 # #             else
 # #                 value = ex.head == :(=) ? 0 : +1
-# #                 return :(deindexify!($dst, $src, $indices, $value))
+# #                 return :(instantiate!($dst, $src, $indices, $value))
 # #             end
 # #         end
 # #     end
@@ -171,7 +171,7 @@ tensorify(ex) = ex
 # #         end
 # #         src = tensorify(ex.args[2])
 # #         indices = :(Indices{()}())
-# #         return :(scalar(deindexify($src, $indices)))
+# #         return :(scalar(instantiate($src, $indices)))
 # #     end
 # #     return Expr(ex.head,map(tensorify,ex.args)...)
 # # end
