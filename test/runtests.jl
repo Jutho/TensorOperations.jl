@@ -17,4 +17,4 @@ include("methods.jl")
 include("tensor.jl")
 
 include("tensoropt.jl")
-# include("auxiliary.jl")
+include("auxiliary.jl")

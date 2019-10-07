@@ -1,8 +1,10 @@
 @testset "macro methods" begin
     @testset "tensorexpressions" begin
-        using TensorOperations: isassignment, isdefinition, getlhsrhs, isindex, makeindex,
-            istensor, maketensor, isgeneraltensor, makegeneraltensor, istensorexpr, isscalarexpr,
-            makescalar, hastraceindices, getindices, getallindices, geteltype
+        using TensorOperations: isassignment, isdefinition, getlhs, getrhs, isindex,
+            istensor, isgeneraltensor, istensorexpr, isscalarexpr, hastraceindices,
+            hastraceindices, getindices, getallindices,
+            normalizeindex, instantiate_scalar, instantiate_eltype,
+            decomposetensor, decomposegeneraltensor
 
         @test isassignment(:(a[-1,-2,-3] = b[-1,-2,1]*c[1,-3]+d[-2,-3,-1]))
         @test isassignment(:(a[-1,-2,-3] += b[-1,-2,1]*c[1,-3]+d[-2,-3,-1]))
@@ -20,39 +22,41 @@
 
         lhs = :(a[-1,-2,-3])
         rhs = :(b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])
-        @test getlhsrhs(:(a[-1,-2,-3] = b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == (lhs, rhs)
-        @test getlhsrhs(:(a[-1,-2,-3] += b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == (lhs, rhs)
-        @test getlhsrhs(:(a[-1,-2,-3] -= b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == (lhs, rhs)
-        @test getlhsrhs(:(a[-1,-2,-3] := b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == (lhs, rhs)
-        @test getlhsrhs(:(a[-1,-2,-3] ≔ b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == (lhs, rhs)
+        for (getside,side) in ((getlhs, lhs), (getrhs, rhs))
+            @test getside(:(a[-1,-2,-3] = b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == side
+            @test getside(:(a[-1,-2,-3] += b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == side
+            @test getside(:(a[-1,-2,-3] -= b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == side
+            @test getside(:(a[-1,-2,-3] := b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == side
+            @test getside(:(a[-1,-2,-3] ≔ b[-1,-2,1]*c[1,-3]+d[-2,-3,-1])) == side
+        end
 
         @test isindex(:a)
-        @test makeindex(:a) == :a
+        @test normalizeindex(:a) == :a
         @test isindex(:(a'))
-        @test makeindex(:(a')) == :(a′)
+        @test normalizeindex(:(a')) == :(a′)
         @test isindex(:(a'''))
-        @test makeindex(:(a''')) == :(a′′′)
+        @test normalizeindex(:(a''')) == :(a′′′)
         @test isindex(:(β))
-        @test makeindex(:(β)) == :(β)
+        @test normalizeindex(:(β)) == :(β)
         @test isindex(:(β'))
-        @test makeindex(:(β')) == :(β′)
+        @test normalizeindex(:(β')) == :(β′)
         @test isindex(:(3))
-        @test makeindex(:(3)) == 3
+        @test normalizeindex(:(3)) == 3
         @test isindex(:(-5))
-        @test makeindex(:(-5)) == -5
+        @test normalizeindex(:(-5)) == -5
         @test !isindex(:('a'))
         @test !isindex(:(a+b))
         @test !isindex(:("x"))
         @test !isindex(:(5.1))
 
         @test istensor(:(a[1,2,3]))
-        @test maketensor(:(a[1,2,3])) == (esc(:a), Any[1,2,3], Any[])
+        @test decomposetensor(:(a[1,2,3])) == (:a, Any[1,2,3], Any[])
         @test istensor(:(a[5][a b c]))
-        @test maketensor(:(a[5][a b c])) == (esc(:(a[5])), Any[:a,:b,:c], Any[])
+        @test decomposetensor(:(a[5][a b c])) == (:(a[5]), Any[:a,:b,:c], Any[])
         @test istensor(:(cos(y)[a b c; 1 2 3]))
-        @test maketensor(:(cos(y)[a b c; 1 2 3])) == (esc(:(cos(y))), Any[:a,:b,:c], Any[1,2,3])
-        @test istensor(:(x[_; 1 2 3]))
-        @test maketensor(:(x[_; 1 2 3])) == (esc(:x), Any[], Any[1,2,3])
+        @test decomposetensor(:(cos(y)[a b c; 1 2 3])) == (:(cos(y)), Any[:a,:b,:c], Any[1,2,3])
+        @test istensor(:(x[(); (1,2,3)]))
+        @test decomposetensor(:(x[(); (1,2,3)])) == (:x, Any[], Any[1,2,3])
         @test !istensor(:(2*a[1,2,3]))
         @test !istensor(:(a[1 2 3; 4 5 6; 7 8 9]))
         @test !istensor(:(conj(a[5][a b c])))
@@ -60,11 +64,11 @@
         @test !istensor(:(3+5))
 
         @test isgeneraltensor(:(conj(a[1,2,3])))
-        @test makegeneraltensor(:(conj(a[1,2,3]))) == (esc(:a), [1,2,3], [], makescalar(:(conj(1))), true)
+        @test decomposegeneraltensor(:(conj(a[1,2,3]))) == (:a, [1,2,3], [], instantiate_scalar(:(conj(1))), true)
         @test isgeneraltensor(:(x*a[5][a b c]))
-        @test makegeneraltensor(:(x*a[5][a b c])) == (esc(:(a[5])), [:a,:b,:c], [], makescalar(:(x*1)), false)
+        @test decomposegeneraltensor(:(x*a[5][a b c])) == (:(a[5]), [:a,:b,:c], [], instantiate_scalar(:(x*1)), false)
         @test isgeneraltensor(:(3*conj(a*cos(y)[a b c; 1 2 3])))
-        @test makegeneraltensor(:(3*conj(a*cos(y)[a b c; 1 2 3]))) == (esc(:(cos(y))),  Any[:a,:b,:c],  Any[1,2,3], makescalar(:(3*conj(a*1))), true)
+        @test decomposegeneraltensor(:(3*conj(a*cos(y)[a b c; 1 2 3]))) == (:(cos(y)),  Any[:a,:b,:c],  Any[1,2,3], instantiate_scalar(:(3*conj(a*1))), true)
         @test !isgeneraltensor(:(1/a[1,2,3]))
         @test !isgeneraltensor(:(a[1 2 3; 4 5 6]\x))
         @test !isgeneraltensor(:(cos(y)[a b c; 1 2 3]*b[4,5]))
@@ -84,7 +88,7 @@
         @test !isscalarexpr(:(a[x,y]*b[y,x]))
         @test !isscalarexpr(:(3*scalar(a[x,y]*b[y,x]) + conj(c[z])))
 
-        @test geteltype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_type(promote_type(eltype($(Expr(:escape, :a))), eltype($(Expr(:escape, :b)))), eltype($(Expr(:escape, :c)))))
+        @test instantiate_eltype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_type(promote_type(eltype(a), eltype(b)), eltype(c)))
     end
 
     @testset "parsecost" begin
@@ -99,7 +103,6 @@
         @test parsecost(:(3*x^3+2)) == Power{:x}(3,3)+2
         @test parsecost(:((3*x^3-2)/5)) == (Power{:x}(3,3)-2)/5
     end
-
 end
 
 @testset "methods for tensoropt" begin
