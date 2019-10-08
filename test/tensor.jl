@@ -245,8 +245,10 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         E = dot(A12, HrA12)
         @tensor HrA12′[a, s1, s2, c] := rhoL[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * rhoR[c', c] * H[s1, s2, t1, t2]
         @tensor HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] * rhoR[3, -4] * A1[1, 4, 2] # should be contracted in exactly same order
+        @tensoropt HrA12′′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] * rhoR[3, -4] * A1[1, 4, 2] # should be contracted in exactly same order
         @test HrA12′ == HrA12′′ # should be exactly equal
         @test HrA12 ≈ HrA12′
+        @test HrA12 ≈ HrA12′′′
         @test E ≈ @tensor scalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
     println("tensor network examples: $(time()-t0) seconds")
