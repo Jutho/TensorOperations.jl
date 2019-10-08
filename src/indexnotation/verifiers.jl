@@ -106,7 +106,7 @@ function isscalarexpr(ex::Expr)
 end
 isscalarexpr(ex::Symbol) = true
 isscalarexpr(ex::Number) = true
-isscalarexpr(ex) = false
+isscalarexpr(ex) = true
 
 # test for a tensor contraction expression
 function istensorcontraction(ex)
