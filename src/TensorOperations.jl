@@ -38,6 +38,7 @@ include("indexnotation/poly.jl")
 include("indexnotation/optdata.jl")
 include("indexnotation/optimaltree.jl")
 include("indexnotation/tensormacros.jl")
+include("indexnotation/indexordertree.jl")
 @specialize
 
 # Implementations

@@ -1,6 +1,7 @@
 const defaultparser = TensorParser()
 
 """
+<<<<<<< HEAD
     @notensor(block)
 
 Marks a block which should be ignored within an `@tensor` environment. Has no effect outside of `@tensor`.
@@ -11,15 +12,33 @@ end
 
 """
     @tensor(block)
+=======
+    @tensor(block [, order = (...)])
+>>>>>>> eae44d1... add optional contraction order and corresponding treebuilder
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
 tensors together, this will be evaluated as pairwise contractions in left to right
 order, unless the so-called NCON style is used (positive integers for contracted
 indices and negative indices for open indices).
+
+A second argument to the `@tensor` macro can be provided of the form `order=(...)`, where
+the list specifies the contraction indices in the order in which they will be contracted.
 """
 macro tensor(ex::Expr)
     return esc(defaultparser(ex))
+end
+
+macro tensor(ex::Expr, orderex::Expr)
+    parser = TensorParser()
+    if !(orderex.head == :(=) && orderex.args[1] == :order &&
+            orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
+        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+    end
+    indexorder = map(normalizeindex, orderex.args[2].args)
+    parser = TensorParser()
+    parser.contractiontreebuilder = network->indexordertree(network, indexorder)
+    return esc(parser(ex))
 end
 
 """
