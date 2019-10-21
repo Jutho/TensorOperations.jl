@@ -52,6 +52,7 @@ include("implementation/diagonal.jl")
 # Functions
 #----------
 include("functions/simple.jl")
+include("functions/ncon.jl")
 include("functions/inplace.jl")
 
 # Global package settings
