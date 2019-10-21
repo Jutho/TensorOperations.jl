@@ -104,5 +104,7 @@ function extracttensorobjects(ex)
     pre = Expr(:block, [Expr(:(=), tensordict[a], a) for a in existingtensors]...)
     ex = replacetensorobjects((obj,leftind,rightind)->get(tensordict, obj, obj), ex)
     post = Expr(:block, [Expr(:(=), a, tensordict[a]) for a in newtensors]...)
-    return Expr(:block, pre, ex, post)
+    pre2 = Expr(:macrocall, Symbol("@notensor"), LineNumberNode(@__LINE__,@__FILE__), pre)
+    post2 = Expr(:macrocall, Symbol("@notensor"), LineNumberNode(@__LINE__,@__FILE__), post)
+    return Expr(:block, pre2, ex, post2)
 end

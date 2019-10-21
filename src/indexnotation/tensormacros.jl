@@ -1,6 +1,15 @@
 const defaultparser = TensorParser()
 
 """
+    @notensor(block)
+
+Marks a block which should be ignored within an `@tensor` environment. Has no effect outside of `@tensor`.
+"""
+macro notensor(ex::Expr)
+    return esc(ex)
+end
+
+"""
     @tensor(block)
 
 Specify one or more tensor operations using Einstein's index notation. Indices can

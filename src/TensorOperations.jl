@@ -8,7 +8,7 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
 
 # export macro API
-export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree
+export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor
 
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 

@@ -34,6 +34,9 @@ function (parser::TensorParser)(ex)
 end
 
 function processcontractions(ex::Expr, treebuilder, treesorter)
+    if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
+        return ex
+    end
     ex = Expr(ex.head, map(e->processcontractions(e, treebuilder, treesorter), ex.args)...)
     if istensorcontraction(ex) && length(ex.args) > 3
         args = ex.args[2:end]
@@ -73,6 +76,9 @@ end
 
 # functions for parsing and processing tensor expressions
 function tensorify(ex::Expr)
+    if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
+        return ex.args[3]
+    end
     # assignment case
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
