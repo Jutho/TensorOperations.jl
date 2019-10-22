@@ -12,6 +12,8 @@ TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 [compat]
 LRUCache = "1"
 julia = "1"
+Strided = "0.3.3,1"
+TupleTools = "1.1"
 
 [extras]
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
