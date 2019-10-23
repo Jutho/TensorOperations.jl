@@ -1,7 +1,6 @@
 const defaultparser = TensorParser()
 
 """
-<<<<<<< HEAD
     @notensor(block)
 
 Marks a block which should be ignored within an `@tensor` environment. Has no effect outside of `@tensor`.
@@ -12,9 +11,6 @@ end
 
 """
     @tensor(block)
-=======
-    @tensor(block [, order = (...)])
->>>>>>> eae44d1... add optional contraction order and corresponding treebuilder
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
