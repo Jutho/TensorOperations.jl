@@ -8,13 +8,14 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
 
 # export macro API
-export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor
+export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
+export ncon
 
 # Convenient type alias
 const IndexTuple{N} = NTuple{N,Int}

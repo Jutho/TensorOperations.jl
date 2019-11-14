@@ -127,3 +127,52 @@ macro optimalcontractiontree(expressions...)
     tree, cost = optimaltree(network, optdict)
     return tree, cost
 end
+
+macro ncon(args...)
+    if length(args) == 2
+        return _nconmacro(args[1], args[2])
+    else
+        return _nconmacro(args[2], args[3], args[1])
+    end
+end
+function _nconmacro(tensors, indices, kwargs = nothing)
+    if !(tensors isa Expr) # there is not much that we can do
+        if kwargs === nothing
+            ex = Expr(:call, :ncon, tensors, indices,
+                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                        QuoteNode(gensym()))
+        else
+            ex = Expr(:call, :ncon, kwargs, tensors, indices,
+                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                        QuoteNode(gensym()))
+        end
+        return esc(ex)
+    end
+    if tensors.head == :vect || tensors.head == :tuple
+        tensorargs = tensors.args
+    elseif tensors.head == :ref
+        tensorargs = tensors.args[2:end]
+    else
+        throw(ArgumentError("invalid @ncon syntax"))
+    end
+    conjlist = fill(false, length(tensorargs))
+    for i = 1:length(tensorargs)
+        if tensorargs[i] isa Expr
+            if tensorargs[i].head == :call && tensorargs[i].args[1] == :conj
+                tensorargs[i] = tensorargs[i].args[2]
+                conjlist[i] = true
+            end
+        end
+    end
+    if tensors.head == :ref
+        tensorex = Expr(:ref, tensors.args[1], tensorargs...)
+    else
+        tensorex = Expr(:ref, :Any, tensorargs...)
+    end
+    if kwargs === nothing
+        ex = Expr(:call, :ncon, tensorex, indices, conjlist, QuoteNode(gensym()))
+    else
+        ex = Expr(:call, :ncon, kwargs, tensorex, indices, conjlist, QuoteNode(gensym()))
+    end
+    return esc(ex)
+end
