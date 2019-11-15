@@ -6,9 +6,11 @@ using Strided: AbstractStridedView, UnsafeStridedView
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
+using Requires
 
 # export macro API
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
+export @cutensor
 
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
@@ -55,6 +57,26 @@ include("implementation/diagonal.jl")
 include("functions/simple.jl")
 include("functions/ncon.jl")
 include("functions/inplace.jl")
+
+function __init__()
+    @require CuArrays="3a865a2d-5b23-5a0f-bc46-62713ec82fae" begin
+        const CuArray = CuArrays.CuArray
+        const CublasFloat = CuArrays.CUBLAS.CublasFloat
+        const CublasReal = CuArrays.CUBLAS.CublasReal
+        for s in (:handle, :CuDefaultStream, :CuTensorDescriptor, :cudaDataType,
+                :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
+                :CUTENSOR_ALGO_DEFAULT,  :CUTENSOR_WORKSPACE_RECOMMENDED,
+                :cutensorElementwiseBinary, :cutensorReduction,
+                :cutensorReductionGetWorkspace,
+                :cutensorContraction, :cutensorContractionGetWorkspace)
+            eval(:(const $s = CuArrays.CUTENSOR.$s))
+        end
+        include("implementation/cuarray.jl")
+        @nospecialize
+        include("indexnotation/cutensormacros.jl")
+        @specialize
+    end
+end
 
 # Global package settings
 #------------------------
