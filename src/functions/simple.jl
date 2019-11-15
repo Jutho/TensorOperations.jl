@@ -18,8 +18,8 @@ iterable `IA` and the indices of the copy are contained in `IC`. Both iterables
 should contain the same elements in a different order.
 
 The result of this method is equivalent to `permutedims(A, p)` where p is the permutation
-such that `IC = IA[p]`. The implementation of `tensorcopy` is however more efficient on average,
-especially if `Threads.nthreads() > 1`.
+such that `IC = IA[p]`. The implementation of `tensorcopy` is however more efficient on
+average, especially if `Threads.nthreads() > 1`.
 """
 function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     indCinA = add_indices(IA, IC)
@@ -83,8 +83,8 @@ index) or twice (for contracted index) in the union of `IA` and `IB`.
 The contraction can be performed by a native Julia algorithm without creating any
 temporaries, or by first permuting the arrays such that the contraction becomes equivalent
 to a matrix product, which is then performed by BLAS. The latter is typically faster for
-large arrays. The choice of method is globally controlled by the methods `enable_blas()`](@ref)
-and `disable_blas()`](@ref).
+large arrays. The choice of method is globally controlled by the methods
+[`enable_blas()`](@ref) and [`disable_blas()`](@ref).
 """
 function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
     oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
