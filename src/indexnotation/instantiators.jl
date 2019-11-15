@@ -147,11 +147,11 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     oindA = intersect(indC, indA) # in the order they appear in C
     oindB = intersect(indC, indB) # in the order they appear in C
 
-    if indC == vcat(oindB, oindA) # reorder
-        exA, exB = exB, exA
-        indA, indB = indB, indA
-        oindA, oindB = oindB, oindA
-    end
+    # if indC == vcat(oindB, oindA) # reorder
+    #     exA, exB = exB, exA
+    #     indA, indB = indB, indA
+    #     oindA, oindB = oindB, oindA
+    # end
 
     symA = gensym()
     symB = gensym()

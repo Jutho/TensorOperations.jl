@@ -17,9 +17,24 @@ be chosen to be arbitrary Julia variable names, or integers. When contracting se
 tensors together, this will be evaluated as pairwise contractions in left to right
 order, unless the so-called NCON style is used (positive integers for contracted
 indices and negative indices for open indices).
+
+A second argument to the `@tensor` macro can be provided of the form `order=(...)`, where
+the list specifies the contraction indices in the order in which they will be contracted.
 """
 macro tensor(ex::Expr)
     return esc(defaultparser(ex))
+end
+
+macro tensor(ex::Expr, orderex::Expr)
+    parser = TensorParser()
+    if !(orderex.head == :(=) && orderex.args[1] == :order &&
+            orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
+        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+    end
+    indexorder = map(normalizeindex, orderex.args[2].args)
+    parser = TensorParser()
+    parser.contractiontreebuilder = network->indexordertree(network, indexorder)
+    return esc(parser(ex))
 end
 
 """
@@ -111,4 +126,53 @@ macro optimalcontractiontree(expressions...)
     network = [getindices(ex.args[k]) for k = 2:length(ex.args)]
     tree, cost = optimaltree(network, optdict)
     return tree, cost
+end
+
+macro ncon(args...)
+    if length(args) == 2
+        return _nconmacro(args[1], args[2])
+    else
+        return _nconmacro(args[2], args[3], args[1])
+    end
+end
+function _nconmacro(tensors, indices, kwargs = nothing)
+    if !(tensors isa Expr) # there is not much that we can do
+        if kwargs === nothing
+            ex = Expr(:call, :ncon, tensors, indices,
+                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                        QuoteNode(gensym()))
+        else
+            ex = Expr(:call, :ncon, kwargs, tensors, indices,
+                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                        QuoteNode(gensym()))
+        end
+        return esc(ex)
+    end
+    if tensors.head == :vect || tensors.head == :tuple
+        tensorargs = tensors.args
+    elseif tensors.head == :ref
+        tensorargs = tensors.args[2:end]
+    else
+        throw(ArgumentError("invalid @ncon syntax"))
+    end
+    conjlist = fill(false, length(tensorargs))
+    for i = 1:length(tensorargs)
+        if tensorargs[i] isa Expr
+            if tensorargs[i].head == :call && tensorargs[i].args[1] == :conj
+                tensorargs[i] = tensorargs[i].args[2]
+                conjlist[i] = true
+            end
+        end
+    end
+    if tensors.head == :ref
+        tensorex = Expr(:ref, tensors.args[1], tensorargs...)
+    else
+        tensorex = Expr(:ref, :Any, tensorargs...)
+    end
+    if kwargs === nothing
+        ex = Expr(:call, :ncon, tensorex, indices, conjlist, QuoteNode(gensym()))
+    else
+        ex = Expr(:call, :ncon, kwargs, tensorex, indices, conjlist, QuoteNode(gensym()))
+    end
+    return esc(ex)
 end

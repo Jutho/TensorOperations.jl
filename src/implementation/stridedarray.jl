@@ -232,6 +232,17 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple,
         indCinoAB::IndexTuple, syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
 
+    trivCind = _trivtuple(indCinoAB)
+    if  indCinoAB !== trivCind
+        # try reverse order
+        indCinoBA = getindex.(Ref(indCinoAB),
+                        ((length(oindA) .+ _trivtuple(oindB))..., _trivtuple(oindA)...))
+        if indCinoBA == trivCind
+            return contract!(α, B, CB, A, CA, β, C,
+                                oindB, cindB, oindA, cindA, indCinoBA, syms)
+        end
+    end
+
     pA = (oindA...,cindA...)
     (length(pA) == ndims(A) && TupleTools.isperm(pA)) ||
         throw(IndexError("invalid permutation of length $(ndims(A)): $pA"))
