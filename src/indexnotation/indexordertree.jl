@@ -1,4 +1,4 @@
-function _verify_indexorder(network::Vector, indexorder)
+function _verify_indexorder(network, indexorder)
     allindices = Vector{Any}()
     for ind in network
         append!(allindices, ind)
@@ -18,7 +18,7 @@ function _verify_indexorder(network::Vector, indexorder)
     return true
 end
 
-function indexordertree(network::Vector, indexorder)
+function indexordertree(network, indexorder)
     _verify_indexorder(network, indexorder) ||
         throw(ArgumentError("not a valid contraction tree with contraction indices $indexorder"))
     contractionindices = Vector{Vector{Any}}(undef, length(network))

@@ -91,12 +91,15 @@ function enable_blas()
     _use_blas[] = true
     return
 end
+function default_cache_size()
+    return min(1<<30, Int(Sys.total_memory()>>2))
+end
 
 # A cache for temporaries of tensor contractions
 memsize(a::Array) = sizeof(a)
 memsize(a) = Base.summarysize(a)
 
-const cache = LRU{Tuple{Symbol,Int}, Any}(; by = memsize, maxsize = 2^30)
+const cache = LRU{Tuple{Symbol,Int}, Any}(; by = memsize, maxsize = default_cache_size())
 const _use_cache = Ref(true)
 use_cache() = _use_cache[]
 
@@ -120,7 +123,7 @@ or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
 """
 function enable_cache(; maxsize::Int = -1, maxrelsize::Real = 0.0)
     if maxsize == -1 && maxrelsize == 0.0
-        maxsize = 2^30
+        maxsize = default_cache_size()
     elseif maxrelsize > 0
         maxsize = max(maxsize, floor(Int, maxrelsize*Sys.total_memory()))
     else

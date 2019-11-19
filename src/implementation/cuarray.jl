@@ -1,4 +1,6 @@
 # Default implmenentation for CuArrays
+memsize(a::CuArray) = sizeof(a)
+
 function add!(α, A::CuArray{<:Any, N}, CA::Symbol,
                 β, C::CuArray{<:Any, N}, indCinA) where {N}
 

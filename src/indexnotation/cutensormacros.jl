@@ -6,6 +6,20 @@ macro cutensor(ex::Expr)
     return esc(parser(ex))
 end
 
+macro cutensor(ex::Expr, orderex::Expr)
+    cuwrapdict = Dict{Any,Any}()
+    parser = TensorParser()
+    if !(orderex.head == :(=) && orderex.args[1] == :order &&
+            orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
+        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+    end
+    indexorder = map(normalizeindex, orderex.args[2].args)
+    parser.contractiontreebuilder = network->indexordertree(network, indexorder)
+    parser.preprocessors[end] = ex->extracttensorobjects(ex, cuwrapdict)
+    push!(parser.postprocessors, ex->addcutensorwraps(ex, cuwrapdict))
+    return esc(parser(ex))
+end
+
 function extracttensorobjects(ex, cuwrapdict)
     inputtensors = getinputtensorobjects(ex)
     outputtensors = getoutputtensorobjects(ex)
