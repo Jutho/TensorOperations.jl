@@ -47,7 +47,6 @@ include("indexnotation/indexordertree.jl")
 # Implementations
 #-----------------
 include("implementation/indices.jl")
-#include("implementation/lrucache.jl")
 include("implementation/tensorcache.jl")
 include("implementation/stridedarray.jl")
 include("implementation/diagonal.jl")
@@ -60,6 +59,7 @@ include("functions/inplace.jl")
 
 function __init__()
     @require CuArrays="3a865a2d-5b23-5a0f-bc46-62713ec82fae" begin
+        @assert CuArrays.has_cutensor()
         const CuArray = CuArrays.CuArray
         const CublasFloat = CuArrays.CUBLAS.CublasFloat
         const CublasReal = CuArrays.CUBLAS.CublasReal

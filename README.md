@@ -6,11 +6,14 @@ Fast tensor operations using a convenient Einstein index notation.
 |:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
 | [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![][codecov-img]][codecov-url] [![][coveralls-img]][coveralls-url] | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg)](https://doi.org/10.5281/zenodo.3245497) |
 
-**TensorOperations v1.0.0 represents a significant rewrite from previous versions.**
+**TensorOperations v2.0.0 represents a significant update and rewrite from previous versions.**
 
-While the exported API was left mostly unchanged, there are a few
-breaking changes, especially in the function syntax.
+* Tensoroperations.jl now exports an `ncon` method, familiar in the quantum tensor network community and mostly compatible with e.g. [arXiv:1402.0939](https://arxiv.org/abs/1402.0939). Unlike the `@tensor` which has been at the heart of TensorOperations.jl, the `ncon` analyzes the network at runtime, and as a consequence has a non-inferrable output. On the other hand, this allows to use dynamical index specifications which are not known at compile time. There is also an `@ncon` macro which uses the same format and also allows for dynamical index specifications, but has the advantage that it adds a hook into the global LRU cache where temporary objects are stored and recycled.
 
+* TensorOperations.jl now supports `CuArray` objects via the NVidia's CUTENSOR library, which is wrapped in CuArrays.jl. This requires that the latter is also loaded with `using CuArrays`. `CuArray` objects can directly be used in the existing calls and macro environments like `@tensor` and `@ncon`. However, no operation should try to mix a normal `Array` and a `CuArray`. There is also a new `@cutensor` macro which will transform all array objects to the GPU and perform the contractions and permutations there. Objects are moved to the GPU when they are first needed, so that transfer times of later objects can coincide with computation time for operations on earlier objects.
+
+* TensorOperations.jl now has a `@notensor` macro to indicate that a block within an `@tensor` environment (or `@tensoropt` or `@cutensor`) should be left alone and contains valid Julia code that should not be transformed.
+ 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
 
@@ -47,4 +50,4 @@ end
 ```
 In the second to last line, the result of the operation will be stored in the preallocated array `D`, whereas the last line uses a different assignment operator `:=` in order to define and allocate a new array `E` of the correct size. The contents of `D` and `E` will be equal.
 
-For more information, please see the docs. 
+For more information, please see the docs.

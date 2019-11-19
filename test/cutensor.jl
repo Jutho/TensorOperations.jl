@@ -1,3 +1,4 @@
+using CuArrays
 
 @testset "cutensor macro for elementary operations" begin
     t0 = time()
