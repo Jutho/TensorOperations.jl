@@ -102,7 +102,8 @@ macro tensoropt_verbose(expressions...)
     end
 
     parser = TensorParser()
-    parser.contractiontreebuilder = network->optimaltree(network, optdict; verbose = true)[1]
+    parser.contractiontreebuilder =
+        network->optimaltree(network, optdict; verbose = true)[1]
     return esc(parser(ex))
 end
 
@@ -145,7 +146,14 @@ over are labelled by increasing integers, i.e. first the contraction correspondi
 (negative, so increasing in absolute value) index labels. The keyword arguments `order` and
 `output` allow to change these defaults.
 
-The advantage of the macro `@ncon` over the function call `ncon` is that the former automatically generates a unique symbol that hooks into the cache. Furthermore, if `tensorlist` is not just some variable but an actual list (as a tuple with parentheses or a vector with square brackets) at the call site, the `@ncon` macro will scan for conjugation calls, e.g. `conj(A)`, and replace this with just `A` but build a matching list of conjugation flags to be specified to `ncon`. This makes it more convenient to specify tensor conjugation, without paying the cost of actively performing the conjugation beforehand.
+The advantage of the macro `@ncon` over the function call `ncon` is that the former
+automatically generates a unique symbol that hooks into the cache. Furthermore, if
+`tensorlist` is not just some variable but an actual list (as a tuple with parentheses or a
+vector with square brackets) at the call site, the `@ncon` macro will scan for conjugation
+calls, e.g. `conj(A)`, and replace this with just `A` but build a matching list of
+conjugation flags to be specified to `ncon`. This makes it more convenient to specify
+tensor conjugation, without paying the cost of actively performing the conjugation
+beforehand.
 
 See also the function [`ncon`](@ref).
 """

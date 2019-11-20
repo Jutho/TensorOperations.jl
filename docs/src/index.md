@@ -19,7 +19,7 @@ Install with the package manager, `pkg> add TensorOperations`.
 *   Ability to
     [optimize pairwise contraction order](https://doi.org/10.1103/PhysRevE.90.033315)
     using the `@tensoropt` macro. This optimization is performed at compile time, and the resulting contraction order is hard coded into the resulting expression. The similar macro `@tensoropt_verbose` provides more information on the optimization process.
-*   ***New***: a function `ncon` (for network contractor) for contracting a group of
+*   **New**: a function `ncon` (for network contractor) for contracting a group of
     tensors (a.k.a. a tensor network), as well as a corresponding `@ncon` macro that
     simplifies and optimizes this slightly. Unlike the previous macros, `ncon` and `@ncon`
     do not analyze the contractions at compile time, thus allowing them to deal with
@@ -31,8 +31,9 @@ Install with the package manager, `pkg> add TensorOperations`.
     vector are supported. This facilitates tensor contractions where one of the operands is
     e.g. a diagonal matrix of singular values or eigenvalues, which are returned as a
     `Vector` by Julia's `eigen` or `svd` method.
-*   ***New***: Support for `CuArray` objects if used together with CuArrays.jl, by relying
-    on (and thus providing a high level interface into) NVidia's CUTENSOR library.
+*   **New**: Support for `CuArray` objects if used together with CuArrays.jl, by relying
+    on (and thus providing a high level interface into) NVidia's
+    [cuTENSOR](https://developer.nvidia.com/cutensor) library.
 *   Implementation can easily be extended to other types, by overloading a small set of
     methods.
 *   Efficient implementation of a number of basic tensor operations (see below), by relying
@@ -44,7 +45,7 @@ Install with the package manager, `pkg> add TensorOperations`.
 *   A package wide cache for storing temporary arrays that are generated when evaluating
     complex tensor expressions within the `@tensor` macro (based on the implementation of
     [LRUCache](https://github.com/JuliaCollections/LRUCache.jl)). By default, the cache is
-    allowed to use up to 50% of the total machine's memory.
+    allowed to use up to the minimum of either 1GB or 25% of the total memory.
 
 ## Tensor operations
 

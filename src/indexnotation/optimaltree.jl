@@ -151,7 +151,8 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
             nextcost = maxcost
             # construct all subsets of n tensors that can be constructed with cost <= currentcost
             for n=2:componentsize
-                verbose && println("Constructing subsets of size $n with cost $currentcost")
+                verbose &&
+                    println("Component $c: Constructing subsets of size $n with cost $currentcost")
                 # construct subsets by combining two smaller subsets
                 for k = 1:div(n-1,2)
                     for s1 in keys(costdict[k]), s2 in keys(costdict[n-k])
@@ -205,7 +206,8 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                 end
             end
             currentbiggestset = _findlast(x->!isempty(x), costdict)
-            verbose && println("Finished at cost $currentcost: maximum subset has size $currentbiggestset")
+            verbose &&
+                println("Component $c: finished at cost $currentcost: maximum subset has size $currentbiggestset")
             if !isempty(costdict[componentsize])
                 break
             end
@@ -213,12 +215,14 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
             currentcost = min(maxcost, nextcost*costfac)
         end
         if isempty(costdict[componentsize])
-            error("Maxcost $maxcost reached without finding solution") # should be impossible
+            error("Component $c: maxcost $maxcost reached without finding solution") # should be impossible
         end
         s = storeset(T, component, numtensors)
         costlist[c] = costdict[componentsize][s]
         treelist[c] = treedict[componentsize][s]
         indexlist[c] = indexdict[componentsize][s]
+        verbose &&
+            println("Component $c: solution found with cost $(costlist[c]) and tree $(treelist[c])")
     end
     p  = sortperm(costlist)
 
@@ -230,6 +234,9 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
         cost = addcost(cost, costlist[p[c]], computecost(allcosts, ind, indexlist[p[c]]))
         ind = _union(ind, indexlist[p[c]])
     end
+    verbose &&
+        println("Solution found with cost $cost and tree $tree")
+
     return tree, cost
 end
 
