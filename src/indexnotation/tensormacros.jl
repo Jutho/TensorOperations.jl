@@ -32,7 +32,6 @@ macro tensor(ex::Expr, orderex::Expr)
         throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
     end
     indexorder = map(normalizeindex, orderex.args[2].args)
-    parser = TensorParser()
     parser.contractiontreebuilder = network->indexordertree(network, indexorder)
     return esc(parser(ex))
 end

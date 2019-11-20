@@ -95,8 +95,8 @@ function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::Abstr
         CA::Symbol) where {T,N}
 
     sz = map(n->size(A, n), ind)
-    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
-        CT = similartype(A, T, sz)
+    CT = similartype(A, T, sz)
+    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
         return C::CT
     else
         return similar(A, T, sz)
@@ -111,8 +111,8 @@ function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexT
     sz = let osz = (oszA..., oszB...)
         map(n->osz[n], ind)
     end
-    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
-        CT = similartype(A, T, sz)
+    CT = similartype(A, T, sz)
+    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
         return C::CT
     else
         return similar(A, T, sz)

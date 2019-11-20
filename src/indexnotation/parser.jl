@@ -125,6 +125,9 @@ function tensorify(ex::Expr)
     if ex.head == :for
         return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
     end
+    if ex.head == :function
+        return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
+    end
     # constructions of the form: a = @tensor ...
     if isscalarexpr(ex)
         return instantiate_scalar(ex)

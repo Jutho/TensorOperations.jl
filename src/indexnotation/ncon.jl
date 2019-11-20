@@ -1,5 +1,5 @@
 # check if a list of indices specifies a tensor contraction in ncon style
-function isnconstyle(network::Vector)
+function isnconstyle(network)
     allindices = Vector{Int}()
     for ind in network
         all(i->isa(i, Integer), ind) || return false
@@ -22,7 +22,7 @@ function isnconstyle(network::Vector)
     return true
 end
 
-function ncontree(network::Vector)
+function ncontree(network)
     contractionindices = Vector{Vector{Int}}(undef, length(network))
     for k = 1:length(network)
         indices = network[k]

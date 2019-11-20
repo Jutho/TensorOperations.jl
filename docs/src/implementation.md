@@ -1,5 +1,7 @@
 # Implementation
 
+*** Warning: this section still needs to be updated for version 2.0 ***
+
 ## Index notation and the `@tensor` macro
 
 We start by describing the implementation of the `@tensor` and `@tensoropt` macro. The

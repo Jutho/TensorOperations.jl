@@ -18,7 +18,12 @@ Install with the package manager, `pkg> add TensorOperations`.
     via Einstein's index notation convention. The index notation is analyzed at compile time.
 *   Ability to
     [optimize pairwise contraction order](https://doi.org/10.1103/PhysRevE.90.033315)
-    using the `@tensoropt` macro.
+    using the `@tensoropt` macro. This optimization is performed at compile time, and the resulting contraction order is hard coded into the resulting expression. The similar macro `@tensoropt_verbose` provides more information on the optimization process.
+*   ***New***: a function `ncon` (for network contractor) for contracting a group of
+    tensors (a.k.a. a tensor network), as well as a corresponding `@ncon` macro that
+    simplifies and optimizes this slightly. Unlike the previous macros, `ncon` and `@ncon`
+    do not analyze the contractions at compile time, thus allowing them to deal with
+    dynamic networks or index specifications.
 *   Support for any Julia Base array which qualifies as strided, i.e. such that its entries
     are layed out according to a regular pattern in memory. The only exception are
     `ReinterpretedArray` objects (implementation provided by Strided.jl, see below).
@@ -26,6 +31,8 @@ Install with the package manager, `pkg> add TensorOperations`.
     vector are supported. This facilitates tensor contractions where one of the operands is
     e.g. a diagonal matrix of singular values or eigenvalues, which are returned as a
     `Vector` by Julia's `eigen` or `svd` method.
+*   ***New***: Support for `CuArray` objects if used together with CuArrays.jl, by relying
+    on (and thus providing a high level interface into) NVidia's CUTENSOR library.
 *   Implementation can easily be extended to other types, by overloading a small set of
     methods.
 *   Efficient implementation of a number of basic tensor operations (see below), by relying
@@ -67,8 +74,6 @@ every more complicated tensor expression is deconstructed.
     transpositions (yet is typically slower) can be selected by using `disable_blas()`.
 
 ## To do list
-
-*   Make cache threadsafe.
 
 *   Make it easier to check contraction order and to splice in runtime information, or
     optimize based on memory footprint or other custom cost functions.
