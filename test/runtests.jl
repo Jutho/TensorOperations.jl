@@ -2,6 +2,7 @@ using Test
 using TensorOperations
 using Random
 using LinearAlgebra
+using CuArrays
 
 Random.seed!(1234567)
 
@@ -18,7 +19,7 @@ include("tensor.jl")
 TensorOperations.enable_blas()
 TensorOperations.enable_cache()
 
-if Base.find_package("CuArrays") !== nothing
+if CuArrays.functional()
     include("cutensor.jl")
 end
 

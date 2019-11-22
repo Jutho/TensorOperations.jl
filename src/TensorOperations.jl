@@ -59,22 +59,23 @@ include("functions/inplace.jl")
 
 function __init__()
     @require CuArrays="3a865a2d-5b23-5a0f-bc46-62713ec82fae" begin
-        @assert CuArrays.has_cutensor()
-        const CuArray = CuArrays.CuArray
-        const CublasFloat = CuArrays.CUBLAS.CublasFloat
-        const CublasReal = CuArrays.CUBLAS.CublasReal
-        for s in (:handle, :CuDefaultStream, :CuTensorDescriptor, :cudaDataType,
-                :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
-                :CUTENSOR_ALGO_DEFAULT,  :CUTENSOR_WORKSPACE_RECOMMENDED,
-                :cutensorElementwiseBinary, :cutensorReduction,
-                :cutensorReductionGetWorkspace,
-                :cutensorContraction, :cutensorContractionGetWorkspace)
-            eval(:(const $s = CuArrays.CUTENSOR.$s))
+        if CuArrays.functional() && CuArrays.has_cutensor()
+            const CuArray = CuArrays.CuArray
+            const CublasFloat = CuArrays.CUBLAS.CublasFloat
+            const CublasReal = CuArrays.CUBLAS.CublasReal
+            for s in (:handle, :CuDefaultStream, :CuTensorDescriptor, :cudaDataType,
+                    :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
+                    :CUTENSOR_ALGO_DEFAULT,  :CUTENSOR_WORKSPACE_RECOMMENDED,
+                    :cutensorElementwiseBinary, :cutensorReduction,
+                    :cutensorReductionGetWorkspace,
+                    :cutensorContraction, :cutensorContractionGetWorkspace)
+                eval(:(const $s = CuArrays.CUTENSOR.$s))
+            end
+            include("implementation/cuarray.jl")
+            @nospecialize
+            include("indexnotation/cutensormacros.jl")
+            @specialize
         end
-        include("implementation/cuarray.jl")
-        @nospecialize
-        include("indexnotation/cutensormacros.jl")
-        @specialize
     end
 end
 

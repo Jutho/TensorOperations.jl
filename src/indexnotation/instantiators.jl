@@ -144,14 +144,8 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     indB = getindices(exB)
     cind = intersect(indA, indB)
     indC = vcat(leftind, rightind)
-    oindA = intersect(indC, indA) # in the order they appear in C
-    oindB = intersect(indC, indB) # in the order they appear in C
-
-    # if indC == vcat(oindB, oindA) # reorder
-    #     exA, exB = exB, exA
-    #     indA, indB = indB, indA
-    #     oindA, oindB = oindB, oindA
-    # end
+    oindA = intersect(indA, indC) # in the order they appear in A
+    oindB = intersect(indB, indC) # in the order they appear in B
 
     symA = gensym()
     symB = gensym()

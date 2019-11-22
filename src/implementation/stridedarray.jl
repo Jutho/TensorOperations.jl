@@ -232,12 +232,27 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple,
         indCinoAB::IndexTuple, syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
 
-    trivCind = _trivtuple(indCinoAB)
-    if  indCinoAB !== trivCind
-        # try reverse order
-        indCinoBA = getindex.(Ref(indCinoAB),
-                        ((length(oindA) .+ _trivtuple(oindB))..., _trivtuple(oindA)...))
-        if indCinoBA == trivCind
+    TC = eltype(C)
+    ipC = TupleTools.invperm(indCinoAB)
+    oindAinC = TupleTools.getindices(ipC, _trivtuple(oindA))
+    oindBinC = TupleTools.getindices(ipC, length(oindA) .+ _trivtuple(oindB))
+    if use_blas() && TC <: BlasFloat
+        # check if it is beneficial to change the role of A and B
+        ibc = isblascontractable
+        lA = length(A)
+        lB = length(B)
+        lC = length(C)
+        memcost1 = lA*(!ibc(A, oindA, cindA, CA) || eltype(A) !== TC) +
+                    lB*(!ibc(B, cindB, oindB, CB) || eltype(B) !== TC) +
+                    lC*(!ibc(C, oindAinC, oindBinC, :D))
+        memcost2 = lB*(!ibc(B, oindB, cindB, CB) || eltype(B) !== TC) +
+                    lA*(!ibc(A, cindA, oindA, CA) || eltype(A) !== TC) +
+                    lC*(!ibc(C, oindBinC, oindAinC, :D))
+
+        if memcost1 > memcost2
+            indCinoBA = let N₁ = length(oindA), N₂ = length(oindB)
+                map(n->ifelse(n>N₁, n-N₁, n+N₂), indCinoAB)
+            end
             return contract!(α, B, CB, A, CA, β, C,
                                 oindB, cindB, oindA, cindA, indCinoBA, syms)
         end
@@ -271,7 +286,6 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
     sizeAB.(indCinoAB) == size(C) ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
 
-    TC = eltype(C)
     if use_blas() && TC <: BlasFloat
         if isblascontractable(A, oindA, cindA, CA) && eltype(A) == TC
             A2 = A

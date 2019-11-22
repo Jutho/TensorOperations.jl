@@ -78,7 +78,7 @@ function ncon(tensors, network,
         symcontract = nothing
     end
     contract!(true, A, CA, B, CB, false, C,
-                oindA, cindA, oindB, cindB, indCinoAB, symcontract)
+                oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
     return C
 end
 
@@ -112,6 +112,6 @@ function contracttree(tensors, network, conjlist, tree, sym)
         symcontract = nothing
     end
     contract!(true, A, CA, B, CB, false, C,
-                oindA, cindA, oindB, cindB, indCinoAB, symcontract)
+                oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
     return C, IC, :N
 end

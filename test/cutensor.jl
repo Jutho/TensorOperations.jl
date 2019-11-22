@@ -1,5 +1,3 @@
-using CuArrays
-
 @testset "cutensor macro for elementary operations" begin
     t0 = time()
     A = randn(Float64, (3,5,4,6))
