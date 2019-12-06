@@ -55,7 +55,7 @@ and [`TensorOperations.contract!`](@ref). Temporaries are created where necessar
 by default be saved to a global cache, so that they can be reused upon a next iteration or
 next call to the function in which the `@tensor` call is used. When experimenting in the
 REPL where every tensor expression is only used a single time, it might be better to use
-[`disable_cache()`](@ref), though no real harm comes from using the cache (except higher
+[`TensorOperations.disable_cache`](@ref), though no real harm comes from using the cache (except higher
 memory usage). By default, the cache is allowed to take up to the minimum of either one
 gigabyte or 25% of the total machine memory, though this is fully configurable. We refer to
 the section on [Cache for temporaries](@ref) for further details.
@@ -277,7 +277,7 @@ make the interaction with the cache hurtful rather than advantageous.
 ## Multithreading and GPU evaluation of tensor contractions with `@cutensor`
 Every index expression will be evaluated as a sequence of elementary tensor operations,
 i.e. permuted additions, partial traces and contractions, which are implemented for strided
-arrays as discussed in [Package Features](@ref). In particular, these implementations rely
+arrays as discussed in [Package features](@ref). In particular, these implementations rely
 on [Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a
 full specification of which arrays are supported. As a rule of thumb, `Array`s from Julia
 base, as well as `view`s thereof if sliced with a combination of `Integer`s and `Range`s.
