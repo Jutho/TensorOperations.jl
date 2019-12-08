@@ -60,15 +60,20 @@ include("functions/inplace.jl")
 function __init__()
     @require CuArrays="3a865a2d-5b23-5a0f-bc46-62713ec82fae" begin
         if CuArrays.functional() && CuArrays.has_cutensor()
+            @assert CuArrays.CUTENSOR.version() >= v"1.0.0"
             const CuArray = CuArrays.CuArray
             const CublasFloat = CuArrays.CUBLAS.CublasFloat
             const CublasReal = CuArrays.CUBLAS.CublasReal
             for s in (:handle, :CuDefaultStream, :CuTensorDescriptor, :cudaDataType,
+                    :cutensorContractionDescriptor_t, :cutensorContractionFind_t,
+                    :cutensorContractionPlan_t,
                     :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
                     :CUTENSOR_ALGO_DEFAULT,  :CUTENSOR_WORKSPACE_RECOMMENDED,
                     :cutensorElementwiseBinary, :cutensorReduction,
-                    :cutensorReductionGetWorkspace,
-                    :cutensorContraction, :cutensorContractionGetWorkspace)
+                    :cutensorReductionGetWorkspace, :cutensorComputeType,
+                    :cutensorGetAlignmentRequirement, :cutensorInitContractionDescriptor,
+                    :cutensorInitContractionFind, :cutensorContractionGetWorkspace,
+                    :cutensorInitContractionPlan, :cutensorContraction)
                 eval(:(const $s = CuArrays.CUTENSOR.$s))
             end
             include("implementation/cuarray.jl")

@@ -1,4 +1,6 @@
 # Default implmenentation for CuArrays
+using CuArrays: @workspace, @argout
+
 memsize(a::CuArray) = sizeof(a)
 
 function add!(α, A::CuArray{<:Any, N}, CA::Symbol,
@@ -83,25 +85,25 @@ function trace!(α, A::CuArray, CA::Symbol, β, C::CuArray,
     descA = CuTensorDescriptor(A; op = opA, size = newsize, strides = newstrides)
     descC = CuTensorDescriptor(C; op = CUTENSOR_OP_IDENTITY)
     descD = descC
-    typeCompute = cudaDataType(T)
+    typeCompute = cutensorComputeType(T)
     modeA = collect(Cint, 1:NA)
     modeC = collect(Cint, 1:NC)
     stream = CuDefaultStream()
-    workspaceSize = Ref{UInt64}(C_NULL)
-    cutensorReductionGetWorkspace(handle(), A, descA, modeA,
-                                  C, descC, modeC, C, descC, modeC,
-                                  opReduce, typeCompute, workspaceSize)
-    workspace = CuArray{UInt8}(undef, 0)
-    try
-      workspace = CuArray{UInt8}(undef, workspaceSize[])
-    catch
-      workspace = CuArray{UInt8}(undef, 1<<13)
-    end
-    workspaceSize[] = length(workspace)
-
-    cutensorReduction(handle(), T[α], A, descA, modeA, T[β], C, descC, modeC,
-                      C, descC, modeC, opReduce, typeCompute, workspace,
-                      workspaceSize[], stream)
+    @workspace fallback=1<<13 size=@argout(
+            cutensorReductionGetWorkspace(handle(),
+                A, descA, modeA,
+                C, descC, modeC,
+                C, descC, modeC,
+                opReduce, typeCompute,
+                out(Ref{UInt64}(C_NULL)))
+        )[] workspace->begin
+            cutensorReduction(handle(),
+                T[α], A, descA, modeA,
+                T[β], C, descC, modeC,
+                        C, descC, modeC,
+                opReduce, typeCompute,
+                workspace, sizeof(workspace), stream)
+        end
     return C
 end
 
@@ -165,7 +167,7 @@ function contract!(α, A::CuArray, CA::Symbol,
                                     strides = (ostrideB..., cstrideB...))
     descC = CuTensorDescriptor(C)
     T = eltype(C)
-    typeCompute = cudaDataType(T)
+    typeCompute = cutensorComputeType(T)
     opOut = CUTENSOR_OP_IDENTITY
 
     NoA = length(osizeA)
@@ -183,19 +185,34 @@ function contract!(α, A::CuArray, CA::Symbol,
     stream = CuDefaultStream()
     pref = CUTENSOR_WORKSPACE_RECOMMENDED
 
-    workspaceSize = Ref{UInt64}(C_NULL)
-    cutensorContractionGetWorkspace(handle(), A, descA, modeA, B, descB, modeB, C, descC,
-                                    modeC, C, descC, modeC, opOut, typeCompute, algo, pref,
-                                    workspaceSize)
-    workspace = CuArray{UInt8}(undef, 0)
-    try
-        workspace = CuArray{UInt8}(undef, workspaceSize[])
-    catch
-        workspace = CuArray{UInt8}(undef, 2^27)
-    end
-    workspaceSize[] = length(workspace)
-    cutensorContraction(handle(), T[α], A, descA, modeA, B, descB, modeB,
-                        T[β], C, descC, modeC, C, descC, modeC, opOut, typeCompute, algo,
-                        workspace, workspaceSize[], stream)
+    alignmentRequirementA = Ref{UInt32}(C_NULL)
+    cutensorGetAlignmentRequirement(handle(), A, descA, alignmentRequirementA)
+    alignmentRequirementB = Ref{UInt32}(C_NULL)
+    cutensorGetAlignmentRequirement(handle(), B, descB, alignmentRequirementB)
+    alignmentRequirementC = Ref{UInt32}(C_NULL)
+    cutensorGetAlignmentRequirement(handle(), C, descC, alignmentRequirementC)
+    desc = Ref(cutensorContractionDescriptor_t(ntuple(i->0, Val(256))))
+    cutensorInitContractionDescriptor(handle(),
+                                      desc,
+                   descA, modeA, alignmentRequirementA[],
+                   descB, modeB, alignmentRequirementB[],
+                   descC, modeC, alignmentRequirementC[],
+                   descC, modeC, alignmentRequirementC[],
+                   typeCompute)
+
+    find = Ref(cutensorContractionFind_t(ntuple(i->0, Val(64))))
+    cutensorInitContractionFind(handle(), find, algo)
+
+    @workspace fallback=1<<27 size=@argout(
+            cutensorContractionGetWorkspace(handle(), desc, find, pref,
+                                            out(Ref{UInt64}(C_NULL)))
+        )[] workspace->begin
+            plan = Ref(cutensorContractionPlan_t(ntuple(i->0, Val(640))))
+            cutensorInitContractionPlan(handle(), plan, desc, find, sizeof(workspace))
+
+            cutensorContraction(handle(), plan, T[α], A, B, T[β], C, C,
+                                workspace, sizeof(workspace), stream)
+        end
+
     return C
 end
