@@ -216,3 +216,40 @@ function contract!(α, A::CuArray, CA::Symbol,
 
     return C
 end
+
+function cached_similar_from_indices(sym::Symbol, T::Type, p1::IndexTuple, p2::IndexTuple, A::CuArray, CA::Symbol)
+    return checked_similar_from_indices(nothing, T, p1, p2, A, CA)
+end
+
+function cached_similar_from_indices(sym::Symbol, T::Type, poA::IndexTuple, poB::IndexTuple,
+    p1::IndexTuple, p2::IndexTuple, A::CuArray, B::CuArray, CA::Symbol, CB::Symbol)
+    return checked_similar_from_indices(nothing, T, poA, poB, p1, p2, A, B, CA, CB)
+end
+
+function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::CuArray,
+        CA::Symbol) where {T,N}
+
+    sz = map(n->size(A, n), ind)
+    CT = similartype(A, T, sz)
+    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
+        return fill!(C, zero(T))::CT
+    else
+        return fill!(similar(A, T, sz), zero(T))
+    end
+end
+function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
+        ind::IndexTuple{N}, A::AbstractArray, B::AbstractArray,
+        CA::Symbol, CB::Symbol) where {T,N}
+
+    oszA = map(n->size(A,n), poA)
+    oszB = map(n->size(B,n), poB)
+    sz = let osz = (oszA..., oszB...)
+        map(n->osz[n], ind)
+    end
+    CT = similartype(A, T, sz)
+    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
+        return fill!(C, zero(T))::CT
+    else
+        return fill!(similar(A, T, sz), zero(T))
+    end
+end
