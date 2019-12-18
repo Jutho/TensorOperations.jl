@@ -469,7 +469,12 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
         else
             op2 = (x,y) -> opA(x)*opB(y)
             if β == 0
-                Strided._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
+                if isbitstype(eltype(C))
+                    Strided._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
+                else
+                    fill!(C, zero(eltype(C)))
+                    Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
+                end
             elseif β == 1
                 Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
             else
