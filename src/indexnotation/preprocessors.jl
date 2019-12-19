@@ -42,6 +42,9 @@ end
 
 # replace all tensor objects by a function of that object
 function replacetensorobjects(f, ex::Expr)
+    # first try to replace ex completely
+    ex2 = f(ex, nothing, nothing)
+    ex2 !== ex && return ex2
     if istensor(ex)
         obj, leftind, rightind = decomposetensor(ex)
         return Expr(ex.head, f(obj, leftind, rightind), ex.args[2:end]...)
@@ -49,7 +52,7 @@ function replacetensorobjects(f, ex::Expr)
         return Expr(ex.head, (replacetensorobjects(f, e) for e in ex.args)...)
     end
 end
-replacetensorobjects(f, ex) = ex
+replacetensorobjects(f, ex) = f(ex, nothing, nothing)
 
 # expandconj: conjugate individual terms or factors instead of a whole expression
 function expandconj(ex::Expr)
