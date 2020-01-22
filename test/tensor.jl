@@ -215,6 +215,17 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     println("Float32 views: $(time()-t0) seconds")
     t0 = time()
 
+    # Simple function example
+    @tensor function f(A, b)
+        w[x] := A[x,y]*b[y]
+        return w
+    end
+    for T in (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
+        A = rand(T, 10, 10)
+        b = rand(T, 10)
+        @test f(A,b) ≈ A*b
+    end
+
     # Example from README.md
     using TensorOperations
     α=randn()
