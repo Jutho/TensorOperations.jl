@@ -184,6 +184,9 @@ function _nconmacro(tensors, indices, kwargs = nothing)
     else
         throw(ArgumentError("invalid @ncon syntax"))
     end
+    if any(isa(ta, Expr) && ta.head === :... for ta in tensorargs)
+        throw(ArgumentError("@ncon does not support splats (...) in tensor lists."))
+    end
     conjlist = fill(false, length(tensorargs))
     for i = 1:length(tensorargs)
         if tensorargs[i] isa Expr
