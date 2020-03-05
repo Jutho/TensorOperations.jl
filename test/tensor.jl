@@ -277,11 +277,11 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         op2 = randn(2, 2)
         op3 = randn(2, 2)
 
-        f(op) = @ncon((op, op3), ([-1 3], [3 -3]))
+        f(op,op3) = @ncon((op, op3), ([-1 3], [3 -3]))
 
-        b = f(op1)
+        b = f(op1,op3)
         bcopy = deepcopy(b)
-        c = f(op2)
+        c = f(op2,op3)
         @test b == bcopy
         @test b != c
     end
