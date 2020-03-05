@@ -272,6 +272,20 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     println("tensor network examples: $(time()-t0) seconds")
     t0 = time()
 
+    @testset "Issue 83" begin
+        op1 = randn(2, 2)
+        op2 = randn(2, 2)
+        op3 = randn(2, 2)
+
+        f(op) = @ncon((op, op3), ([-1 3], [3 -3]))
+
+        b = f(op1)
+        bcopy = deepcopy(b)
+        c = f(op2)
+        @test b == bcopy
+        @test b != c
+    end
+
     # diagonal matrices
     @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
         A = randn(T, 10, 10, 10, 10)
