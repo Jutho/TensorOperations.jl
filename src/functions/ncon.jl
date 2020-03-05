@@ -66,12 +66,8 @@ function ncon(tensors, network,
 
     oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
     T = promote_type(eltype(A), eltype(B))
-    if sym !== nothing
-        symc = Symbol(sym, "_c")
-        C = cached_similar_from_indices(symc, T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    else
-        C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    end
+    # end result: don't use cache
+    C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
     if sym !== nothing
         symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
     else
