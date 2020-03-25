@@ -25,6 +25,23 @@ function optdata(optex::Expr, ex::Expr)
                     costtype = promote_type(costtype, typeof(costs[end]))
                 end
             end
+        elseif all(x -> isa(x, Expr) && x.head == :(=), args)
+            indices = Vector{Any}()
+            costs = Vector{Any}()
+            costtype = typeof(parsecost(args[1].args[2]))
+            for a in args
+                if typeof(a.args[1]) != Symbol && a.args[1].head == :tuple
+                    for b in a.args[1].args
+                        push!(indices, normalizeindex(b))
+                        push!(costs, parsecost(a.args[2]))
+                        costtype = promote_type(costtype, typeof(costs[end]))
+                    end
+                else
+                    push!(indices, normalizeindex(a.args[1]))
+                    push!(costs, parsecost(a.args[2]))
+                    costtype = promote_type(costtype, typeof(costs[end]))
+                end
+            end
         else
             indices = map(normalizeindex, args)
             costtype = Power{:χ,Int}
