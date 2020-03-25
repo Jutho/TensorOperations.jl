@@ -47,7 +47,7 @@ function optdata(optex::Expr, ex::Expr)
             costtype = Power{:χ,Int}
             costs = fill(Power{:χ,Int}(1,1), length(args))
         end
-        return Dict{Any, costtype}(indices[k]=>costs[k] for k = 1:length(args))
+        return Dict{Any, costtype}(k=>v for (k,v) in zip(indices, costs))
     elseif optex.head == :call && optex.args[1] == :!
         allindices = unique(getallindices(ex))
         excludeind = map(normalizeindex, optex.args[2:end])
