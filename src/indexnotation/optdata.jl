@@ -8,20 +8,23 @@ function optdata(optex::Expr, ex::Expr)
     if optex.head == :tuple
         isempty(optex.args) && return nothing
         args = optex.args
-        if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
-            indices = Vector{Any}(undef, length(args))
-            costs = Vector{Any}(undef, length(args))
+        if all(x -> isa(x, Expr) && x.head == :call && x.args[1] == :(=>), args)
+            indices = Vector{Any}()
+            costs = Vector{Any}()
             costtype = typeof(parsecost(args[1].args[3]))
-            for k = 1:length(args)
-                if isa(args[k], Expr) && args[k].head == :call && args[k].args[1] == :(=>)
-                    indices[k] = normalizeindex(args[k].args[2])
-                    costs[k] = parsecost(args[k].args[3])
-                    costtype = promote_type(costtype, typeof(costs[k]))
+            for a in args
+                if typeof(a.args[2]) != Symbol && a.args[2].head == :tuple
+                    for b in a.args[2].args
+                        push!(indices, normalizeindex(b))
+                        push!(costs, parsecost(a.args[3]))
+                        costtype = promote_type(costtype, typeof(costs[end]))
+                    end
                 else
-                    error("invalid index cost specification")
+                    push!(indices, normalizeindex(a.args[2]))
+                    push!(costs, parsecost(a.args[3]))
+                    costtype = promote_type(costtype, typeof(costs[end]))
                 end
             end
-            costs = convert(Vector{costtype}, costs)
         else
             indices = map(normalizeindex, args)
             costtype = Power{:χ,Int}
