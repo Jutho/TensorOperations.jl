@@ -272,6 +272,17 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     println("tensor network examples: $(time()-t0) seconds")
     t0 = time()
 
+    @testset "tensoropt" begin
+        A=randn(5,5,5,5)
+        B=randn(5,5,5)
+        C=randn(5,5,5)
+        @tensoropt (a=>χ,b=>χ^2,c=>2*χ,d=>χ,e=>5,f=>2*χ) D1[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+        @tensoropt (a=χ,b=χ^2,c=2*χ,d=χ,e=5,f=2*χ) D2[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+        @tensoropt ((a,d)=>χ,b=>χ^2,(c,f)=>2*χ,e=>5) D3[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+        @tensoropt ((a,d)=χ,b=χ^2,(c,f)=2*χ,e=5) D4[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+        @test D1 == D2 == D3 == D4
+    end
+
     @testset "Issue 83" begin
         op1 = randn(2, 2)
         op2 = randn(2, 2)
