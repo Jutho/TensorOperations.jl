@@ -281,6 +281,23 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         @tensoropt ((a,d)=>χ,b=>χ^2,(c,f)=>2*χ,e=>5) D3[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
         @tensoropt ((a,d)=χ,b=χ^2,(c,f)=2*χ,e=5) D4[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
         @test D1 == D2 == D3 == D4
+        _optdata = optex -> TensorOperations.optdata(optex, :(D1[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]))
+        optex1 = :((a=>χ,b=>χ^2,c=>2*χ,d=>χ,e=>5,f=>2*χ))
+        optex2 = :((a=χ,b=χ^2,c=2*χ,d=χ,e=5,f=2*χ))
+        optex3 = :(((a,d)=>χ,b=>χ^2,(c,f)=>2*χ,e=>5))
+        optex4 = :(((a,d)=χ,b=χ^2,(c,f)=2*χ,e=5))
+        optex5 = :(((a,)=>χ,b=>χ^2,(c,)=>2χ,d=>χ,e=>5,f=>χ*2,()=>12345))
+        @test _optdata(optex1) == _optdata(optex2) == _optdata(optex3) == _optdata(optex4) == _optdata(optex5)
+        optex6 = :(((a,b,c)=χ,))
+        optex7 = :((a,b,c))
+        @test _optdata(optex6) == _optdata(optex7)
+        optex8 = :(((a,b,c)=1,(d,e,f,g)=χ))
+        optex9 = :(!(a,b,c))
+        @test _optdata(optex8) == _optdata(optex9)
+        optex10 = :((a=>χ,b=>χ^2,c=2*χ,d=>χ,e=>5,f=2*χ))
+        optex11 = :((a=χ,b=χ^2,c=2*χ,d,e=5,f))
+        @test_throws ErrorException _optdata(optex10)
+        @test_throws ErrorException _optdata(optex11)
     end
 
     @testset "Issue 83" begin
