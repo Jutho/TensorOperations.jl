@@ -9,35 +9,11 @@ function optdata(optex::Expr, ex::Expr)
         isempty(optex.args) && return nothing
         args = optex.args
         if all(x -> isa(x, Expr) && x.head == :call && x.args[1] == :(=>), args)
-            indices = Vector{Any}()
-            costs = Vector{Any}()
-            for a in args
-                if typeof(a.args[2]) != Symbol && a.args[2].head == :tuple
-                    for b in a.args[2].args
-                        push!(indices, normalizeindex(b))
-                        push!(costs, parsecost(a.args[3]))
-                    end
-                else
-                    push!(indices, normalizeindex(a.args[2]))
-                    push!(costs, parsecost(a.args[3]))
-                end
-            end
+            indices, costs = _optdata(map(x -> x.args[2], args), map(x -> x.args[3], args))
             costtype = promote_type(typeof.(costs)...)
             costs = convert(Vector{costtype}, costs)
         elseif all(x -> isa(x, Expr) && x.head == :(=), args)
-            indices = Vector{Any}()
-            costs = Vector{Any}()
-            for a in args
-                if typeof(a.args[1]) != Symbol && a.args[1].head == :tuple
-                    for b in a.args[1].args
-                        push!(indices, normalizeindex(b))
-                        push!(costs, parsecost(a.args[2]))
-                    end
-                else
-                    push!(indices, normalizeindex(a.args[1]))
-                    push!(costs, parsecost(a.args[2]))
-                end
-            end
+            indices, costs = _optdata(map(x -> x.args[1], args), map(x -> x.args[2], args))
             costtype = promote_type(typeof.(costs)...)
             costs = convert(Vector{costtype}, costs)
         else
@@ -58,6 +34,23 @@ function optdata(optex::Expr, ex::Expr)
     else
         error("invalid index cost specification")
     end
+end
+
+function _optdata(indexvec, costvec)
+    indices = Vector{Any}()
+    costs = Vector{Any}()
+    for (index, cost) in zip(indexvec, costvec)
+        if typeof(index) != Symbol && index.head == :tuple
+            for index_ in index.args
+                push!(indices, normalizeindex(index_))
+                push!(costs, parsecost(cost))
+            end
+        else
+            push!(indices, normalizeindex(index))
+            push!(costs, parsecost(cost))
+        end
+    end
+    indices, costs
 end
 
 # Process index cost specification for @tensoropt and friends
