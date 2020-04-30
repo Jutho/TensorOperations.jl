@@ -8,26 +8,20 @@ function optdata(optex::Expr, ex::Expr)
     if optex.head == :tuple
         isempty(optex.args) && return nothing
         args = optex.args
-        if isa(args[1], Expr) && args[1].head == :call && args[1].args[1] == :(=>)
-            indices = Vector{Any}(undef, length(args))
-            costs = Vector{Any}(undef, length(args))
-            costtype = typeof(parsecost(args[1].args[3]))
-            for k = 1:length(args)
-                if isa(args[k], Expr) && args[k].head == :call && args[k].args[1] == :(=>)
-                    indices[k] = normalizeindex(args[k].args[2])
-                    costs[k] = parsecost(args[k].args[3])
-                    costtype = promote_type(costtype, typeof(costs[k]))
-                else
-                    error("invalid index cost specification")
-                end
-            end
+        if all(x -> isa(x, Expr) && x.head == :call && x.args[1] == :(=>), args)
+            indices, costs = _optdata(map(x -> x.args[2], args), map(x -> x.args[3], args))
+            costtype = promote_type(typeof.(costs)...)
+            costs = convert(Vector{costtype}, costs)
+        elseif all(x -> isa(x, Expr) && x.head == :(=), args)
+            indices, costs = _optdata(map(x -> x.args[1], args), map(x -> x.args[2], args))
+            costtype = promote_type(typeof.(costs)...)
             costs = convert(Vector{costtype}, costs)
         else
             indices = map(normalizeindex, args)
             costtype = Power{:χ,Int}
             costs = fill(Power{:χ,Int}(1,1), length(args))
         end
-        return Dict{Any, costtype}(indices[k]=>costs[k] for k = 1:length(args))
+        return Dict{Any, costtype}(k=>v for (k,v) in zip(indices, costs))
     elseif optex.head == :call && optex.args[1] == :!
         allindices = unique(getallindices(ex))
         excludeind = map(normalizeindex, optex.args[2:end])
@@ -40,6 +34,23 @@ function optdata(optex::Expr, ex::Expr)
     else
         error("invalid index cost specification")
     end
+end
+
+function _optdata(indexvec, costvec)
+    indices = Vector{Any}()
+    costs = Vector{Any}()
+    for (index, cost) in zip(indexvec, costvec)
+        if typeof(index) != Symbol && index.head == :tuple
+            for index_ in index.args
+                push!(indices, normalizeindex(index_))
+                push!(costs, parsecost(cost))
+            end
+        else
+            push!(indices, normalizeindex(index))
+            push!(costs, parsecost(cost))
+        end
+    end
+    indices, costs
 end
 
 # Process index cost specification for @tensoropt and friends
