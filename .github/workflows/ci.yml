@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          # - '1.0'
+          - '1.0'
           - '1.4'
           - 'nightly'
         os:
