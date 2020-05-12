@@ -4,24 +4,16 @@ Fast tensor operations using a convenient Einstein index notation.
 
 | **Documentation**                                                               | **Build Status**                                                                                | **Digital Object Identifier**  |
 |:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![][codecov-img]][codecov-url] [![][coveralls-img]][coveralls-url] | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg)](https://doi.org/10.5281/zenodo.3245497) |
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][github-img]][github-url] [![][codecov-img]][codecov-url] | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg)](https://doi.org/10.5281/zenodo.3245497) |
 
-**TensorOperations v2.0.0 represents a significant update and rewrite from previous versions.**
-
-* Tensoroperations.jl now exports an `ncon` method, familiar in the quantum tensor network community and mostly compatible with e.g. [arXiv:1402.0939](https://arxiv.org/abs/1402.0939). Unlike the `@tensor` which has been at the heart of TensorOperations.jl, the `ncon` analyzes the network at runtime, and as a consequence has a non-inferrable output. On the other hand, this allows to use dynamical index specifications which are not known at compile time. There is also an `@ncon` macro which uses the same format and also allows for dynamical index specifications, but has the advantage that it adds a hook into the global LRU cache where temporary objects are stored and recycled.
-
-* TensorOperations.jl now supports `CuArray` objects via the NVidia's CUTENSOR library, which is wrapped in CuArrays.jl. This requires that the latter is also loaded with `using CuArrays`. `CuArray` objects can directly be used in the existing calls and macro environments like `@tensor` and `@ncon`. However, no operation should try to mix a normal `Array` and a `CuArray`. There is also a new `@cutensor` macro which will transform all array objects to the GPU and perform the contractions and permutations there. Objects are moved to the GPU when they are first needed, so that transfer times of later objects can coincide with computation time for operations on earlier objects.
-
-* TensorOperations.jl now has a `@notensor` macro to indicate that a block within an `@tensor` environment (or `@tensoropt` or `@cutensor`) should be left alone and contains valid Julia code that should not be transformed.
- 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://jutho.github.io/TensorOperations.jl/stable
 
-[travis-img]: https://travis-ci.org/Jutho/TensorOperations.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/Jutho/TensorOperations.jl
+[github-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
+[github-url]: https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3ACI
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/Jutho/TensorOperations.jl?svg=true&branch=master
 [appveyor-url]: https://ci.appveyor.com/project/jutho/tensoroperations-jl/branch/master
