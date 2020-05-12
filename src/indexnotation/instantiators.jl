@@ -179,9 +179,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     end
 
     if !isgeneraltensor(exB) || hastraceindices(exB)
-        initB = instantiate(nothing, false, exB, true, oindB, cind, true)
-        poB = ((1:length(oindB))...,)
-        pcB = length(oindB) .+ ((1:length(cind))...,)
+        initB = instantiate(nothing, false, exB, true, cind, oindB, true)
+        poB = length(cind) .+ ((1:length(oindB))...,)
+        pcB = ((1:length(cind))...,)
         conjB = :(:N)
         initB = Expr(:(=), symB, initB)
         αB = 1
