@@ -105,7 +105,7 @@ end
 memsize(a::Array) = sizeof(a)
 memsize(a) = Base.summarysize(a)
 
-const cache = LRU{Tuple{Symbol,Int}, Any}(; by = memsize, maxsize = default_cache_size())
+const cache = LRU{Tuple{Symbol,Int,UInt64}, Any}(; by = memsize, maxsize = default_cache_size())
 const _use_cache = Ref(true)
 use_cache() = _use_cache[]
 
