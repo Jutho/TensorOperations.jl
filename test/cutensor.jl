@@ -2,9 +2,9 @@
     t0 = time()
     A = randn(Float64, (3,5,4,6))
     p = (4,1,3,2)
-    C1 = permutedims(A, p)
-    @cutensor C2[4,1,3,2] := A[1,2,3,4]
-    @test C1 ≈ C2
+    @cutensor C1[4,1,3,2] := A[1,2,3,4]
+    C2 = permutedims(A, p)
+    @test collect(C1) ≈ C2
     @test_throws TensorOperations.IndexError begin
         @cutensor C[1,2,3,4] := A[1,2,3]
     end
@@ -14,12 +14,13 @@
     println("tensorcopy: $(time()-t0) seconds")
     t0 = time()
 
-    B=randn(Float64, (5,6,3,4))
-    p=[3,1,4,2]
-    @cutensor C1[3,1,4,2] := A[3,1,4,2] + B[1,2,3,4]
-    C2=A+permutedims(B, p)
-    @test C1 ≈ C2
-    @test_throws CuArrays.CUTENSOR.CUTENSORError begin
+    B = randn(Float64, (5,6,3,4))
+    p = [3,1,4,2]
+    α = randn(Float64)
+    @cutensor C1[3,1,4,2] := A[3,1,4,2] + α * B[1,2,3,4] # mixed eltype add/permutation
+    C2 = A + α * permutedims(B, p)
+    @test collect(C1) ≈ C2
+    @test_throws CUDA.CUTENSOR.CUTENSORError begin
         @cutensor C[1,2,3,4] := A[1,2,3,4] + B[1,2,3,4]
     end
     println("tensoradd: $(time()-t0) seconds")
@@ -33,7 +34,7 @@
             C2[i]+=A[i, j, j]
         end
     end
-    @test C1 ≈ C2
+    @test collect(C1) ≈ C2
     A=randn(Float64, (3,20,5,3,20,4,5))
     @cutensor C1[e, a, d] := A[a, b, c, d, b, e, c]
     C2=zeros(4,3,3)
@@ -42,7 +43,7 @@
             C2[i1, i2, i3]+=A[i2, j1, j2, i3, j1, i1, j2]
         end
     end
-    @test C1 ≈ C2
+    @test collect(C1) ≈ C2
     println("tensortrace: $(time()-t0) seconds")
     t0 = time()
 
@@ -53,7 +54,7 @@
     for a=1:3, b=1:20, c=1:5, d=1:3, e=1:4, f=1:6, g=1:3
         C2[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
     end
-    @test C1 ≈ C2
+    @test collect(C1) ≈ C2
     @test_throws TensorOperations.IndexError begin
         @cutensor A[a, b, c, d] * B[c, f, b, g]
     end
@@ -93,13 +94,12 @@ end
             D2[d, f, h] += A[c, a, f, a, e, b, b, g] * B[c, h, g, e, d]
         end
     end
-    @test D1 ≈ D2
+    @test collect(D1) ≈ D2
     @test norm(vec(D1)) ≈ sqrt(abs((@cutensor scalar(D1[d, f, h] * conj(D1[d, f, h])))))
     println("tensorcontract 3: $(time()-t0) seconds")
     t0 = time()
 
     # Example from README.md
-    using TensorOperations
     α=randn()
     A=randn(5,5,5,5,5,5)
     B=randn(5,5,5)
@@ -130,6 +130,7 @@ end
         @cutensor HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] * rhoR[3, -4] * A1[1, 4, 2] # should be contracted in exactly same order
         @test collect(HrA12′) == collect(HrA12′′) # should be exactly equal
         @test HrA12 ≈ collect(HrA12′)
+        @test HrA12 ≈ collect(HrA12′′)
         @test E ≈ @cutensor scalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
     println("tensor network examples: $(time()-t0) seconds")

@@ -1,5 +1,5 @@
 # Default implmenentation for CuArrays
-using CuArrays: @workspace, @argout
+using CUDA: @workspace, @argout
 
 memsize(a::CuArray) = sizeof(a)
 
@@ -20,46 +20,54 @@ function add!(α, A::CuArray{<:Any, N}, CA::Symbol,
     modeA = collect(Cint, 1:N)
     modeC = collect(Cint, indCinA)
     stream = CuDefaultStream()
-    cutensorElementwiseBinary(handle(), T[α], A, descA, modeA, T[β], C, descC,
-                              modeC, C, descC, modeC, opAC, typeCompute, stream)
-    return C
-end
-function add!(α, A::CuArray{T, N}, CA::Symbol,
-                β, C::CuArray{Complex{T}, N}, indCinA) where {T<:CublasReal,N}
-
-    N == length(indCinA) || throw(IndexError("Invalid permutation of length $N: $indCinA"))
-    CA == :N || CA == :C ||
-        throw(ArgumentError("Value of conjA should be :N or :C instead of $CA"))
-    opid = CUTENSOR_OP_IDENTITY
-    opAC = CUTENSOR_OP_ADD
-
-    if imag(β) != 0
-        rmul!(C, β)
-        γ = one(real(β))
+    if β == zero(β)
+        cutensorPermutation(handle(), T[α], A, descA, modeA, C, descC, modeC,
+                            typeCompute, stream)
     else
-        γ = real(β)
+        cutensorElementwiseBinary(handle(), T[α], A, descA, modeA, T[β], C, descC,
+                                  modeC, C, descC, modeC, opAC, typeCompute, stream)
     end
-    sizeC = size(C)
-    stridesC = 2 .* strides(C)
-    Cr = reinterpret(T, C, (2*length(C),))
-    @show sizeC, stridesC
 
-    descA = CuTensorDescriptor(A; op = opid)
-    descCr = CuTensorDescriptor(Cr; size = sizeC, strides = stridesC, op = opid)
-    typeCompute = cudaDataType(T)
-    modeA = collect(Cint, 1:N)
-    modeC = collect(Cint, indCinA)
-    stream = CuDefaultStream()
-    cutensorElementwiseBinary(handle(), T[real(α)], A, descA, modeA, T[γ], Cr, descCr,
-                              modeC, Cr, descCr, modeC, opAC, typeCompute, stream)
-    if imag(α) != 0
-        Ci = view(Cr, 2:length(Cr))
-        descCi = CuTensorDescriptor(Ci; size = sizeC, strides = stridesC, op = opid)
-        cutensorElementwiseBinary(handle(), T[imag(α)], A, descA, modeA, T[γ], Ci, descCi,
-                                  modeC, Ci, descCi, modeC, opAC, typeCompute, stream)
-    end
     return C
 end
+
+# TODO: the following seems broken due to bug in CUTENSOR?#
+# function add!(α, A::CuArray{T, N}, CA::Symbol,
+#                 β, C::CuArray{Complex{T}, N}, indCinA) where {T<:CublasReal,N}
+#
+#     N == length(indCinA) || throw(IndexError("Invalid permutation of length $N: $indCinA"))
+#     CA == :N || CA == :C ||
+#         throw(ArgumentError("Value of conjA should be :N or :C instead of $CA"))
+#     opid = CUTENSOR_OP_IDENTITY
+#     opAC = CUTENSOR_OP_ADD
+#
+#     if β == zero(β)
+#         fill!(C, zero(Complex{T}))
+#     elseif β != one(β)
+#         rmul!(C, β)
+#     end
+#     sizeC = size(C)
+#     stridesC = 2 .* strides(C)
+#     Cr = reinterpret(T, C, (2*length(C),))
+#
+#     @show stridesC, sizeC
+#
+#     descA = CuTensorDescriptor(A; op = opid)
+#     descCr = CuTensorDescriptor(Cr; size = sizeC, strides = stridesC, op = opid)
+#     typeCompute = cudaDataType(T)
+#     modeA = collect(Cint, 1:N)
+#     modeC = collect(Cint, indCinA)
+#     stream = CuDefaultStream()
+#     cutensorElementwiseBinary(handle(), T[real(α)], A, descA, modeA, T[1], Cr, descCr,
+#                               modeC, Cr, descCr, modeC, opAC, typeCompute, stream)
+#     if imag(α) != 0
+#         Ci = view(Cr, 2:length(Cr))
+#         descCi = CuTensorDescriptor(Ci; size = sizeC, strides = stridesC, op = opid)
+#         cutensorElementwiseBinary(handle(), T[imag(α)], A, descA, modeA, T[1], Ci, descCi,
+#                                   modeC, Ci, descCi, modeC, opAC, typeCompute, stream)
+#     end
+#     return C
+# end
 
 function trace!(α, A::CuArray, CA::Symbol, β, C::CuArray,
                 indCinA, cindA1, cindA2)
@@ -217,39 +225,26 @@ function contract!(α, A::CuArray, CA::Symbol,
     return C
 end
 
+# overwrite similar_from_indices to return zero initialized arrays
+function similar_from_indices(T::Type, ind::IndexTuple, A::CuArray, CA::Symbol)
+    sz = similarstructure_from_indices(T, ind, A, CA)
+    return fill!(similar(A, T, sz), zero(T))
+end
+function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
+                                p1::IndexTuple, p2::IndexTuple,
+                                A::CuArray, B::CuArray, CA::Symbol, CB::Symbol)
+    sz = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+    return fill!(similar(A, T, sz), zero(T))
+end
+
+# overwrite cached_similar_from_indices in order not to use cache for CuArray objects
 function cached_similar_from_indices(sym::Symbol, T::Type, p1::IndexTuple, p2::IndexTuple, A::CuArray, CA::Symbol)
-    return checked_similar_from_indices(nothing, T, p1, p2, A, CA)
+    # also zero fill to avoid problems with cutensorElementwiseBinary
+    return similar_from_indices(T, p1, p2, A, CA)
 end
 
 function cached_similar_from_indices(sym::Symbol, T::Type, poA::IndexTuple, poB::IndexTuple,
     p1::IndexTuple, p2::IndexTuple, A::CuArray, B::CuArray, CA::Symbol, CB::Symbol)
-    return checked_similar_from_indices(nothing, T, poA, poB, p1, p2, A, B, CA, CB)
-end
-
-function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::CuArray,
-        CA::Symbol) where {T,N}
-
-    sz = map(n->size(A, n), ind)
-    CT = similartype(A, T, sz)
-    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
-        return fill!(C, zero(T))::CT
-    else
-        return fill!(similar(A, T, sz), zero(T))
-    end
-end
-function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
-        ind::IndexTuple{N}, A::AbstractArray, B::AbstractArray,
-        CA::Symbol, CB::Symbol) where {T,N}
-
-    oszA = map(n->size(A,n), poA)
-    oszB = map(n->size(B,n), poB)
-    sz = let osz = (oszA..., oszB...)
-        map(n->osz[n], ind)
-    end
-    CT = similartype(A, T, sz)
-    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
-        return fill!(C, zero(T))::CT
-    else
-        return fill!(similar(A, T, sz), zero(T))
-    end
+    # also zero fill to avoid problems with cutensorElementwiseBinary
+    return similar_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
 end

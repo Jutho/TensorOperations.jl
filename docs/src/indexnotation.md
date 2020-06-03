@@ -296,10 +296,10 @@ types, and the use of BLAS can be disabled globally by calling `disable_blas()`.
 currently not possible to control the use of BLAS at the level of individual contractions.
 
 Since TensorOperations v2.0, the necessary implementations are also available for `CuArray`
-objects of the [CuArrays.jl](https://github.com/JuliaGPU/CuArrays.jl) library. This
+objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This
 implementation is essentially a simple wrapper over the CUTENSOR library of NVidia, and as
 such has certain restrictions as a result thereof. Native Julia alternatives using
-`CUDAnative` might be provided in the future.
+CUDA.jl or KernelAbstractions.jl might be provided in the future.
 
 Mixed operations between host arrays (e.g. `Array`) and device arrays (e.g. `CuArray`) will
 fail. However, if one wants to harness the computing power of the GPU to perform all tensor

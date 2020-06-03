@@ -227,7 +227,6 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     end
 
     # Example from README.md
-    using TensorOperations
     α=randn()
     A=randn(5,5,5,5,5,5)
     B=randn(5,5,5)

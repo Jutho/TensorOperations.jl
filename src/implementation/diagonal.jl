@@ -1,58 +1,21 @@
-function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::Diagonal,
-        CA::Symbol) where {T,N}
+# overwrite similar from indices, because similar on `Diagonal` tends to create
+# `SparseArray` for some horrible reason
 
-    sz = map(n->size(A, n), ind)
-    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
-        CT = similartype(A.diag, T, sz)
-        return C::CT
-    else
-        return similar(A.diag, T, sz)
-    end
+function similar_from_indices(T::Type, ind::IndexTuple, A::Diagonal, CA::Symbol)
+    sz = similarstructure_from_indices(T, ind, A, CA)
+    return similar(A.diag, T, sz)
 end
-function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
-        ind::IndexTuple{N}, A::Diagonal, B::Diagonal, CA::Symbol, CB::Symbol) where {T,N}
-
-    oszA = map(n->size(A,n), poA)
-    oszB = map(n->size(B,n), poB)
-    sz = let osz = (oszA..., oszB...)
-        map(n->osz[n], ind)
-    end
-    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
-        CT = similartype(A.diag, T, sz)
-        return C::CT
-    else
-        return similar(A.diag, T, sz)
-    end
+function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
+                                p1::IndexTuple, p2::IndexTuple,
+                                A::Diagonal, B::AbstractArray, CA::Symbol, CB::Symbol)
+    sz = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+    similar(A.diag, T, sz)
 end
-function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
-    ind::IndexTuple{N}, A::Diagonal, B::AbstractArray, CA::Symbol, CB::Symbol) where {T,N}
-
-    oszA = map(n->size(A,n), poA)
-    oszB = map(n->size(B,n), poB)
-    sz = let osz = (oszA..., oszB...)
-        map(n->osz[n], ind)
-    end
-    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
-        CT = similartype(A.diag, T, sz)
-        return C::CT
-    else
-        return similar(A.diag, T, sz)
-    end
-end
-function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
-    ind::IndexTuple{N}, A::AbstractArray, B::Diagonal, CA::Symbol, CB::Symbol) where {T,N}
-
-    oszA = map(n->size(A,n), poA)
-    oszB = map(n->size(B,n), poB)
-    sz = let osz = (oszA..., oszB...)
-        map(n->osz[n], ind)
-    end
-    if C !== nothing && C isa AbstractArray && sz == size(C) && T == eltype(C)
-        CT = similartype(B, T, sz)
-        return C::CT
-    else
-        return similar(A, T, sz)
-    end
+function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
+                                p1::IndexTuple, p2::IndexTuple,
+                                A::Diagonal, B::Diagonal, CA::Symbol, CB::Symbol)
+    sz = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+    similar(A.diag, T, sz)
 end
 
 function contract!(α, A::AbstractArray, CA::Symbol, B::Diagonal, CB::Symbol,

@@ -2,7 +2,7 @@ using Test
 using TensorOperations
 using Random
 using LinearAlgebra
-using CuArrays
+using CUDA
 
 Random.seed!(1234567)
 
@@ -19,7 +19,7 @@ include("tensor.jl")
 TensorOperations.enable_blas()
 TensorOperations.enable_cache()
 
-if CuArrays.functional()
+if CUDA.functional()
     include("cutensor.jl")
 end
 

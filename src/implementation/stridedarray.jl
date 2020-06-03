@@ -1,33 +1,37 @@
 # For `AbstractArray`, we do not differentiate between left and right indices:
 
-"""
-    checked_similar_from_indices(C, T, indleft, indright, A, conjA = :N)
-
-Returns an object similar to `A` which has an `eltype` given by `T` and whose left indices
-correspond to the indices `indleft` from `op(A)`, and its right indices correspond to the
-indices `indright` from `op(A)`, where `op` is `conj` if `conjA == :C` or does nothing if
-`conjA == :N` (default). Here, `C` is a potential candidate for the similar object. If
-`C === nothing`, or its its `eltype` or shape does not match, a new object is allocated and
-returned. Otherwise, `C` is returned.
-"""
-checked_similar_from_indices(C, T::Type, p1::IndexTuple, p2::IndexTuple, A::AbstractArray,
-    CA::Symbol = :N) = checked_similar_from_indices(C, T, (p1..., p2...), A, CA)
+memsize(A::Array) = sizeof(A)
+# hoping that this works for any `AbstractArray` to which it is applied:
+memsize(A::AbstractArray) = memsize(parent(A))
 
 """
-    checked_similar_from_indices(C, T, indoA, indoB, indleft, indright,
-                                    A, B, conjA = :N, conjB= :N)
+    similarstructure_from_indices(T, indleft, indright, A, conjA = :N)
 
-Returns an object similar to `A` which has an `eltype` given by `T` and dimensions/sizes
-corresponding to a selection of those of `opA(A)` and `opB(B)` concatenated. Out of the
-collection of indices in `indoA` of `opA(A)` and `indoB` of `opB(B)`, we construct an
-object whose left (right) indices correspond to indices `indleft` (`indright`) from that
-collection. Furthermore, `C` is a potential candidate for the similar object. If
-`C === nothing`, or its its `eltype` or shape does not match, a new object is allocated and
-returned. Otherwise, `C` is returned.
+Returns the structure of an object similar to `A` (e.g. `size` for `AbstractArray` objects)
+which has an `eltype` given by `T` and whose left indices correspond to the indices
+`indleft` from `op(A)`, and its right indices correspond to the indices `indright` from
+`op(A)`, where `op` is `conj` if `conjA == :C` or does nothing if `conjA == :N` (default).
 """
-checked_similar_from_indices(C, T::Type, poA::IndexTuple, poB::IndexTuple, p1::IndexTuple,
-    p2::IndexTuple, A::AbstractArray, B::AbstractArray, CA::Symbol = :N, CB::Symbol = :N) =
-    checked_similar_from_indices(C, T, poA, poB, (p1..., p2...), A, B, CA, CB)
+similarstructure_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple,
+                                A::AbstractArray, CA::Symbol = :N) =
+    _similarstructure_from_indices(T, (p1..., p2...), A)
+
+"""
+    similarstructure_from_indices(T, indoA, indoB, indleft, indright, A, B, conjA = :N, conjB= :N)
+
+Returns the structure of an object similar to `A` (e.g. `size` for `AbstractArray` objects)
+which has an `eltype` given by `T` and whose structure corresponds to a selection of that
+of `opA(A)` and `opB(B)` combined. Out of the collection of indices in `indoA` of `opA(A)`
+and `indoB` of `opB(B)`, we construct an object whose left (right) indices correspond to
+indices `indleft` (`indright`) from that collection. Here, `opA` (`opB`) is `conj` if
+`conjA == :C` (`conjB == :C`) or does nothing if `conjA == :N` (`conjB == :N`), which is
+the default).
+"""
+similarstructure_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
+                                p1::IndexTuple, p2::IndexTuple,
+                                A::AbstractArray, B::AbstractArray,
+                                CA::Symbol = :N, CB::Symbol = :N) =
+    _similarstructure_from_indices(T, poA, poB, (p1..., p2...), A, B)
 
 """
     scalar(C)
@@ -87,36 +91,17 @@ contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
                 oindA, cindA, oindB, cindB, (indleft..., indright...), syms)
 
 # actual implementations for AbstractArray with ind = (indleft..., indright...)
-Base.@pure function similartype(A, T, sz)
-    Core.Compiler.return_type(similar, Tuple{typeof(A), Type{T}, typeof(sz)})
-end
+_similarstructure_from_indices(T, ind, A::AbstractArray) = map(n->size(A, n), ind)
 
-function checked_similar_from_indices(C, ::Type{T}, ind::IndexTuple{N}, A::AbstractArray,
-        CA::Symbol) where {T,N}
-
-    sz = map(n->size(A, n), ind)
-    CT = similartype(A, T, sz)
-    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
-        return C::CT
-    else
-        return similar(A, T, sz)
-    end
-end
-function checked_similar_from_indices(C, ::Type{T}, poA::IndexTuple, poB::IndexTuple,
-        ind::IndexTuple{N}, A::AbstractArray, B::AbstractArray,
-        CA::Symbol, CB::Symbol) where {T,N}
+function _similarstructure_from_indices(T, poA::IndexTuple, poB::IndexTuple,
+        ind::IndexTuple, A::AbstractArray, B::AbstractArray)
 
     oszA = map(n->size(A,n), poA)
     oszB = map(n->size(B,n), poB)
     sz = let osz = (oszA..., oszB...)
         map(n->osz[n], ind)
     end
-    CT = similartype(A, T, sz)
-    if C !== nothing && C isa CT && sz == size(C) && T == eltype(C)
-        return C::CT
-    else
-        return similar(A, T, sz)
-    end
+    return sz
 end
 
 scalar(C::AbstractArray) = ndims(C)==0 ? C[1] : throw(DimensionMismatch())

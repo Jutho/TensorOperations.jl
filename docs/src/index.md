@@ -31,7 +31,7 @@ Install with the package manager, `pkg> add TensorOperations`.
     vector are supported. This facilitates tensor contractions where one of the operands is
     e.g. a diagonal matrix of singular values or eigenvalues, which are returned as a
     `Vector` by Julia's `eigen` or `svd` method.
-*   Support for `CuArray` objects if used together with CuArrays.jl, by relying
+*   Support for `CuArray` objects if used together with CUDA.jl, by relying
     on (and thus providing a high level interface into) NVidia's
     [cuTENSOR](https://developer.nvidia.com/cutensor) library.
 *   Implementation can easily be extended to other types, by overloading a small set of

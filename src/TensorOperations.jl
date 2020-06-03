@@ -8,6 +8,8 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
 using Requires
 
+# Exports
+#---------
 # export macro API
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
@@ -15,9 +17,9 @@ export @cutensor
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
+export ncon
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
-export ncon
 
 # Convenient type alias
 const IndexTuple{N} = NTuple{N,Int}
@@ -52,40 +54,13 @@ include("implementation/stridedarray.jl")
 include("implementation/diagonal.jl")
 
 # Functions
-#----------
+#-----------
 include("functions/simple.jl")
 include("functions/ncon.jl")
 include("functions/inplace.jl")
 
-function __init__()
-    @require CuArrays="3a865a2d-5b23-5a0f-bc46-62713ec82fae" begin
-        if CuArrays.functional() && CuArrays.has_cutensor()
-            @assert CuArrays.CUTENSOR.version() >= v"1.0.0"
-            const CuArray = CuArrays.CuArray
-            const CublasFloat = CuArrays.CUBLAS.CublasFloat
-            const CublasReal = CuArrays.CUBLAS.CublasReal
-            for s in (:handle, :CuDefaultStream, :CuTensorDescriptor, :cudaDataType,
-                    :cutensorContractionDescriptor_t, :cutensorContractionFind_t,
-                    :cutensorContractionPlan_t,
-                    :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
-                    :CUTENSOR_ALGO_DEFAULT,  :CUTENSOR_WORKSPACE_RECOMMENDED,
-                    :cutensorElementwiseBinary, :cutensorReduction,
-                    :cutensorReductionGetWorkspace, :cutensorComputeType,
-                    :cutensorGetAlignmentRequirement, :cutensorInitContractionDescriptor,
-                    :cutensorInitContractionFind, :cutensorContractionGetWorkspace,
-                    :cutensorInitContractionPlan, :cutensorContraction)
-                eval(:(const $s = CuArrays.CUTENSOR.$s))
-            end
-            include("implementation/cuarray.jl")
-            @nospecialize
-            include("indexnotation/cutensormacros.jl")
-            @specialize
-        end
-    end
-end
-
 # Global package settings
-#------------------------
+#-------------------------
 # A switch for enabling/disabling the use of BLAS for tensor contractions
 const _use_blas = Ref(true)
 use_blas() = _use_blas[]
@@ -97,17 +72,23 @@ function enable_blas()
     _use_blas[] = true
     return
 end
-function default_cache_size()
-    return min(1<<30, Int(Sys.total_memory()>>2))
-end
 
 # A cache for temporaries of tensor contractions
-memsize(a::Array) = sizeof(a)
-memsize(a) = Base.summarysize(a)
-
-const cache = LRU{Tuple{Symbol,Int}, Any}(; by = memsize, maxsize = default_cache_size())
 const _use_cache = Ref(true)
 use_cache() = _use_cache[]
+
+function default_cache_size()
+    return min(1<<32, Int(Sys.total_memory())>>2)
+end
+
+# methods used for the cache: see implementation/tensorcache.jl for more info
+function memsize end
+function similar_from_indices end
+function similarstructure_from_indices end
+
+taskid() = convert(UInt, pointer_from_objref(current_task()))
+
+const cache = LRU{Any, Any}(; by = memsize, maxsize = default_cache_size())
 
 """
     disable_cache()
@@ -156,6 +137,36 @@ end
 Return the current memory size (in bytes) of all the objects in the cache.
 """
 cachesize() = cache.currentsize
+
+# Initialization
+#-----------------
+function __init__()
+    resize!(cache; maxsize = default_cache_size())
+
+    @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" begin
+        if CUDA.functional() && CUDA.has_cutensor()
+            const CuArray = CUDA.CuArray
+            const CublasFloat = CUDA.CUBLAS.CublasFloat
+            const CublasReal = CUDA.CUBLAS.CublasReal
+            for s in (:handle, :CuDefaultStream, :CuTensorDescriptor, :cudaDataType,
+                    :cutensorContractionDescriptor_t, :cutensorContractionFind_t,
+                    :cutensorContractionPlan_t,
+                    :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
+                    :CUTENSOR_ALGO_DEFAULT,  :CUTENSOR_WORKSPACE_RECOMMENDED,
+                    :cutensorPermutation, :cutensorElementwiseBinary, :cutensorReduction,
+                    :cutensorReductionGetWorkspace, :cutensorComputeType,
+                    :cutensorGetAlignmentRequirement, :cutensorInitContractionDescriptor,
+                    :cutensorInitContractionFind, :cutensorContractionGetWorkspace,
+                    :cutensorInitContractionPlan, :cutensorContraction)
+                eval(:(const $s = CUDA.CUTENSOR.$s))
+            end
+            include("implementation/cuarray.jl")
+            @nospecialize
+            include("indexnotation/cutensormacros.jl")
+            @specialize
+        end
+    end
+end
 
 # Some precompile statements
 #----------------------------

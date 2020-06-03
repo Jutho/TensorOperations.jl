@@ -1,31 +1,64 @@
-similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A, CA::Symbol) =
-    checked_similar_from_indices(nothing, T, p1, p2, A, CA)
+# should always be specified for custom array/tensor types
+function similarstructure_from_indices end
 
-function cached_similar_from_indices(sym::Symbol, T::Type, p1::IndexTuple, p2::IndexTuple, A, CA::Symbol)
-    if use_cache()
-        key = (sym, Threads.threadid())
-        C = get(cache, key, nothing)
-        C′ = checked_similar_from_indices(C, T, p1, p2, A, CA)
-        cache[key] = C′
-        return C′
-    else
-        return checked_similar_from_indices(nothing, T, p1, p2, A, CA)
-    end
+# generic definition, net very efficient, provide more efficient version if possible
+memsize(a::Any) = Base.summarysize(a)
+
+# generic definitions, should be overwritten if your array/tensor type does not support
+# Base.similar(object, eltype, structure)
+function similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A, CA::Symbol)
+    structure = similarstructure_from_indices(T, p1, p2, A, CA)
+    similar(A, T, structure)
+end
+function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
+                                p1::IndexTuple, p2::IndexTuple,
+                                A, B, CA::Symbol, CB::Symbol)
+    structure = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+    similar(A, T, structure)
 end
 
-similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple, p1::IndexTuple, p2::IndexTuple,
-    A, B, CA::Symbol, CB::Symbol) = checked_similar_from_indices(nothing, T, poA, poB, p1, p2, A, B, CA, CB)
+# should work generically but can be overwritten
+Base.@pure function similartype_from_indices(T::Type, p1, p2, A, CA)
+    Core.Compiler.return_type(similar_from_indices,
+                                Tuple{Type{T}, typeof(p1), typeof(p2), typeof(A), Symbol})
+end
+Base.@pure function similartype_from_indices(T::Type, poA, poB, p1, p2, A, B, CA, CB)
+    Core.Compiler.return_type(similar_from_indices,
+                                Tuple{Type{T}, typeof(poA), typeof(poB),
+                                        typeof(p1), typeof(p2), typeof(A), typeof(B),
+                                        Symbol, Symbol})
+end
 
-function cached_similar_from_indices(sym::Symbol, T::Type, poA::IndexTuple, poB::IndexTuple,
-    p1::IndexTuple, p2::IndexTuple, A, B, CA::Symbol, CB::Symbol)
+# generic, should probably not be overwritten
+function cached_similar_from_indices(sym::Symbol, T::Type,
+                                        p1::IndexTuple, p2::IndexTuple,
+                                        A, CA::Symbol)
+    if use_cache()
+        structure = similarstructure_from_indices(T, p1, p2, A, CA)
+        typ = similartype_from_indices(T, p1, p2, A, CA)
+        key = (sym, taskid(), typ, structure)
+        C::typ = get!(cache, key) do
+            similar_from_indices(T, p1, p2, A, CA)
+        end
+        return C
+    else
+        return similar_from_indices(T, p1, p2, A, CA)
+    end
+end
+function cached_similar_from_indices(sym::Symbol, T::Type,
+                                        poA::IndexTuple, poB::IndexTuple,
+                                        p1::IndexTuple, p2::IndexTuple,
+                                        A, B, CA::Symbol, CB::Symbol)
 
     if use_cache()
-        key = (sym, Threads.threadid())
-        C = get(cache, key, nothing)
-        C′ = checked_similar_from_indices(C, T, poA, poB, p1, p2, A, B, CA, CB)
-        cache[key] = C′
-        return C′
+        structure = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+        typ = similartype_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+        key = (sym, taskid(), typ, structure)
+        C::typ = get!(cache, key) do
+            similar_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+        end
+        return C
     else
-        return checked_similar_from_indices(nothing, T, poA, poB, p1, p2, A, B, CA, CB)
+        return similar_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
     end
 end
