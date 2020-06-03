@@ -255,7 +255,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         E = dot(A12, HrA12)
         @tensor HrA12′[a, s1, s2, c] := rhoL[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * rhoR[c', c] * H[s1, s2, t1, t2]
         @tensor HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] * rhoR[3, -4] * A1[1, 4, 2] # should be contracted in exactly same order
-        @tensor HrA12′′′[a, s1, s2, c] := H[s1, s2, t1, t2] * rhoL[a, a'] * rhoR[c', c] * A1[a', t1, b] * A2[b, t2, c'] order=(a',b,c',t1,t2)# should be contracted in exactly same order
+        @tensor HrA12′′′[a, s1, s2, c] := rhoL[a, a'] * H[s1, s2, t1, t2] * A2[b, t2, c'] * rhoR[c', c] * A1[a', t1, b] order=(a',b,c',t1,t2)# should be contracted in exactly same order
         @tensoropt HrA12′′′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] * rhoR[3, -4] * A1[1, 4, 2]
 
         @test HrA12′ == HrA12′′ == HrA12′′′ # should be exactly equal
