@@ -104,7 +104,7 @@ function _similarstructure_from_indices(T, poA::IndexTuple, poB::IndexTuple,
     return sz
 end
 
-scalar(C::AbstractArray) = ndims(C)==0 ? C[1] : throw(DimensionMismatch())
+scalar(C::AbstractArray) = ndims(C)==0 ? C[] : throw(DimensionMismatch())
 
 function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
         β, C::AbstractArray{<:Any, N}, indCinA) where {N}
@@ -254,21 +254,18 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
     (ndims(C) == length(indCinoAB) && isperm(indCinoAB)) ||
         throw(IndexError("invalid permutation of length $(ndims(C)): $indCinoAB"))
 
-    sizeA = i->size(A, i)
-    sizeB = i->size(B, i)
-    sizeC = i->size(C, i)
+    sizeA = size(A)
+    sizeB = size(B)
+    sizeC = size(C)
 
-    csizeA = sizeA.(cindA)
-    csizeB = sizeB.(cindB)
-    osizeA = sizeA.(oindA)
-    osizeB = sizeB.(oindB)
+    csizeA = TupleTools.getindices(sizeA, cindA)
+    csizeB = TupleTools.getindices(sizeB, cindB)
+    osizeA = TupleTools.getindices(sizeA, oindA)
+    osizeB = TupleTools.getindices(sizeB, oindB)
 
     csizeA == csizeB ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-    sizeAB = let osize = (osizeA..., osizeB...)
-        i->osize[i]
-    end
-    sizeAB.(indCinoAB) == size(C) ||
+    TupleTools.getindices((osizeA..., osizeB...), indCinoAB) == size(C) ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
 
     if use_blas() && TC <: BlasFloat
@@ -306,7 +303,8 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         if isblascontractable(C, oindAinC, oindBinC, :D)
             C2 = C
             _blas_contract!(α, A2, CA2, B2, CB2, β, C2,
-                                oindA, cindA, oindB, cindB, oindAinC, oindBinC)
+                                oindA, cindA, oindB, cindB, oindAinC, oindBinC,
+                                osizeA, csizeA, osizeB, csizeB)
         else
             if syms === nothing
                 C2 = similar_from_indices(TC, oindAinC, oindBinC, C, :N)
@@ -315,31 +313,38 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
             end
             _blas_contract!(1, A2, CA2, B2, CB2, 0, C2,
                                 oindA, cindA, oindB, cindB,
-                                _trivtuple(oindA), length(oindA) .+ _trivtuple(oindB))
+                                _trivtuple(oindA), length(oindA) .+ _trivtuple(oindB),
+                                osizeA, csizeA, osizeB, csizeB)
+
             add!(α, C2, :N, β, C, indCinoAB, ())
         end
     else
-        _native_contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, indCinoAB)
+        _native_contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, indCinoAB,
+                            osizeA, csizeA, osizeB, csizeB)
     end
     return C
 end
 
-function isblascontractable(A::AbstractArray{T,N}, p1::IndexTuple, p2::IndexTuple,
-        C::Symbol) where {T,N}
+function isblascontractable(A::AbstractArray, p1::IndexTuple, p2::IndexTuple,
+        C::Symbol)
 
-    T <: LinearAlgebra.BlasFloat || return false
+    eltype(A) <: LinearAlgebra.BlasFloat || return false
     @unsafe_strided A isblascontractable(A, p1, p2, C)
 end
 
-function isblascontractable(A::AbstractStridedView{T,N}, p1::IndexTuple, p2::IndexTuple,
-        C::Symbol) where {T,N}
+function isblascontractable(A::AbstractStridedView, p1::IndexTuple, p2::IndexTuple,
+        C::Symbol)
 
-    T <: LinearAlgebra.BlasFloat || return false
-    strideA = i->stride(A, i)
-    sizeA = i->size(A,i)
+    eltype(A) <: LinearAlgebra.BlasFloat || return false
+    sizeA = size(A)
+    stridesA = strides(A)
+    sizeA1 = TupleTools.getindices(sizeA, p1)
+    sizeA2 = TupleTools.getindices(sizeA, p2)
+    stridesA1 = TupleTools.getindices(stridesA, p1)
+    stridesA2 = TupleTools.getindices(stridesA, p2)
 
-    canfuse1, d1, s1 = _canfuse(sizeA.(p1), strideA.(p1))
-    canfuse2, d2, s2 = _canfuse(sizeA.(p2), strideA.(p2))
+    canfuse1, d1, s1 = _canfuse(sizeA1, stridesA1)
+    canfuse2, d2, s2 = _canfuse(sizeA2, stridesA2)
 
     if C == :D # destination
         return A.op == identity && canfuse1 && canfuse2 && s1 == 1
@@ -369,18 +374,9 @@ function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
 end
 _trivtuple(t::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
-function _blas_contract!(α, A::AbstractArray{T}, CA, B::AbstractArray{T}, CB,
-        β, C::AbstractArray{T}, oindA, cindA, oindB, cindB, oindAinC, oindBinC) where
-        {T<:LinearAlgebra.BlasFloat}
-
-    sizeA = i->size(A, i)
-    sizeB = i->size(B, i)
-    sizeC = i->size(C, i)
-
-    csizeA = sizeA.(cindA)
-    csizeB = sizeB.(cindB)
-    osizeA = sizeA.(oindA)
-    osizeB = sizeB.(oindB)
+function _blas_contract!(α, A::AbstractArray, CA, B::AbstractArray, CB,
+        β, C::AbstractArray, oindA, cindA, oindB, cindB, oindAinC, oindBinC,
+        osizeA, csizeA, osizeB, csizeB)
 
     @unsafe_strided A B C begin
         A2 = sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
@@ -403,16 +399,8 @@ function _blas_contract!(α, A::AbstractArray{T}, CA, B::AbstractArray{T}, CB,
 end
 
 function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-        β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB)
-
-    sizeA = i->size(A, i)
-    sizeB = i->size(B, i)
-    sizeC = i->size(C, i)
-
-    csizeA = sizeA.(cindA)
-    csizeB = sizeB.(cindB)
-    osizeA = sizeA.(oindA)
-    osizeB = sizeB.(oindB)
+        β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB,
+        osizeA, csizeA, osizeB, csizeB)
 
     ipC = TupleTools.invperm(indCinoAB)
     if CA == :N

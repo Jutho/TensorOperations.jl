@@ -52,6 +52,7 @@ include("implementation/indices.jl")
 include("implementation/tensorcache.jl")
 include("implementation/stridedarray.jl")
 include("implementation/diagonal.jl")
+include("implementation/sparsearray.jl")
 
 # Functions
 #-----------
@@ -172,6 +173,9 @@ end
 #----------------------------
 function _precompile_()
     AVector = Vector{Any}
+    for N = 1:8
+        @assert precompile(Tuple{typeof(isperm), NTuple{N,Int}})
+    end
     @assert precompile(Tuple{typeof(_intersect), Base.BitArray{1}, Base.BitArray{1}})
     @assert precompile(Tuple{typeof(_intersect), Base.BitSet, Base.BitSet})
     @assert precompile(Tuple{typeof(_intersect), UInt128, UInt128})
@@ -265,7 +269,11 @@ function _precompile_()
     @assert precompile(Tuple{typeof(storeset), Type{UInt64}, Array{Int64, 1}, Int64})
     @assert precompile(Tuple{typeof(storeset), Type{UInt64}, Base.Set{Int64}, Int64})
     @assert precompile(Tuple{typeof(tensorify), Expr})
+    @assert precompile(Tuple{typeof(extracttensorobjects), Any})
+    @assert precompile(Tuple{typeof(_flatten), Expr})
+    # @assert precompile(Tuple{typeof(processcontractions), Any, Any, Any})
     @assert precompile(Tuple{typeof(defaultparser), Expr})
+    @assert precompile(Tuple{typeof(defaultparser), Any})
     @assert precompile(Tuple{typeof(unique2), AVector})
     @assert precompile(Tuple{typeof(unique2), Array{Int64, 1}})
     @assert precompile(Tuple{typeof(use_blas)})
