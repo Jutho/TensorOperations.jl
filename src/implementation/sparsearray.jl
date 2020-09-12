@@ -14,6 +14,7 @@ struct SparseArray{T,N} <: AbstractArray{T,N}
     end
 end
 
+memsize(A::SparseArray) = memsize(A.data)
 @inline function Base.getindex(A::SparseArray{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, I...)
     return get(A.data, I, zero(T))
@@ -28,25 +29,44 @@ end
     return v
 end
 
+Array(a::SparseArray{T,N}) where {T,N} = Array{T,N}(a)
+function Array{T,N}(a::SparseArray) where {T,N}
+    d = fill(zero(T), size(a))
+    for (k,v) in a.data
+        d[k...] = v
+    end
+    d
+end
+
+SparseArray(a::AbstractArray{T,N}) where {T,N} = SparseArray{T,N}(a)
+function SparseArray{T,N}(a::AbstractArray) where {T,N}
+    d = SparseArray{T}(undef, size(a))
+    for I in CartesianIndices(a)
+        a[I] == zero(T) && continue
+        d[I] = a[I]
+    end
+    return d
+end
+
 Base.copy(A::SparseArray) = SparseArray(A)
 
 Base.size(A::SparseArray) = A.dims
 
 Base.similar(A::SparseArray, ::Type{S}, dims::Dims{N}) where {S,N} =
-    SparseArray{N,S}(Dict{NTuple{N,Int64},S}(), dims)
+    SparseArray{S,N}(undef, dims)
 
 # TODO: Basic arithmitic
 
 # Vector space functions
 #------------------------
 function LinearAlgebra.lmul!(a::Number, d::SparseArray)
-    lmul!(a, d.vals)
+    lmul!(a, d.data.vals)
     # typical occupation in a dict is about 30% from experimental testing
     # the benefits of scaling all values (e.g. SIMD) largely outweight the extra work
     return d
 end
 function LinearAlgebra.rmul!(d::SparseArray, a::Number)
-    rmul!(d.vals, a)
+    rmul!(d.data.vals, a)
     return d
 end
 function LinearAlgebra.axpby!(α, x::SparseArray, β, y::SparseArray)
@@ -172,11 +192,11 @@ function contract!(α, A::SparseArray, CA::Symbol, B::SparseArray, CB::Symbol,
 
             kBo = TupleTools.getindices(kB, oindB)
 
-            kABo = (kAo..., kB...)
+            kABo = (kAo..., kBo...)
 
             kC = TupleTools.getindices(kABo, indCinoAB)
 
-            C[kC...] += α * (conjA == :C ? conj(vA) : vA) * (conjB == :C ? conj(vB) : vB)
+            C[kC...] += α * (CA == :C ? conj(vA) : vA) * (CB == :C ? conj(vB) : vB)
         end
     end
     C
