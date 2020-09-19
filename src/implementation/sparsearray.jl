@@ -13,12 +13,54 @@ struct SparseArray{T,N} <: AbstractArray{T,N}
         new{T,N}(copy(A.data), A.dims)
     end
 end
+SparseArray{T}(::UndefInitializer, dims...) where {T} = SparseArray{T}(undef, dims)
+
+nonzeros(A::SparseArray{<:Any,1}) = (first(k)=>v for (k,v) in A.data)
+nonzeros(A::SparseArray) = (CartesianIndex(k)=>v for (k,v) in A.data)
+
+function SparseArray(A::Adjoint{T,<:SparseArray{T,2}}) where T
+    B = SparseArray{T}(undef, size(A))
+    for (I, v) in nonzeros(parent(A))
+        B[I[2], I[1]] = v
+    end
+    return B
+end
 
 memsize(A::SparseArray) = memsize(A.data)
 @inline function Base.getindex(A::SparseArray{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, I...)
     return get(A.data, I, zero(T))
 end
+
+_newindex(i::Int, range::Int) = i == range ? () : nothing
+function _newindex(i::Int, range::AbstractVector{Int})
+    k = findfirst(==(i), range)
+    k === nothing ? nothing : (k,)
+end
+_newindices(I::Tuple{}, indices::Tuple{}) = ()
+function _newindices(I::Tuple, indices::Tuple)
+    i = _newindex(I[1], indices[1])
+    Itail = _newindices(Base.tail(I), Base.tail(indices))
+    (i === nothing || Itail === nothing) && return nothing
+    return (i..., Itail...)
+end
+
+_findfirstvalue(v, r) = findfirst(==(v), r)
+# slicing should produce SparseArray
+function Base._unsafe_getindex(::IndexCartesian, A::SparseArray{T,N},
+                                I::Vararg{<:Union{Int,AbstractVector{Int}},N}) where {T,N}
+    @boundscheck checkbounds(A, I...)
+    indices = Base.to_indices(A, I)
+    B = SparseArray{T}(undef, length.(Base.index_shape(indices...)))
+    for (k, v) in A.data
+        newI = _newindices(k, indices)
+        if newI !== nothing
+            B[newI...] = v
+        end
+    end
+    return B
+end
+
 @inline function Base.setindex!(A::SparseArray{T,N}, v, I::Vararg{Int,N}) where {T,N}
     @boundscheck checkbounds(A, I...)
     if v != zero(v)
@@ -59,32 +101,32 @@ Base.similar(A::SparseArray, ::Type{S}, dims::Dims{N}) where {S,N} =
 
 # Vector space functions
 #------------------------
-function LinearAlgebra.lmul!(a::Number, d::SparseArray)
-    lmul!(a, d.data.vals)
+function LinearAlgebra.lmul!(a::Number, x::SparseArray)
+    lmul!(a, x.data.vals)
     # typical occupation in a dict is about 30% from experimental testing
     # the benefits of scaling all values (e.g. SIMD) largely outweight the extra work
-    return d
+    return x
 end
-function LinearAlgebra.rmul!(d::SparseArray, a::Number)
-    rmul!(d.data.vals, a)
-    return d
+function LinearAlgebra.rmul!(x::SparseArray, a::Number)
+    rmul!(x.data.vals, a)
+    return x
 end
 function LinearAlgebra.axpby!(α, x::SparseArray, β, y::SparseArray)
     lmul!(y, β)
-    for (k, v) in x
+    for (k, v) in nonzeros(x)
         y[k] += α*v
     end
     return y
 end
 function LinearAlgebra.axpy!(α, x::SparseArray, y::SparseArray)
-    for (k, v) in x
+    for (k, v) in nonzeros(x)
         y[k] += α*v
     end
     return y
 end
 
 function LinearAlgebra.norm(x::SparseArray, p::Real = 2)
-    norm(Base.Generator(last, A.data), p)
+    norm(Base.Generator(last, x.data), p)
 end
 
 function LinearAlgebra.dot(x::SparseArray, y::SparseArray)
