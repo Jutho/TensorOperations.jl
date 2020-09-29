@@ -35,6 +35,7 @@ end
 include("indexnotation/verifiers.jl")
 include("indexnotation/analyzers.jl")
 include("indexnotation/preprocessors.jl")
+include("indexnotation/planarordering.jl")
 include("indexnotation/ncon.jl")
 include("indexnotation/instantiators.jl")
 include("indexnotation/postprocessors.jl")

@@ -134,6 +134,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
         throw(ArgumentError("unable to instantiate linear combination: $ex"))
     end
 end
+
 function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     @assert ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
         istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
@@ -146,6 +147,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     indC = vcat(leftind, rightind)
     oindA = intersect(indA, indC) # in the order they appear in A
     oindB = intersect(indB, indC) # in the order they appear in B
+    oindA = planarsort(exA, oindA, cind)[1]
+    cind, oindB = planarsort(exB, cind, oindB)
+    oindB = reverse(oindB)
 
     symA = gensym()
     symB = gensym()
