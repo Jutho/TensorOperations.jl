@@ -85,7 +85,7 @@ end
 
 function resolve_traces(tensors,network)
     transformed = map(zip(tensors,network)) do (A,IA)
-        IC = unique2(IA[:]);
+        IC = unique2(IA);
         if length(IC) == length(IA)
             (A,IA)
         else
