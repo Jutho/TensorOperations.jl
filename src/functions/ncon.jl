@@ -52,7 +52,6 @@ function ncon(tensors, network,
                 throw(ArgumentError("invalid NCON network: $network -> $output"))
         end
     end
-    (tensors,network) = resolve_traces(tensors,network);
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
     if sym !== nothing

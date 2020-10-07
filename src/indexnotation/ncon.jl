@@ -81,17 +81,3 @@ function nconindexcompletion(ex)
         return ex
     end
 end
-
-
-function resolve_traces(tensors,network)
-    transformed = map(zip(tensors,network)) do (A,IA)
-        IC = unique2(IA);
-        if length(IC) == length(IA)
-            (A,IA)
-        else
-            (tensortrace(A,IA,IC),IC)
-        end
-    end
-
-    (map(x->x[1],transformed),map(x->x[2],transformed))
-end
