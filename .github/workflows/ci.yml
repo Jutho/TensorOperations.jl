@@ -12,7 +12,7 @@ jobs:
       matrix:
         version:
           - '1.4'
-          - '^1.5.0-beta1'
+          - '1.5'
           - 'nightly'
         os:
           - ubuntu-latest
