@@ -34,7 +34,7 @@ Returns an array containing only those elements that appear exactly once in itr,
 and without any elements that appear more than once.
 """
 function unique2(itr)
-    out = collect(itr)
+    out = reshape(collect(itr),length(itr))
     i = 1
     while i < length(out)
         inext = _findnext(isequal(out[i]), out, i+1)
