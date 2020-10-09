@@ -52,7 +52,6 @@ include("implementation/indices.jl")
 include("implementation/tensorcache.jl")
 include("implementation/stridedarray.jl")
 include("implementation/diagonal.jl")
-include("implementation/sparsearray.jl")
 
 # Functions
 #-----------
