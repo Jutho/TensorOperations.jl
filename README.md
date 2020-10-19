@@ -21,8 +21,8 @@ Fast tensor operations using a convenient Einstein index notation.
 ## What's new in v3
 
 *   Switched to CUDA.jl instead of CuArrays.jl, which effectively restricts support to
-    Julia 1.5 and higher.
-*   The default cache size for intermeidate results is now the minimum of either 4GB or one
+    Julia 1.4 and higher.
+*   The default cache size for intermediate results is now the minimum of either 4GB or one
     quarter of your total memory (obtained via `Sys.total_memory()`). Furthermore, the
     structure (i.e. `size`) and `eltype` of the temporaries is now also used as lookup key
     in the LRU cache, such that you can run the same code on different objects with
