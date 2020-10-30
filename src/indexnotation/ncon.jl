@@ -82,7 +82,6 @@ function nconindexcompletion(ex)
     end
 end
 
-
 function resolve_traces(tensors,network)
     transformed = map(zip(tensors,network)) do (A,IA)
         IC = unique2(IA);
@@ -93,5 +92,5 @@ function resolve_traces(tensors,network)
         end
     end
 
-    first.(transformed),last.(transformed)
+    first.(transformed), last.(transformed)
 end
