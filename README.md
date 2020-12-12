@@ -4,7 +4,7 @@ Fast tensor operations using a convenient Einstein index notation.
 
 | **Documentation**                                                               | **Build Status**                                                                                | **Digital Object Identifier**  |
 |:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][github-img]][github-url] [![][codecov-img]][codecov-url] | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg)](https://doi.org/10.5281/zenodo.3245497) |
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![CI (Julia nightly)][ci-julia-nightly-img]][ci-julia-nightly-url] [![][codecov-img]][codecov-url] | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg)](https://doi.org/10.5281/zenodo.3245497) |
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
@@ -14,6 +14,12 @@ Fast tensor operations using a convenient Einstein index notation.
 
 [github-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
 [github-url]: https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3ACI
+
+[ci-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3ACI
+
+[ci-julia-nightly-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI%20(Julia%20nightly)/badge.svg
+[ci-julia-nightly-url]: https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3A%22CI+%28Julia+nightly%29%22
 
 [codecov-img]: https://codecov.io/gh/Jutho/TensorOperations.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/Jutho/TensorOperations.jl
