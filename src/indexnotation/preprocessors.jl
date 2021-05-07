@@ -1,5 +1,5 @@
 # replace all indices by a function of that index
-function replaceindices(f, ex::Expr)
+function replaceindices((@nospecialize f), ex::Expr)
     if istensor(ex)
         if ex.head == :ref || ex.head == :typed_hcat
             if length(ex.args) == 1
@@ -28,7 +28,7 @@ function replaceindices(f, ex::Expr)
         return Expr(ex.head, (replaceindices(f, e) for e in ex.args)...)
     end
 end
-replaceindices(f, ex) = ex
+replaceindices((@nospecialize f), ex) = ex
 
 function normalizeindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
@@ -39,6 +39,8 @@ function normalizeindex(ex)
         error("not a valid index: $ex")
     end
 end
+
+normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
 # replace all tensor objects by a function of that object
 function replacetensorobjects(f, ex::Expr)
@@ -97,7 +99,7 @@ explicitscalar(ex) = ex
 
 # extracttensorobjects: replace all tensor objects with newly generated symbols, and assign
 # them before the expression and after the expression as necessary
-function extracttensorobjects(ex)
+function extracttensorobjects(ex::Expr)
     inputtensors = getinputtensorobjects(ex)
     outputtensors = getoutputtensorobjects(ex)
     newtensors = getnewtensorobjects(ex)

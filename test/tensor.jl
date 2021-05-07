@@ -217,13 +217,13 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 
     # Simple function example
     @tensor function f(A, b)
-        w[x] := A[x,y]*b[y]
+        w[x] := (1//2)*A[x,y]*b[y]
         return w
     end
     for T in (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
         A = rand(T, 10, 10)
         b = rand(T, 10)
-        @test f(A,b) ≈ A*b
+        @test f(A,b) ≈ (1//2)*A*b
     end
 
     # Example from README.md
@@ -241,14 +241,14 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     t0 = time()
 
     # Some tensor network examples
-    @testset for T in (Float32, Float64, ComplexF32, ComplexF64)
+    @testset for T in (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
         D1, D2, D3 = 30, 40, 20
         d1, d2 = 2, 3
-        A1 = randn(T, D1, d1, D2)
-        A2 = randn(T, D2, d2, D3)
-        rhoL = randn(T, D1, D1)
-        rhoR = randn(T, D3, D3)
-        H = randn(T, d1, d2, d1, d2)
+        A1 = rand(T, D1, d1, D2) .- 1//2
+        A2 = rand(T, D2, d2, D3) .- 1//2
+        rhoL = rand(T, D1, D1) .- 1//2
+        rhoR = rand(T, D3, D3) .- 1//2
+        H = rand(T, d1, d2, d1, d2) .- 1//2
         A12 = reshape(reshape(A1, D1 * d1, D2) * reshape(A2, D2, d2 * D3), (D1, d1, d2, D3))
         rA12 = reshape(reshape(rhoL * reshape(A12, (D1, d1*d2*D3)), (D1*d1*d2, D3)) * rhoR, (D1, d1, d2, D3))
         HrA12 = permutedims(reshape(reshape(H, (d1 * d2, d1*d2)) * reshape(permutedims(rA12, (2,3,1,4)), (d1 * d2, D1 * D3)), (d1, d2, D1, D3)), (3,1,2,4))
@@ -304,11 +304,11 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         op2 = randn(2, 2)
         op3 = randn(2, 2)
 
-        f(op,op3) = @ncon((op, op3), ([-1 3], [3 -3]))
+        f83(op,op3) = @ncon((op, op3), ([-1 3], [3 -3]))
 
-        b = f(op1,op3)
+        b = f83(op1,op3)
         bcopy = deepcopy(b)
-        c = f(op2,op3)
+        c = f83(op2,op3)
         @test b == bcopy
         @test b != c
     end

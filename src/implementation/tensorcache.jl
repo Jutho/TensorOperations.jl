@@ -6,15 +6,23 @@ memsize(a::Any) = Base.summarysize(a)
 
 # generic definitions, should be overwritten if your array/tensor type does not support
 # Base.similar(object, eltype, structure)
+function similar_from_structure(A, T, structure)
+    if isbits(T)
+        similar(A, T, structure)
+    else
+        fill!(similar(A, T, structure), zero(T)) # this fixes BigFloat issues
+    end
+end
+
 function similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A, CA::Symbol)
     structure = similarstructure_from_indices(T, p1, p2, A, CA)
-    similar(A, T, structure)
+    similar_from_structure(A, T, structure)
 end
 function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
                                 p1::IndexTuple, p2::IndexTuple,
                                 A, B, CA::Symbol, CB::Symbol)
     structure = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
-    similar(A, T, structure)
+    similar_from_structure(A, T, structure)
 end
 
 # should work generically but can be overwritten

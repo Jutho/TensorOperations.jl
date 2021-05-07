@@ -5,7 +5,7 @@ mutable struct TensorParser
 
     postprocessors::Vector{Any}
     function TensorParser()
-        preprocessors = [ex->replaceindices(normalizeindex, ex),
+        preprocessors = [normalizeindices,
                             expandconj,
                             nconindexcompletion,
                             extracttensorobjects]
@@ -19,19 +19,19 @@ mutable struct TensorParser
     end
 end
 
-function (parser::TensorParser)(ex)
+function (parser::TensorParser)(ex::Expr)
     if ex isa Expr && ex.head == :function
         return Expr(:function, ex.args[1], parser(ex.args[2]))
     end
     for p in parser.preprocessors
-        ex = p(ex)
+        ex = p(ex)::Expr
     end
     treebuilder = parser.contractiontreebuilder
     treesorter = parser.contractiontreesorter
-    ex = processcontractions(ex, treebuilder, treesorter)
-    ex = tensorify(ex)
+    ex = processcontractions(ex, treebuilder, treesorter)::Expr
+    ex = tensorify(ex)::Expr
     for p in parser.postprocessors
-        ex = p(ex)
+        ex = p(ex)::Expr
     end
     return ex
 end
