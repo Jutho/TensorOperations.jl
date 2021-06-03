@@ -3,6 +3,8 @@ using CUDA: @workspace, @argout
 
 memsize(a::CuArray) = sizeof(a)
 
+scalar(C::CuArray) = ndims(C)==0 ? collect(C)[] : throw(DimensionMismatch())
+
 function add!(α, A::CuArray{<:Any, N}, CA::Symbol,
                 β, C::CuArray{<:Any, N}, indCinA) where {N}
 
@@ -199,7 +201,7 @@ function contract!(α, A::CuArray, CA::Symbol,
     cutensorGetAlignmentRequirement(handle(), B, descB, alignmentRequirementB)
     alignmentRequirementC = Ref{UInt32}(C_NULL)
     cutensorGetAlignmentRequirement(handle(), C, descC, alignmentRequirementC)
-    desc = Ref(cutensorContractionDescriptor_t(ntuple(i->0, Val(256))))
+    desc = Ref{cutensorContractionDescriptor_t}()
     cutensorInitContractionDescriptor(handle(),
                                       desc,
                    descA, modeA, alignmentRequirementA[],
@@ -208,17 +210,17 @@ function contract!(α, A::CuArray, CA::Symbol,
                    descC, modeC, alignmentRequirementC[],
                    typeCompute)
 
-    find = Ref(cutensorContractionFind_t(ntuple(i->0, Val(64))))
+    find = Ref{cutensorContractionFind_t}()
     cutensorInitContractionFind(handle(), find, algo)
 
     @workspace fallback=1<<27 size=@argout(
             cutensorContractionGetWorkspace(handle(), desc, find, pref,
                                             out(Ref{UInt64}(C_NULL)))
         )[] workspace->begin
-            plan = Ref(cutensorContractionPlan_t(ntuple(i->0, Val(640))))
-            cutensorInitContractionPlan(handle(), plan, desc, find, sizeof(workspace))
+            plan_ref = Ref{cutensorContractionPlan_t}()
+            cutensorInitContractionPlan(handle(), plan_ref, desc, find, sizeof(workspace))
 
-            cutensorContraction(handle(), plan, T[α], A, B, T[β], C, C,
+            cutensorContraction(handle(), plan_ref, T[α], A, B, T[β], C, C,
                                 workspace, sizeof(workspace), stream)
         end
 
