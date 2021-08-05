@@ -26,11 +26,11 @@ function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
 end
 
 # should work generically but can be overwritten
-Base.@pure function similartype_from_indices(T::Type, p1, p2, A, CA)
+function similartype_from_indices(T::Type, p1, p2, A, CA)
     Core.Compiler.return_type(similar_from_indices,
                                 Tuple{Type{T}, typeof(p1), typeof(p2), typeof(A), Symbol})
 end
-Base.@pure function similartype_from_indices(T::Type, poA, poB, p1, p2, A, B, CA, CB)
+function similartype_from_indices(T::Type, poA, poB, p1, p2, A, B, CA, CB)
     Core.Compiler.return_type(similar_from_indices,
                                 Tuple{Type{T}, typeof(poA), typeof(poB),
                                         typeof(p1), typeof(p2), typeof(A), typeof(B),
