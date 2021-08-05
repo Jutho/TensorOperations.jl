@@ -42,7 +42,7 @@ function decomposegeneraltensor(ex)
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation: flip conjugation flag and conjugate scalar factor
         (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
         return (object, leftind, rightind, Expr(:call, :conj, α), !conj)
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: multiply scalar factors
         if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
             (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
             return (object, leftind, rightind, Expr(:call, :*, ex.args[2], α), conj)
@@ -98,7 +98,9 @@ end
 # get all the existing tensor objects which are inputs (i.e. appear in the rhs of assignments and definitions)
 function getinputtensorobjects(ex)
     list = Any[]
-    if isdefinition(ex)
+    if istensorexpr(ex)
+        append!(list, gettensorobjects(ex))
+    elseif isdefinition(ex)
         append!(list, gettensorobjects(getrhs(ex)))
     elseif isassignment(ex)
         if ex.head == :(+=) || ex.head == :(-=)

@@ -20,7 +20,7 @@ mutable struct TensorParser
 end
 
 function (parser::TensorParser)(ex::Expr)
-    if ex isa Expr && ex.head == :function
+    if ex.head == :function
         return Expr(:function, ex.args[1], parser(ex.args[2]))
     end
     for p in parser.preprocessors

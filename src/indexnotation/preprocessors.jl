@@ -44,7 +44,9 @@ normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
 # replace all tensor objects by a function of that object
 function replacetensorobjects(f, ex::Expr)
-    # first try to replace ex completely
+    # first try to replace ex completely:
+    # this needed if `ex` is a tensor object that appears outside an actual tensor expression
+    # in a 'regular' block of code
     ex2 = f(ex, nothing, nothing)
     ex2 !== ex && return ex2
     if istensor(ex)
@@ -54,7 +56,7 @@ function replacetensorobjects(f, ex::Expr)
         return Expr(ex.head, (replacetensorobjects(f, e) for e in ex.args)...)
     end
 end
-replacetensorobjects(f, ex) = f(ex, nothing, nothing)
+replacetensorobjects(f, ex) = f(ex, nothing, nothing) # same reason as lines 48-52.
 
 # expandconj: conjugate individual terms or factors instead of a whole expression
 function expandconj(ex::Expr)
