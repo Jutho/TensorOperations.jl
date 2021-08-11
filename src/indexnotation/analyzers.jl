@@ -80,20 +80,22 @@ function getrhs(ex::Expr)
     end
 end
 
-# get all the tensor objects in a tensor expression (not a definition or assignment)
-function gettensorobjects(ex)
+# get all the tensors and tensor objects in a tensor expression (not a definition or assignment)
+function gettensors(ex)
     if istensor(ex)
-        Any[gettensorobject(ex)]
+        Any[ex]
     elseif istensorexpr(ex)
         list = Any[]
         for e in ex.args
-            append!(list, gettensorobjects(e))
+            append!(list, gettensors(e))
         end
         return list
     else
         return Any[]
     end
 end
+
+gettensorobjects(ex) = gettensorobject.(gettensors(ex))
 
 # get all the existing tensor objects which are inputs (i.e. appear in the rhs of assignments and definitions)
 function getinputtensorobjects(ex)
