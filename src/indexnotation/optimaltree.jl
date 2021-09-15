@@ -3,13 +3,13 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
     allindices = unique(vcat(network...))
     numindices = length(allindices)
     costtype = valtype(optdata)
-    allcosts = [get(optdata, i, one(costtype)) for i in allindices]
-    maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)), maximum(allcosts)), zero(costtype)) # add zero for type stability: Power -> Poly
+    allcosts = costtype[get(optdata, i, one(costtype)) for i in allindices]
+    maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)), maximum(allcosts,init=zero(costtype))), zero(costtype)) # add zero for type stability: Power -> Poly
     tensorcosts = Vector{costtype}(undef, numtensors)
     for k = 1:numtensors
         tensorcosts[k] = mapreduce(i->get(optdata, i, one(costtype)), mulcost, network[k], init=one(costtype))
     end
-    initialcost = min(maxcost, addcost(mulcost(maximum(tensorcosts),minimum(tensorcosts)),zero(costtype))) # just some arbitrary guess
+    initialcost = min(maxcost, addcost(mulcost(maximum(tensorcosts,init=zero(costtype)),minimum(tensorcosts,init=typemax(costtype))),zero(costtype))) # just some arbitrary guess
 
     if numindices <= 32
         return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost; verbose = verbose)
@@ -94,7 +94,7 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
     tableindex = zeros(Int, (numindices,2))
 
     adjacencymatrix = falses(numtensors,numtensors)
-    costfac = maximum(allcosts)
+    costfac = maximum(allcosts,init=zero(initialcost))
 
     @inbounds for n = 1:numtensors
         indn = findall(in(network[n]), allindices)
