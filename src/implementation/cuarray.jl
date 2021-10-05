@@ -1,5 +1,17 @@
-# Default implmenentation for CuArrays
-using CUDA: @workspace, @argout
+# Default implementation for CuArrays
+
+if isdefined(CUDA,:with_workspace)
+    # for CUDA 3.3 and later
+    using CUDA: with_workspace
+else
+    # for CUDA 3.2 and earlier
+    # this is a minimum wrapper for @workspace that supports the interface of
+    # with_workspace used below. It is "hidden" behind @eval so the fact that
+    # @workspace is not defined on CUDA 3.3+ does not throw an error
+    @eval @inline function with_workspace(f, size, fallback)
+        CUDA.@workspace size=size() fallback=fallback workspace -> f(workspace)
+    end
+end
 
 memsize(a::CuArray) = sizeof(a)
 
@@ -99,14 +111,17 @@ function trace!(α, A::CuArray, CA::Symbol, β, C::CuArray,
     modeA = collect(Cint, 1:NA)
     modeC = collect(Cint, 1:NC)
     stream = CuDefaultStream()
-    @workspace fallback=1<<13 size=@argout(
-            cutensorReductionGetWorkspace(handle(),
-                A, descA, modeA,
-                C, descC, modeC,
-                C, descC, modeC,
-                opReduce, typeCompute,
-                out(Ref{UInt64}(C_NULL)))
-        )[] workspace->begin
+    function workspacesize()
+        out = Ref{UInt64}(C_NULL)
+        cutensorReductionGetWorkspace(handle(),
+                    A, descA, modeA,
+                    C, descC, modeC,
+                    C, descC, modeC,
+                    opReduce, typeCompute,
+                    out)
+        out[]
+    end
+    with_workspace(workspacesize, 1<<13) do workspace
             cutensorReduction(handle(),
                 T[α], A, descA, modeA,
                 T[β], C, descC, modeC,
@@ -213,10 +228,12 @@ function contract!(α, A::CuArray, CA::Symbol,
     find = Ref{cutensorContractionFind_t}()
     cutensorInitContractionFind(handle(), find, algo)
 
-    @workspace fallback=1<<27 size=@argout(
-            cutensorContractionGetWorkspace(handle(), desc, find, pref,
-                                            out(Ref{UInt64}(C_NULL)))
-        )[] workspace->begin
+    function workspacesize()
+        out = Ref{UInt64}(C_NULL)
+        cutensorContractionGetWorkspace(handle(), desc, find, pref, out)
+        out[]
+    end
+    with_workspace(workspacesize,1<<27) do workspace
             plan_ref = Ref{cutensorContractionPlan_t}()
             cutensorInitContractionPlan(handle(), plan_ref, desc, find, sizeof(workspace))
 
