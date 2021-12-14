@@ -7,7 +7,7 @@ memsize(a::Any) = Base.summarysize(a)
 # generic definitions, should be overwritten if your array/tensor type does not support
 # Base.similar(object, eltype, structure)
 function similar_from_structure(A, T, structure)
-    if isbits(T)
+    if isbitstype(T)
         similar(A, T, structure)
     else
         fill!(similar(A, T, structure), zero(T)) # this fixes BigFloat issues
