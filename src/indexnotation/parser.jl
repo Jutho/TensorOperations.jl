@@ -103,11 +103,11 @@ function tensorify(ex::Expr)
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return instantiate(dst, false, rhs, true, leftind, rightind)
+                    return Expr(:(=), dst,instantiate(dst, false, rhs, true, leftind, rightind))
                 elseif ex.head == :(+=)
-                    return instantiate(dst, true, rhs, 1, leftind, rightind)
+                    return Expr(:(=), dst,instantiate(dst, true, rhs, 1, leftind, rightind))
                 else
-                    return instantiate(dst, true, rhs, -1, leftind, rightind)
+                    return Expr(:(=), dst,instantiate(dst, true, rhs, -1, leftind, rightind))
                 end
             else
                 return Expr(:(=), dst, instantiate(nothing, false, rhs, true, leftind, rightind, false))
