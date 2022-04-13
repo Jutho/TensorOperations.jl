@@ -33,7 +33,7 @@ function add!(α, A::CuArray{<:Any, N}, CA::Symbol,
     typeCompute = convert(cudaDataType, T)
     modeA = collect(Cint, 1:N)
     modeC = collect(Cint, indCinA)
-    stream = CuDefaultStream()
+    stream = default_stream()
     if β == zero(β)
         cutensorPermutation(handle(), T[α], A, descA, modeA, C, descC, modeC,
                             typeCompute, stream)
@@ -71,7 +71,7 @@ end
 #     typeCompute = cudaDataType(T)
 #     modeA = collect(Cint, 1:N)
 #     modeC = collect(Cint, indCinA)
-#     stream = CuDefaultStream()
+#     stream = default_stream()
 #     cutensorElementwiseBinary(handle(), T[real(α)], A, descA, modeA, T[1], Cr, descCr,
 #                               modeC, Cr, descCr, modeC, opAC, typeCompute, stream)
 #     if imag(α) != 0
@@ -110,7 +110,7 @@ function trace!(α, A::CuArray, CA::Symbol, β, C::CuArray,
     typeCompute = cutensorComputeType(T)
     modeA = collect(Cint, 1:NA)
     modeC = collect(Cint, 1:NC)
-    stream = CuDefaultStream()
+    stream = default_stream()
     function workspacesize()
         out = Ref{UInt64}(C_NULL)
         cutensorReductionGetWorkspace(handle(),
@@ -207,7 +207,7 @@ function contract!(α, A::CuArray, CA::Symbol,
     modeC = collect(Cint, indCinoAB)
 
     algo = CUTENSOR_ALGO_DEFAULT
-    stream = CuDefaultStream()
+    stream = default_stream()
     pref = CUTENSOR_WORKSPACE_RECOMMENDED
 
     alignmentRequirementA = Ref{UInt32}(C_NULL)
