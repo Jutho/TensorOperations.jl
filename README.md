@@ -5,7 +5,7 @@
 Fast tensor operations using a convenient Einstein index notation.
 
 | **Documentation** | **Build Status** | **Digital Object Identifier** | **Downloads** |
-|:-----------------:|:----------------:|:-----------------------------:|:--------------|
+|:-----------------:|:----------------:|:-----------------------------:|:-------------:|
 | [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![CI (Julia nightly)][ci-julia-nightly-img]][ci-julia-nightly-url] [![][codecov-img]][codecov-url] | [![DOI][doi-img]][doi-url] | [![TensorOperations Downloads][genie-img]][genie-url]
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
