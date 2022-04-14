@@ -1,10 +1,14 @@
+<img src="https://github.com/Jutho/TensorOperations.jl/blob/master/docs/src/assets/logo.svg" width="300">
+
+---
+
 # TensorOperations.jl
 
 Fast tensor operations using a convenient Einstein index notation.
 
 | **Documentation**                                                               | **Build Status**                                                                                | **Digital Object Identifier**  |
 |:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![CI (Julia nightly)][ci-julia-nightly-img]][ci-julia-nightly-url] [![][codecov-img]][codecov-url] | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg)](https://doi.org/10.5281/zenodo.3245497) |
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![CI (Julia nightly)][ci-julia-nightly-img]][ci-julia-nightly-url] [![][codecov-img]][codecov-url] | [![DOI][doi-img]][doi-url] | [![TensorOperations Downloads][genie-img]][genie-url]
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
@@ -23,6 +27,12 @@ Fast tensor operations using a convenient Einstein index notation.
 
 [codecov-img]: https://codecov.io/gh/Jutho/TensorOperations.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/Jutho/TensorOperations.jl
+
+[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg
+[doi-url]: https://doi.org/10.5281/zenodo.3245497
+
+[genie-img]: https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
+[genie-url]: https://pkgs.genieframework.com?packages=TensorOperations
 
 ## What's new in v3
 
