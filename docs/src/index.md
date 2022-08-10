@@ -57,8 +57,8 @@ every more complicated tensor expression is deconstructed.
     normal array addition and index permutation. It includes as a special case copying one
     array into another with permuted indices.
 
-    The actual implementation is provided by [Strided.jl](https://github.com/Jutho/
-    Strided.jl), which contains multithreaded implementations and cache-friendly blocking
+    The actual implementation is provided by [Strided.jl](https://github.com/Jutho/Strided.jl),
+    which contains multithreaded implementations and cache-friendly blocking
     strategies for an optimal efficiency.
 
 2.  **trace or inner contraction:** Perform a trace/contraction over pairs of indices of an
