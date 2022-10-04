@@ -133,9 +133,9 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
         throw(ArgumentError("unable to instantiate linear combination: $ex"))
     end
 end
-function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary=false)
     @assert ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
-        istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
+            istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
     exA = ex.args[2]
     exB = ex.args[3]
 
@@ -149,6 +149,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     symA = gensym()
     symB = gensym()
     symC = gensym()
+    oindA = intersect(indA, indC) # in the order they appear in A
+    oindB = intersect(indB, indC) # in the order they appear in B
+
     symTC = gensym()
 
     # prepare tensors or tensor expressions
@@ -170,8 +173,8 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     else
         A, indlA, indrA, αA, conj = decomposegeneraltensor(exA)
         indA = vcat(indlA, indrA)
-        poA = (map(l->findfirst(isequal(l), indA), oindA)...,)
-        pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
+        poA = (map(l -> findfirst(isequal(l), indA), oindA)...,)
+        pcA = (map(l -> findfirst(isequal(l), indA), cind)...,)
         TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = Expr(:(=), symA, A)
@@ -187,19 +190,19 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     else
         B, indlB, indrB, αB, conj = decomposegeneraltensor(exB)
         indB = vcat(indlB, indrB)
-        poB = (map(l->findfirst(isequal(l), indB), oindB)...,)
-        pcB = (map(l->findfirst(isequal(l), indB), cind)...,)
+        poB = (map(l -> findfirst(isequal(l), indB), oindB)...,)
+        pcB = (map(l -> findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
         initB = Expr(:(=), symB, B)
     end
 
     oindAB = vcat(oindA, oindB)
-    p1 = (map(l->findfirst(isequal(l), oindAB), leftind)...,)
-    p2 = (map(l->findfirst(isequal(l), oindAB), rightind)...,)
-    if any(x->(x===nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
-        !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
-        !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
-        !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
+    p1 = (map(l -> findfirst(isequal(l), oindAB), leftind)...,)
+    p2 = (map(l -> findfirst(isequal(l), oindAB), rightind)...,)
+    if any(x -> (x === nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
+       !(isperm((poA..., pcA...)) && length(indA) == length(poA) + length(pcA)) ||
+       !(isperm((pcB..., poB...)) && length(indB) == length(poB) + length(pcB)) ||
+       !(isperm((p1..., p2...)) && length(oindAB) == length(p1) + length(p2))
         err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
     end
@@ -218,9 +221,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         $initA
         $initB
         $initC
-        contract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
-                    $poA, $pcA, $poB, $pcB, $p1, $p2,
-                    $((gensym(),gensym(),gensym())))
+        contract!($α * $αA * $αB, $symA, $conjA, $symB, $conjB, $β, $symC,
+            $poA, $pcA, $poB, $pcB, $p1, $p2,
+            $((gensym(), gensym(), gensym())))
         # $symC
     end
 end

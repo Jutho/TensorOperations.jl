@@ -25,14 +25,52 @@ macro tensor(ex::Expr)
     return esc(defaultparser(ex))
 end
 
-macro tensor(ex::Expr, orderex::Expr)
-    parser = TensorParser()
-    if !(orderex.head == :(=) && orderex.args[1] == :order &&
-            orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
-        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+macro tensor(kwargsex::Expr, ex::Expr)
+    if !(kwargsex.head == :tuple || kwargsex.head == :(=))
+        throw(ArgumentError(
+            "Unknown first argument in @tensor, should be named tuple or single keyword."
+        ))
     end
-    indexorder = map(normalizeindex, orderex.args[2].args)
-    parser.contractiontreebuilder = network->indexordertree(network, indexorder)
+    
+    kwargs = kwargsex.head == :tuple ? kwargsex.args : [kwargsex]
+    parser = TensorParser()
+    for kwarg in kwargs
+        if kwarg.head != :(=)
+            throw(ArgumentError(
+                "Unknown first argument in @tensor, should be `kwargs` named tuple."
+            ))
+        end
+        
+        if kwarg.args[1] == :order
+            if !(kwarg.args[2] isa Expr && kwarg.args[2].head == :tuple)
+                throw(ArgumentError(
+                    "Invalid use of `order`, should be `order = (...,)`"
+                ))
+            end
+            indexorder = map(normalizeindex, kwarg.args[2].args)
+            parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
+        
+        elseif kwarg.args[1] == :spacecheck
+            if !(kwarg.args[2] isa Bool)
+                throw(ArgumentError(
+                    "Invalid use of `spacecheck`, should be `spacecheck = bool`."
+                ))
+            end
+            push!(parser.preprocessors, ex -> insertspacechecks(ex, __source__))
+            
+        elseif kwarg.args[1] == :costcheck
+            if !(kwarg.args[2] in (:(:warn), :(:cache)))
+                throw(ArgumentError(
+                    "Invalid use of `costcheck`, should be `costcheck = :warn` or `costcheck = :cache`."
+                ))
+            end
+            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser))
+        else
+            throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))
+            
+        end
+    end
+    
     return esc(parser(ex))
 end
 
@@ -81,7 +119,7 @@ macro tensoropt(expressions...)
     end
 
     parser = TensorParser()
-    parser.contractiontreebuilder = network->optimaltree(network, optdict)[1]
+    parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
     return esc(parser(ex))
 end
 
@@ -103,7 +141,7 @@ macro tensoropt_verbose(expressions...)
 
     parser = TensorParser()
     parser.contractiontreebuilder =
-        network->optimaltree(network, optdict; verbose = true)[1]
+        network -> optimaltree(network, optdict; verbose=true)[1]
     return esc(parser(ex))
 end
 
@@ -164,16 +202,16 @@ macro ncon(args...)
         return _nconmacro(args[2], args[3], args[1])
     end
 end
-function _nconmacro(tensors, indices, kwargs = nothing)
+function _nconmacro(tensors, indices, kwargs=nothing)
     if !(tensors isa Expr) # there is not much that we can do
         if kwargs === nothing
             ex = Expr(:call, :ncon, tensors, indices,
-                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                        QuoteNode(gensym()))
+                Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                QuoteNode(gensym()))
         else
             ex = Expr(:call, :ncon, kwargs, tensors, indices,
-                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                        QuoteNode(gensym()))
+                Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                QuoteNode(gensym()))
         end
         return esc(ex)
     end

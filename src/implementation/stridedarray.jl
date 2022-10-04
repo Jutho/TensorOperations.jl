@@ -457,3 +457,12 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
     end
     return C
 end
+
+function checkcontractible(A::AbstractArray, IA, B::AbstractArray, IB)
+    IAB = (IA..., IB...)
+    IC = tunique(IAB)
+    _, cindA, _, cindB, _ = contract_indices(IA, IB, IC)
+
+
+    return size(A, cindA) == size(B, cindB)
+end
