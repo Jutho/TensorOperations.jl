@@ -56,15 +56,10 @@ macro tensor(kwargsex::Expr, ex::Expr)
                     "Invalid use of `spacecheck`, should be `spacecheck = bool`."
                 ))
             end
-            push!(parser.preprocessors, ex -> insertspacechecks(ex, __source__))
+            kwarg.args[2] && push!(parser.preprocessors, ex -> insertspacechecks(ex))
             
         elseif kwarg.args[1] == :costcheck
-            if !(kwarg.args[2] in (:(:warn), :(:cache)))
-                throw(ArgumentError(
-                    "Invalid use of `costcheck`, should be `costcheck = :warn` or `costcheck = :cache`."
-                ))
-            end
-            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser))
+            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser,kwarg.args[2]))
         else
             throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))
             

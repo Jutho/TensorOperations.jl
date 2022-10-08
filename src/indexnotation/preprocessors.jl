@@ -117,7 +117,7 @@ function extracttensorobjects(ex::Expr)
 end
 
 # insertspacechecks: insert runtime checks for contraction
-function insertspacechecks(ex::Expr, source)
+function insertspacechecks(ex::Expr)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex
     end
@@ -140,85 +140,69 @@ function insertspacechecks(ex::Expr, source)
             (symbol, leftinds, rightinds) = decomposegeneraltensor(getlhs(ex))
             inds = [leftinds[:]; rightinds]
             for (ii, li) in enumerate(inds)
-                lhs_indmaps[li] = vcat(
-                    get(lhs_indmaps, li, []),
-                    Expr(:call, :space, symbol, ii)
-                )
+                lhs_indmaps[li] = vcat(get(lhs_indmaps, li, []),(symbol,false,ii))
             end
         end
 
-        for (subgroup, rhs) in enumerate(tensorgroups)
+        for rhs in tensorgroups
             tindermap = Dict{Any,Any}()
-            # not entirely sure here 
-            # -> point is that it went wrong for 1-length tensor contractions
+            
+            # if rhs is not a call, it is a tensor expression. I want to iterate over all tensors, hence this quick'n dirty line
+            # essentially what I want here is gettensors; without stripping out conj()
             rhs = rhs.head == :call ? rhs.args[2:end] : [rhs]
             for symbol in rhs
+                isscalarexpr(symbol) && continue
+
                 (symbol, leftinds, rightinds, _, isc) = decomposegeneraltensor(symbol)
                 inds = [leftinds[:]; rightinds]
                 for (ii, li) in enumerate(inds)
-                    tindermap[li] = vcat(
-                        get(tindermap, li, []),
-                        Expr(:call, :space, symbol, ii)
-                    )
-                    if isc
-                        tindermap[li][end] = Expr(:call, :adjoint, tindermap[li][end])
-                    end
+                    tindermap[li] = vcat(get(tindermap, li, []),(symbol,isc,ii))
                 end
             end
 
-            key = "$(source.file) : $(source.line) ($(subgroup))"
             for (k, v) in tindermap
-                if length(v) == 2
-                    ex = quote
-                        @notensor begin
-                            sp1 = $(v[1])
-                            sp2 = $(v[2])
-                            if sp1 != sp2'
-                                printstyled(stderr, "incompatible leg $($(k)) ($(sp1) not connectable to $(sp2)) $($(key))", color=:red)
-                                println(stderr)
-                            end
-                        end
-                        $ex
-                    end
-                elseif length(v) == 1
+                if length(v) == 1
                     lhs_indmaps[k] = vcat(get(lhs_indmaps, k, []), v)
                 else
-                    @assert false # if this happened, we obviously incorrectly handled this
+                    reference = v[1];
+                    for b in v[2:end]
+                        ex = quote
+                            @notensor checkcontractable($(reference[1]),$(reference[2]),$(reference[3]),
+                                    $(b[1]),$(b[2]),$(b[3]),$(k))
+                            $ex
+                        end
+                    end
                 end
             end
         end
-
-        key = "$(source.file) : $(source.line)"
         for (k, v) in lhs_indmaps
-            outspaces_expression = Expr(:call, :tuple, v...)
-            ex = quote
-                @notensor begin
-                    outspaces = $outspaces_expression
-                    if !all(y -> y == outspaces[1], outspaces)
-                        printstyled(stderr, "incompatible output leg $($(k)) $(outspaces) $($(key))", color=:red)
-                        println(stderr)
-                    end
+            
+            reference = first(v);
+            for b in v[2:end]
+                ex = quote
+                    @notensor checkcontractable($(reference[1]),$(!reference[2]),$(reference[3]),
+                        $(b[1]),$(b[2]),$(b[3]),$(k))
+                    $ex
                 end
-                $ex
             end
         end
 
         return ex
     else
-        return Expr(ex.head, map(x -> insertspacechecks(x, source), ex.args)...)
+        return Expr(ex.head, map(x -> insertspacechecks(x), ex.args)...)
     end
 end
 
-insertspacechecks(ex, source) = ex
+insertspacechecks(ex) = ex
 
 # This is a rather awkard definition but needed to work both for arrays
 # and TensorMaps
-space(a::AbstractArray, i::Int) = size(a, i)
-export space
+#space(a::AbstractArray, i::Int) = size(a, i)
+#export space
 const costcache = LRU{Any, Any}(; maxsize = 10^5)
 
 function costcheck(ex::Expr, source, parser, method=:warn)
-    method in (:warn, :cache) || throw(ArgumentError("Invalid costcheck method."))
+    method in (:cache, :warn) || throw(ArgumentError("Invalid costcheck method."))
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex
     end
@@ -240,7 +224,6 @@ function costcheck(ex::Expr, source, parser, method=:warn)
             network = map(getindices, args)
             tree = parser.contractiontreebuilder(network) # this is the tree that would have been used
             Costexpr = Expr(:call, Expr(:curly, :Dict, :Any, :Float64))
-            @show args, network
             for (symbol, indices) in zip(args, network)
                 for (ctr, ind) in enumerate(indices)
                     push!(
@@ -311,7 +294,7 @@ costcheck(ex, source, parser, method) = ex
 function find_index_map(optimal_tree, network)
     pairs = collect(betterind(optimal_tree, deepcopy(network))[4])
     sort!(pairs; by=x->x[1])
-    return invperm(last.(pairs))
+    return isempty(pairs) ? Int[] : invperm(last.(pairs))
 end
 
 function betterind(tree, indices, usedind=0)

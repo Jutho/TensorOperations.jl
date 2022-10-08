@@ -4,6 +4,9 @@ memsize(A::Array) = sizeof(A)
 # hoping that this works for any `AbstractArray` to which it is applied:
 memsize(A::AbstractArray) = memsize(parent(A))
 
+checkcontractable(a::AbstractArray,ca,inda,b::AbstractArray,cb,indb,leg) = 
+    size(a,inda) == size(b,indb) || throw(DimensionMismatch("mismatched dimension on leg $(leg) : $(size(a,inda)) ≠ $(size(b,indb))"))
+
 """
     similarstructure_from_indices(T, indleft, indright, A, conjA = :N)
 
@@ -456,13 +459,4 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
         end
     end
     return C
-end
-
-function checkcontractible(A::AbstractArray, IA, B::AbstractArray, IB)
-    IAB = (IA..., IB...)
-    IC = tunique(IAB)
-    _, cindA, _, cindB, _ = contract_indices(IA, IB, IC)
-
-
-    return size(A, cindA) == size(B, cindB)
 end
