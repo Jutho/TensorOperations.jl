@@ -11,6 +11,7 @@ end
 
 """
     @tensor(block)
+    @tensor(kwargs, block)
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
@@ -18,8 +19,14 @@ tensors together, this will be evaluated as pairwise contractions in left to rig
 order, unless the so-called NCON style is used (positive integers for contracted
 indices and negative indices for open indices).
 
-A second argument to the `@tensor` macro can be provided of the form `order=(...)`, where
-the list specifies the contraction indices in the order in which they will be contracted.
+If the macro is used with two arguments, the first is interpreted as a (set of) keyword
+argument(s), which can be any or multiple of the following:
+
+*   `order=(...)`: a list that specifies the contraction indices in the order in which they
+    whill be contracted.
+*   `costcheck=warn`: add warnings for suboptimal contraction orders at runtime.
+*   `costcheck=cache`: cache suboptimal contractions in `TensorOperations.costcache`.
+*   `contractcheck=true`: use runtime information to add clearer errors for invalid contractions.
 """
 macro tensor(ex::Expr)
     return esc(defaultparser(ex))
@@ -31,7 +38,7 @@ macro tensor(kwargsex::Expr, ex::Expr)
             "Unknown first argument in @tensor, should be named tuple or single keyword."
         ))
     end
-    
+
     kwargs = kwargsex.head == :tuple ? kwargsex.args : [kwargsex]
     parser = TensorParser()
     for kwarg in kwargs
@@ -40,32 +47,37 @@ macro tensor(kwargsex::Expr, ex::Expr)
                 "Unknown first argument in @tensor, should be `kwargs` named tuple."
             ))
         end
-        
+
         if kwarg.args[1] == :order
             if !(kwarg.args[2] isa Expr && kwarg.args[2].head == :tuple)
                 throw(ArgumentError(
-                    "Invalid use of `order`, should be `order = (...,)`"
+                    "Invalid use of `order`, should be `order=(...,)`"
                 ))
             end
             indexorder = map(normalizeindex, kwarg.args[2].args)
             parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
-        
-        elseif kwarg.args[1] == :spacecheck
+
+        elseif kwarg.args[1] == :contractcheck
             if !(kwarg.args[2] isa Bool)
                 throw(ArgumentError(
-                    "Invalid use of `spacecheck`, should be `spacecheck = bool`."
+                    "Invalid use of `contractcheck`, should be `contractcheck=bool`."
                 ))
             end
-            kwarg.args[2] && push!(parser.preprocessors, ex -> insertspacechecks(ex))
-            
+            kwarg.args[2] && push!(parser.preprocessors, ex -> insertcompatiblechecks(ex))
+
         elseif kwarg.args[1] == :costcheck
-            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser,kwarg.args[2]))
+            if !(kwarg.args[2] in (:warn, :cache))
+                throw(ArgumentError(
+                    "Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"
+                ))
+            end
+            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser, kwarg.args[2]))
         else
             throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))
-            
+
         end
     end
-    
+
     return esc(parser(ex))
 end
 

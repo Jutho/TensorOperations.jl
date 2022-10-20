@@ -46,6 +46,8 @@ Install with the package manager, `pkg> add TensorOperations`.
     complex tensor expressions within the `@tensor` macro (based on the implementation of
     [LRUCache](https://github.com/JuliaCollections/LRUCache.jl)). By default, the cache is
     allowed to use up to the minimum of either 1GB or 25% of the total memory.
+*   Utility debugging features to dynamically compare contractions orders with their
+    optimal counterpart.
 
 ## Tensor operations
 
@@ -76,5 +78,4 @@ every more complicated tensor expression is deconstructed.
 
 ## To do list
 
-*   Make it easier to check contraction order and to splice in runtime information, or
-    optimize based on memory footprint or other custom cost functions.
+*   Make it easier to optimize based on memory footprint or other custom cost functions.

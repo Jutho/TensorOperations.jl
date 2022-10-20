@@ -116,8 +116,8 @@ function extracttensorobjects(ex::Expr)
     return Expr(:block, pre2, ex, post2)
 end
 
-# insertspacechecks: insert runtime checks for contraction
-function insertspacechecks(ex::Expr)
+# insertcompatiblechecks: insert runtime checks for contraction
+function insertcompatiblechecks(ex::Expr)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex
     end
@@ -140,13 +140,13 @@ function insertspacechecks(ex::Expr)
             (symbol, leftinds, rightinds) = decomposegeneraltensor(getlhs(ex))
             inds = [leftinds[:]; rightinds]
             for (ii, li) in enumerate(inds)
-                lhs_indmaps[li] = vcat(get(lhs_indmaps, li, []),(symbol,false,ii))
+                lhs_indmaps[li] = vcat(get(lhs_indmaps, li, []), (symbol, false, ii))
             end
         end
 
         for rhs in tensorgroups
             tindermap = Dict{Any,Any}()
-            
+
             # if rhs is not a call, it is a tensor expression. I want to iterate over all tensors, hence this quick'n dirty line
             # essentially what I want here is gettensors; without stripping out conj()
             rhs = rhs.head == :call ? rhs.args[2:end] : [rhs]
@@ -156,7 +156,7 @@ function insertspacechecks(ex::Expr)
                 (symbol, leftinds, rightinds, _, isc) = decomposegeneraltensor(symbol)
                 inds = [leftinds[:]; rightinds]
                 for (ii, li) in enumerate(inds)
-                    tindermap[li] = vcat(get(tindermap, li, []),(symbol,isc,ii))
+                    tindermap[li] = vcat(get(tindermap, li, []), (symbol, isc, ii))
                 end
             end
 
@@ -164,11 +164,11 @@ function insertspacechecks(ex::Expr)
                 if length(v) == 1
                     lhs_indmaps[k] = vcat(get(lhs_indmaps, k, []), v)
                 else
-                    reference = v[1];
+                    reference = v[1]
                     for b in v[2:end]
                         ex = quote
-                            @notensor checkcontractable($(reference[1]),$(reference[2]),$(reference[3]),
-                                    $(b[1]),$(b[2]),$(b[3]),$(k))
+                            @notensor checkcontractible($(reference[1]), $(reference[2]), $(reference[3]),
+                                $(b[1]), $(b[2]), $(b[3]), $(k))
                             $ex
                         end
                     end
@@ -176,12 +176,12 @@ function insertspacechecks(ex::Expr)
             end
         end
         for (k, v) in lhs_indmaps
-            
-            reference = first(v);
+
+            reference = first(v)
             for b in v[2:end]
                 ex = quote
-                    @notensor checkcontractable($(reference[1]),$(!reference[2]),$(reference[3]),
-                        $(b[1]),$(b[2]),$(b[3]),$(k))
+                    @notensor checkcontractible($(reference[1]), $(!reference[2]), $(reference[3]),
+                        $(b[1]), $(b[2]), $(b[3]), $(k))
                     $ex
                 end
             end
@@ -189,16 +189,12 @@ function insertspacechecks(ex::Expr)
 
         return ex
     else
-        return Expr(ex.head, map(x -> insertspacechecks(x), ex.args)...)
+        return Expr(ex.head, map(x -> insertcompatiblechecks(x), ex.args)...)
     end
 end
 
-insertspacechecks(ex) = ex
+insertcompatiblechecks(ex) = ex
 
-# This is a rather awkard definition but needed to work both for arrays
-# and TensorMaps
-#space(a::AbstractArray, i::Int) = size(a, i)
-#export space
 const costcache = LRU{Any, Any}(; maxsize = 10^5)
 
 function costcheck(ex::Expr, source, parser, method=:warn)

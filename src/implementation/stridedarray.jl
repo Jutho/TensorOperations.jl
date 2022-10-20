@@ -4,9 +4,6 @@ memsize(A::Array) = sizeof(A)
 # hoping that this works for any `AbstractArray` to which it is applied:
 memsize(A::AbstractArray) = memsize(parent(A))
 
-checkcontractable(a::AbstractArray,ca,inda,b::AbstractArray,cb,indb,leg) = 
-    size(a,inda) == size(b,indb) || throw(DimensionMismatch("mismatched dimension on leg $(leg) : $(size(a,inda)) ≠ $(size(b,indb))"))
-
 """
     similarstructure_from_indices(T, indleft, indright, A, conjA = :N)
 
@@ -112,7 +109,7 @@ scalar(C::AbstractArray) = ndims(C)==0 ? C[] : throw(DimensionMismatch())
 function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
         β, C::AbstractArray{<:Any, N}, indCinA) where {N}
 
-    N == length(indCinA) || throw(IndexError("Invalid permutation of length $N: $indCinA"))
+    N == length(indCinA) || throw(IndexError("invalid permutation of length $N: $indCinA"))
     if CA == :N
         if isbitstype(eltype(A)) && isbitstype(eltype(C))
             @unsafe_strided A C _add!(α, A, β, C, (indCinA...,))
@@ -132,7 +129,7 @@ function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
             _add!(α, map(adjoint, StridedView(A)), β, StridedView(C), (indCinA...,))
         end
     else
-        throw(ArgumentError("Unknown conjugation flag: $CA"))
+        throw(ArgumentError("unknown conjugation flag: $CA"))
     end
     return C
 end
@@ -144,9 +141,9 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
         indCinA, cindA1, cindA2) where {NA,NC}
 
     NC == length(indCinA) ||
-        throw(IndexError("Invalid selection of $NC out of $NA: $indCinA"))
+        throw(IndexError("invalid selection of $NC out of $NA: $indCinA"))
     NA-NC == 2*length(cindA1) == 2*length(cindA2) ||
-        throw(IndexError("invalid number of trace dimension"))
+        throw(IndexError("invalid number of trace dimensions"))
     if CA == :N
         if isbitstype(eltype(A)) && isbitstype(eltype(C))
             @unsafe_strided A C _trace!(α, A, β, C,
@@ -172,7 +169,7 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
                 (indCinA...,), (cindA1...,), (cindA2...,))
         end
     else
-        throw(ArgumentError("Unknown conjugation flag: $CA"))
+        throw(ArgumentError("unknown conjugation flag: $CA"))
     end
     return C
 end

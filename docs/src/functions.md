@@ -31,3 +31,10 @@ tensortrace
 tensorcontract
 tensorproduct
 ```
+
+Optionally, you can make use of the debugging features of this package by implementing the following utility functions:
+
+```@docs
+checkcontractible
+tensorcost
+```

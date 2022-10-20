@@ -111,8 +111,22 @@ function tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple=(IA..., IB...))
     tensorcontract(A, IA, B, IB, IC)
 end
 
+"""
+    tensorcost(A, i)
+    
+Computes the contraction cost associated with the `i`th dimension of a tensor, such that the
+total cost of a pairwise contraction is found as the product of the costs of all contracted
+indices and all uncontracted indices.
+"""
 tensorcost(A::AbstractArray, i) = Float64(size(A, i))
 
-function tensoriscontractible(A::AbstractArray, IA::Tuple, B::AbstractArray, IB::Tuple)
+"""
+    checkcontractible(A, CA, IA, B, CB, IB, label)
 
+Verifies whether two tensors `A` and `B` are compatible for contraction, and throws an error
+if not.
+"""
+function checkcontractible(A::AbstractArray, CA, IA, B::AbstractArray, CB, IB, label)
+    size(A, IA) == size(B, IB) || throw(DimensionMismatch(
+        "mismatched dimension with label $(leg) : $(size(A, IA)) ≠ $(size(B, IB))"))
 end

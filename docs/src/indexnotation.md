@@ -11,14 +11,14 @@ Einstein's summation convention).
 
 ```julia
 using TensorOperations
-α=randn()
-A=randn(5,5,5,5,5,5)
-B=randn(5,5,5)
-C=randn(5,5,5)
-D=zeros(5,5,5)
+α = randn()
+A = randn(5, 5, 5, 5, 5, 5)
+B = randn(5, 5, 5)
+C = randn(5, 5, 5)
+D = zeros(5, 5, 5)
 @tensor begin
-    D[a,b,c] = A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
-    E[a,b,c] := A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
+    D[a,b,c] = A[a,e,f,c,f,g] * B[g,b,e] + α * C[c,a,b]
+    E[a,b,c] := A[a,e,f,c,f,g] * B[g,b,e] + α * C[c,a,b]
 end
 ```
 
@@ -46,7 +46,7 @@ also allowed to use primes (i.e. Julia's `adjoint` operator) to denote different
 including using multiple subsequent primes.
 
 ```julia
-@tensor D[å'',ß,c'] = A[å'',1,-3,c',-3,2]*B[2,ß,1] + α*C[c',å'',ß]
+@tensor D[å'',ß,c'] = A[å'',1,-3,c',-3,2] * B[2,ß,1] + α * C[c',å'',ß]
 ```
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
@@ -79,25 +79,25 @@ interpreted literally.
 
 ## Contraction order and `@tensoropt` macro
 
-A contraction of several tensors `A[a,b,c,d,e]*B[b,e,f,g]*C[c,f,i,j]*...` is generically
-evaluted as a sequence of pairwise contractions, using Julia's default left to right order,
-i.e. as `( (A[a,b,c,d,e] * B[b,e,f,g]) * C[c,f,i,j]) * ...)`. Explicit parenthesis can be
-used to modify this order. Alternatively, if one respects the so-called
+A contraction of several tensors `A[a,b,c,d,e] * B[b,e,f,g] * C[c,f,i,j] * ...` is
+generically evaluted as a sequence of pairwise contractions, using Julia's default left to
+right order, i.e. as `( (A[a,b,c,d,e] * B[b,e,f,g]) * C[c,f,i,j]) * ...)`. Explicit
+parenthesis can be used to modify this order. Alternatively, if one respects the so-called
 [NCON](https://arxiv.org/abs/1402.0939) style of specifying indices, i.e. positive integers
 for the contracted indices and negative indices for the open indices, the different factors
 will be reordered and so that the pairwise tensor contractions contract over indices with
 smaller integer label first. For example,
 ```julia
-@tensor D[:] := A[-1,3,1,-2,2]*B[3,2,4,-5]*C[1,4,-4,-3]
+@tensor D[:] := A[-1,3,1,-2,2] * B[3,2,4,-5] * C[1,4,-4,-3]
 ```
-will be evaluated as `(A[-1,3,1,-2,2]*C[1,4,-4,-3])*B[3,2,4,-5]`. Furthermore, in that case
-the indices of the output tensor (`D` in this case) do not need to be specified (using `[:]`
-instead), and will be chosen as `(-1,-2,-3,-4,-5)`. Any other index order for the output
-tensor is of course still possible by just explicitly specifying it.
+will be evaluated as `(A[-1,3,1,-2,2] * C[1,4,-4,-3]) * B[3,2,4,-5]`. Furthermore, in that
+case the indices of the output tensor (`D` in this case) do not need to be specified (using
+`[:]` instead), and will be chosen as `(-1,-2,-3,-4,-5)`. Any other index order for the
+output tensor is of course still possible by just explicitly specifying it.
 
-A final way to enforce a specific order is by giving the `@tensor` macro a second argument of the form `order=(list of indices)`, e.g.
+A final way to enforce a specific order is by giving the `@tensor` macro an additional argument of the form `order=(list of indices)`, e.g.
 ```julia
-@tensor D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b] order=(f,e,g)
+@tensor order=(f,e,g) D[a,b,c,d] := A[a,e,c,f] * B[g,d,e] * C[g,f,b]
 ```
 This will now first perform the contraction corresponding to the index labeled `f`, i.e.
 the contraction between `A` and `C`. Then, the contraction corresponding to index labeled
@@ -114,13 +114,13 @@ polynomial of an abstract variable, e.g. `χ`. In the latter case, the optimizat
 the assymptotic limit of large `χ`.
 
 ```julia
-@tensoropt D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@tensoropt D[a,b,c,d] := A[a,e,c,f] * B[g,d,e] * C[g,f,b]
 # cost χ for all indices (a,b,c,d,e,f)
-@tensoropt (a,b,c,e) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@tensoropt (a,b,c,e) D[a,b,c,d] := A[a,e,c,f] * B[g,d,e] * C[g,f,b]
 # cost χ for indices a,b,c,e, other indices (d,f) have cost 1
-@tensoropt !(a,b,c,e) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@tensoropt !(a,b,c,e) D[a,b,c,d] := A[a,e,c,f] * B[g,d,e] * C[g,f,b]
 # cost 1 for indices a,b,c,e, other indices (d,f) have cost χ
-@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@tensoropt (a=>χ, b=>χ^2, c=>2*χ, e=>5) D[a,b,c,d] := A[a,e,c,f] * B[g,d,e] * C[g,f,b]
 # cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
 ```
 Because of the compile time optimization process, the optimization cannot use run-time
@@ -136,11 +136,33 @@ during compilation by using the alternative macro `@tensoropt_verbose`.
 
 The optimal contraction tree as well as the associated cost can be obtained by
 ```julia
-@optimalcontractiontree D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@optimalcontractiontree D[a,b,c,d] := A[a,e,c,f] * B[g,d,e] * C[g,f,b]
 ```
 where the cost of the indices can be specified in the same various ways as for
 `@tensoropt`. In this case, no contraction is performed and the tensors involved do not
 need to exist.
+
+Finally, there is an analysis tool for `@tensor` which checks at runtime if a contraction is
+optimal, using the actual sizes of the tensors involved. This is enabled using
+`costcheck=warn` or `costcheck=cache`, supplying the user with an immediate warning, or
+saving all suboptimal contractions in a cache which is accessed through
+`TensorOperations.costcache`. This will keep track of the source code line that
+initiated the suboptimal contraction, the optimal cost, the current cost, and the optimal
+order. While these approaches are not the most efficient as it leads to multiple
+evaluations of the optimal contraction order, it can be of particular use as a debugging
+tool, a posteriori checking if a contraction was optimal using actual tensors, and if not
+dictating what `order = ()` would lead to the optimal contraction. 
+
+```julia
+A = randn(5, 5, 5, 5, 5)
+B = randn(5, 5, 5, 5)
+C = randn(5, 5, 5, 5)
+@tensor costcheck=warn D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
+@tensor (costcheck=warn, order=(3, 2, 4, 1)) D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * 
+    C[1, 4, -4, -3]
+@tensor costcheck=cache D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
+@show TensorOperations.costcache
+```
 
 ## Dynamical tensor network contractions with `ncon` and `@ncon`
 
@@ -155,8 +177,8 @@ ncon(list_of_tensor_objects, list_of_index_lists)
 ```
 e.g. the example of above is equivalent to
 ```julia
-@tensor D[:] := A[-1,3,1,-2,2]*B[3,2,4,-5]*C[1,4,-4,-3]
-D ≈ ncon((A,B,C),([-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]))
+@tensor D[:] := A[-1,3,1,-2,2] * B[3,2,4,-5] * C[1,4,-4,-3]
+D ≈ ncon((A, B, C), ([-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]))
 ```
 where the lists of tensor objects and of index lists can be given as a vector or a tuple.
 The `ncon` function necessarily needs to analyze the contraction pattern at runtime, but
@@ -174,13 +196,13 @@ where the first two arguments are those of above. Let us first discuss the keywo
 arguments. The keyword argument `order` can be used to change the contraction order, i.e.
 by specifying which contraction indices need to be processed first, rather than the
 strictly increasing order `[1,2,...]`. The keyword argument `output` can be used to specify
-the order of the output indices, when it is different from the default `[-1, -2, ...]`.
+the order of the output indices, when it is different from the default `[-1,-2,...]`.
 
 The optional positional argument `conjlist` is a list of `Bool` variables that indicate
 whether the corresponding tensor needs to be conjugated in the contraction. So while
 ```julia
-ncon([A,conj(B),C], [[-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]]) ≈
-    ncon([A,B,C], [[-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]], [false, true, false])
+ncon([A, conj(B), C], [[-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]]) ≈
+    ncon([A, B, C], [[-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]], [false, true, false])
 ```
 the latter has the advantage that conjugating `B` is not an extra step (which creates an
 additional temporary), but is performed at the same time when it is contracted. The fourth
@@ -237,7 +259,6 @@ end
     	hamAB[5,7,3,1]*rhoBA[10,9,-3,8]*conj(w[-1,11,10])*u[4,3,-2,2]*conj(u[4,5,11,6])*v[1,2,8]*conj(v[7,6,9]) +
     	hamBA[3,7,2,-1]*rhoAB[5,6,4,-3]*v[2,1,4]*conj(v[3,1,5])*conj(w[7,-2,6])
     return wEnv
-    end
 end
 ```
 All indices appearing in this problem are of size `χ`. For tensors with `ComplexF64` eltype

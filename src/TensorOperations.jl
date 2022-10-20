@@ -20,7 +20,7 @@ export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cach
 export ncon
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
-export tensoriscompatible, tensorcost
+export checkcontractible, tensorcost
 
 # Convenient type alias
 const IndexTuple{N} = NTuple{N,Int}
