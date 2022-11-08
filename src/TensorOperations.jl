@@ -25,7 +25,7 @@ export checkcontractible, tensorcost
 # Convenient type alias
 const IndexTuple{N} = NTuple{N,Int}
 
-# An exception type for reporting errors in the index specificatino
+# An exception type for reporting errors in the index specification
 struct IndexError{S<:AbstractString} <: Exception
     msg::S
 end
