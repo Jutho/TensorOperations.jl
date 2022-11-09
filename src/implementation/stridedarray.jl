@@ -13,7 +13,7 @@ which has an `eltype` given by `T` and whose left indices correspond to the indi
 `op(A)`, where `op` is `conj` if `conjA == :C` or does nothing if `conjA == :N` (default).
 """
 similarstructure_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple,
-                                A::AbstractArray, CA::Symbol = :N) =
+    A::AbstractArray, CA::Symbol=:N) =
     _similarstructure_from_indices(T, (p1..., p2...), A)
 
 """
@@ -28,9 +28,9 @@ indices `indleft` (`indright`) from that collection. Here, `opA` (`opB`) is `con
 the default).
 """
 similarstructure_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
-                                p1::IndexTuple, p2::IndexTuple,
-                                A::AbstractArray, B::AbstractArray,
-                                CA::Symbol = :N, CB::Symbol = :N) =
+    p1::IndexTuple, p2::IndexTuple,
+    A::AbstractArray, B::AbstractArray,
+    CA::Symbol=:N, CB::Symbol=:N) =
     _similarstructure_from_indices(T, poA, poB, (p1..., p2...), A, B)
 
 """
@@ -50,7 +50,7 @@ if `conjA == :C` or the identity map if `conjA == :N` (default). Together,
 `A`.
 """
 add!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
-        indright::IndexTuple) = add!(α, A, CA, β, C, (indleft..., indright...))
+    indright::IndexTuple) = add!(α, A, CA, β, C, (indleft..., indright...))
 
 """
     trace!(α, A, conjA, β, C, indleft, indright, cind1, cind2)
@@ -63,7 +63,7 @@ of `A`, and indices `cindA1` are contracted with indices `cindA2`. Furthermore, 
 (dimensions) of `A`.
 """
 trace!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
-        indright::IndexTuple, cind1::IndexTuple, cind2::IndexTuple) =
+    indright::IndexTuple, cind1::IndexTuple, cind2::IndexTuple) =
     trace!(α, A, CA, β, C, (indleft..., indright...), cind1, cind2)
 
 """
@@ -85,29 +85,29 @@ symbols, which are used to identify temporary objects in the cache to be used fo
 `A`, `B` and `C` so as to perform the contraction as a matrix multiplication.
 """
 contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-        β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
-        cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms = nothing) =
+    β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
+    cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms=nothing) =
     contract!(α, A, CA, B, CB, β, C,
-                oindA, cindA, oindB, cindB, (indleft..., indright...), syms)
+        oindA, cindA, oindB, cindB, (indleft..., indright...), syms)
 
 # actual implementations for AbstractArray with ind = (indleft..., indright...)
-_similarstructure_from_indices(T, ind, A::AbstractArray) = map(n->size(A, n), ind)
+_similarstructure_from_indices(T, ind, A::AbstractArray) = map(n -> size(A, n), ind)
 
 function _similarstructure_from_indices(T, poA::IndexTuple, poB::IndexTuple,
-        ind::IndexTuple, A::AbstractArray, B::AbstractArray)
+    ind::IndexTuple, A::AbstractArray, B::AbstractArray)
 
-    oszA = map(n->size(A,n), poA)
-    oszB = map(n->size(B,n), poB)
+    oszA = map(n -> size(A, n), poA)
+    oszB = map(n -> size(B, n), poB)
     sz = let osz = (oszA..., oszB...)
-        map(n->osz[n], ind)
+        map(n -> osz[n], ind)
     end
     return sz
 end
 
-scalar(C::AbstractArray) = ndims(C)==0 ? C[] : throw(DimensionMismatch())
+scalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
 
-function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
-        β, C::AbstractArray{<:Any, N}, indCinA) where {N}
+function add!(α, A::AbstractArray{<:Any,N}, CA::Symbol,
+    β, C::AbstractArray{<:Any,N}, indCinA) where {N}
 
     N == length(indCinA) || throw(IndexError("invalid permutation of length $N: $indCinA"))
     if CA == :N
@@ -134,15 +134,17 @@ function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
     return C
 end
 _add!(α, A::AbstractStridedView{<:Any,N},
-        β, C::AbstractStridedView{<:Any,N}, indCinA::IndexTuple{N}) where N =
+    β, C::AbstractStridedView{<:Any,N}, indCinA::IndexTuple{N}) where {N} =
     LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
+# VectorInterface.add!(C, permutedims(A, indCinA), α, β)
+# LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
 
-function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArray{<:Any, NC},
-        indCinA, cindA1, cindA2) where {NA,NC}
+function trace!(α, A::AbstractArray{<:Any,NA}, CA::Symbol, β, C::AbstractArray{<:Any,NC},
+    indCinA, cindA1, cindA2) where {NA,NC}
 
     NC == length(indCinA) ||
         throw(IndexError("invalid selection of $NC out of $NA: $indCinA"))
-    NA-NC == 2*length(cindA1) == 2*length(cindA2) ||
+    NA - NC == 2 * length(cindA1) == 2 * length(cindA2) ||
         throw(IndexError("invalid number of trace dimensions"))
     if CA == :N
         if isbitstype(eltype(A)) && isbitstype(eltype(C))
@@ -175,11 +177,11 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
 end
 
 function _trace!(α, A::AbstractStridedView,
-        β, C::AbstractStridedView, indCinA::IndexTuple{NC},
-        cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
+    β, C::AbstractStridedView, indCinA::IndexTuple{NC},
+    cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
 
-    sizeA = i->size(A, i)
-    strideA = i->stride(A, i)
+    sizeA = i -> size(A, i)
+    strideA = i -> stride(A, i)
     tracesize = sizeA.(cindA1)
     tracesize == sizeA.(cindA2) || throw(DimensionMismatch("non-matching trace sizes"))
     size(C) == sizeA.(indCinA) || throw(DimensionMismatch("non-matching sizes"))
@@ -194,11 +196,11 @@ function _trace!(α, A::AbstractStridedView,
 
     if α != 1
         if β == 0
-            Strided._mapreducedim!(x->α*x, +, zero, newsize, (C, A2))
+            Strided._mapreducedim!(x -> α * x, +, zero, newsize, (C, A2))
         elseif β == 1
-            Strided._mapreducedim!(x->α*x, +, nothing, newsize, (C, A2))
+            Strided._mapreducedim!(x -> α * x, +, nothing, newsize, (C, A2))
         else
-            Strided._mapreducedim!(x->α*x, +, y->β*y, newsize, (C, A2))
+            Strided._mapreducedim!(x -> α * x, +, y -> β * y, newsize, (C, A2))
         end
     else
         if β == 0
@@ -206,16 +208,16 @@ function _trace!(α, A::AbstractStridedView,
         elseif β == 1
             Strided._mapreducedim!(identity, +, nothing, newsize, (C, A2))
         else
-            Strided._mapreducedim!(identity, +, y->β*y, newsize, (C, A2))
+            Strided._mapreducedim!(identity, +, y -> β * y, newsize, (C, A2))
         end
     end
     return C
 end
 
 function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-        β, C::AbstractArray,
-        oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple,
-        indCinoAB::IndexTuple, syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
+    β, C::AbstractArray,
+    oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple, cindB::IndexTuple,
+    indCinoAB::IndexTuple, syms::Union{Nothing,NTuple{3,Symbol}}=nothing)
 
     TC = eltype(C)
     ipC = TupleTools.invperm(indCinoAB)
@@ -227,26 +229,26 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         lA = length(A)
         lB = length(B)
         lC = length(C)
-        memcost1 = lA*(!ibc(A, oindA, cindA, CA) || eltype(A) !== TC) +
-                    lB*(!ibc(B, cindB, oindB, CB) || eltype(B) !== TC) +
-                    lC*(!ibc(C, oindAinC, oindBinC, :D))
-        memcost2 = lB*(!ibc(B, oindB, cindB, CB) || eltype(B) !== TC) +
-                    lA*(!ibc(A, cindA, oindA, CA) || eltype(A) !== TC) +
-                    lC*(!ibc(C, oindBinC, oindAinC, :D))
+        memcost1 = lA * (!ibc(A, oindA, cindA, CA) || eltype(A) !== TC) +
+                   lB * (!ibc(B, cindB, oindB, CB) || eltype(B) !== TC) +
+                   lC * (!ibc(C, oindAinC, oindBinC, :D))
+        memcost2 = lB * (!ibc(B, oindB, cindB, CB) || eltype(B) !== TC) +
+                   lA * (!ibc(A, cindA, oindA, CA) || eltype(A) !== TC) +
+                   lC * (!ibc(C, oindBinC, oindAinC, :D))
 
         if memcost1 > memcost2
             indCinoBA = let N₁ = length(oindA), N₂ = length(oindB)
-                map(n->ifelse(n>N₁, n-N₁, n+N₂), indCinoAB)
+                map(n -> ifelse(n > N₁, n - N₁, n + N₂), indCinoAB)
             end
             return contract!(α, B, CB, A, CA, β, C,
-                                oindB, cindB, oindA, cindA, indCinoBA, syms)
+                oindB, cindB, oindA, cindA, indCinoBA, syms)
         end
     end
 
-    pA = (oindA...,cindA...)
+    pA = (oindA..., cindA...)
     (length(pA) == ndims(A) && TupleTools.isperm(pA)) ||
         throw(IndexError("invalid permutation of length $(ndims(A)): $pA"))
-    pB = (oindB...,cindB...)
+    pB = (oindB..., cindB...)
     (length(pB) == ndims(B) && TupleTools.isperm(pB)) ||
         throw(IndexError("invalid permutation of length $(ndims(B)): $pB"))
     (length(oindA) + length(oindB) == ndims(C)) ||
@@ -303,8 +305,8 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         if isblascontractable(C, oindAinC, oindBinC, :D)
             C2 = C
             _blas_contract!(α, A2, CA2, B2, CB2, β, C2,
-                                oindA, cindA, oindB, cindB, oindAinC, oindBinC,
-                                osizeA, csizeA, osizeB, csizeB)
+                oindA, cindA, oindB, cindB, oindAinC, oindBinC,
+                osizeA, csizeA, osizeB, csizeB)
         else
             if syms === nothing
                 C2 = similar_from_indices(TC, oindAinC, oindBinC, C, :N)
@@ -312,28 +314,28 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
                 C2 = cached_similar_from_indices(syms[3], TC, oindAinC, oindBinC, C, :N)
             end
             _blas_contract!(1, A2, CA2, B2, CB2, 0, C2,
-                                oindA, cindA, oindB, cindB,
-                                _trivtuple(oindA), length(oindA) .+ _trivtuple(oindB),
-                                osizeA, csizeA, osizeB, csizeB)
+                oindA, cindA, oindB, cindB,
+                _trivtuple(oindA), length(oindA) .+ _trivtuple(oindB),
+                osizeA, csizeA, osizeB, csizeB)
 
             add!(α, C2, :N, β, C, indCinoAB, ())
         end
     else
         _native_contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, indCinoAB,
-                            osizeA, csizeA, osizeB, csizeB)
+            osizeA, csizeA, osizeB, csizeB)
     end
     return C
 end
 
 function isblascontractable(A::AbstractArray, p1::IndexTuple, p2::IndexTuple,
-        C::Symbol)
+    C::Symbol)
 
     eltype(A) <: LinearAlgebra.BlasFloat || return false
     @unsafe_strided A isblascontractable(A, p1, p2, C)
 end
 
 function isblascontractable(A::AbstractStridedView, p1::IndexTuple, p2::IndexTuple,
-        C::Symbol)
+    C::Symbol)
 
     eltype(A) <: LinearAlgebra.BlasFloat || return false
     sizeA = size(A)
@@ -364,25 +366,25 @@ function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
         return _canfuse(Base.tail(dims), Base.tail(strides))
     else
         b, d, s = _canfuse(Base.tail(dims), Base.tail(strides))
-        if b && (s == dims[1]*strides[1] || d == 1)
-            dnew = dims[1]*d
+        if b && (s == dims[1] * strides[1] || d == 1)
+            dnew = dims[1] * d
             return true, dnew, (dnew == 0 || dnew == 1) ? 1 : strides[1]
         else
-            return false, dims[1]*d, strides[1]
+            return false, dims[1] * d, strides[1]
         end
     end
 end
 _trivtuple(t::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
 function _blas_contract!(α, A::AbstractArray, CA, B::AbstractArray, CB,
-        β, C::AbstractArray, oindA, cindA, oindB, cindB, oindAinC, oindBinC,
-        osizeA, csizeA, osizeB, csizeB)
+    β, C::AbstractArray, oindA, cindA, oindB, cindB, oindAinC, oindBinC,
+    osizeA, csizeA, osizeB, csizeB)
 
     @unsafe_strided A B C begin
         A2 = sreshape(permutedims(A, (oindA..., cindA...)), (prod(osizeA), prod(csizeA)))
         B2 = sreshape(permutedims(B, (cindB..., oindB...)), (prod(csizeB), prod(osizeB)))
         C2 = sreshape(permutedims(C, (oindAinC..., oindBinC...)),
-                (prod(osizeA), prod(osizeB)))
+            (prod(osizeA), prod(osizeB)))
         if CA == :N && CB == :N
             mul!(C2, A2, B2, α, β)
         elseif (CA == :C || CA == :A) && CB == :N
@@ -399,8 +401,8 @@ function _blas_contract!(α, A::AbstractArray, CA, B::AbstractArray, CB,
 end
 
 function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-        β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB,
-        osizeA, csizeA, osizeB, csizeB)
+    β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB,
+    osizeA, csizeA, osizeB, csizeB)
 
     ipC = TupleTools.invperm(indCinoAB)
     if CA == :N
@@ -431,16 +433,16 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
             (osizeA..., osizeB..., one.(csizeA)...))
         tsize = (osizeA..., osizeB..., csizeA...)
         if α != 1
-            op1 = (x,y) -> α*opA(x)*opB(y)
+            op1 = (x, y) -> α * opA(x) * opB(y)
             if β == 0
                 Strided._mapreducedim!(op1, +, zero, tsize, (CS, AS, BS))
             elseif β == 1
                 Strided._mapreducedim!(op1, +, nothing, tsize, (CS, AS, BS))
             else
-                Strided._mapreducedim!(op1, +, y->β*y, tsize, (CS, AS, BS))
+                Strided._mapreducedim!(op1, +, y -> β * y, tsize, (CS, AS, BS))
             end
         else
-            op2 = (x,y) -> opA(x)*opB(y)
+            op2 = (x, y) -> opA(x) * opB(y)
             if β == 0
                 if isbitstype(eltype(C))
                     Strided._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
@@ -451,7 +453,7 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
             elseif β == 1
                 Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
             else
-                Strided._mapreducedim!(op2, +, y->β*y, tsize, (CS, AS, BS))
+                Strided._mapreducedim!(op2, +, y -> β * y, tsize, (CS, AS, BS))
             end
         end
     end
