@@ -133,11 +133,11 @@ function add!(α, A::AbstractArray{<:Any,N}, CA::Symbol,
     end
     return C
 end
-_add!(α, A::AbstractStridedView{<:Any,N},
-    β, C::AbstractStridedView{<:Any,N}, indCinA::IndexTuple{N}) where {N} =
-    LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
-# VectorInterface.add!(C, permutedims(A, indCinA), α, β)
-# LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
+
+function _add!(α, A::AbstractStridedView{<:Any, N}, β, C::AbstractStridedView{<:Any, N},
+               indCinA::IndexTuple{N}) where {N}
+    return VectorInterface.add!(C, permutedims(A, indCinA), α, β)
+end
 
 function trace!(α, A::AbstractArray{<:Any,NA}, CA::Symbol, β, C::AbstractArray{<:Any,NC},
     indCinA, cindA1, cindA2) where {NA,NC}
