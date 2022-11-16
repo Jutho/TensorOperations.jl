@@ -78,7 +78,7 @@ const _use_cache = Ref(true)
 use_cache() = _use_cache[]
 
 function default_cache_size()
-    return min(1<<32, Int(Sys.total_memory())>>2)
+    return min(1<<32, Int(Sys.total_memory()>>2))
 end
 
 # methods used for the cache: see implementation/tensorcache.jl for more info
