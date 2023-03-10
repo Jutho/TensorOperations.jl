@@ -1,23 +1,22 @@
-
-function instantiate_eltype(ex::Expr)
+function instantiate_scalartype(ex::Expr)
     if istensor(ex)
-        return Expr(:call, :eltype, gettensorobject(ex))
+        return Expr(:call, :scalartype, gettensorobject(ex))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
         if length(ex.args) > 2
-            return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
+            return Expr(:call, :promote_type, map(instantiate_scalartype, ex.args[2:end])...)
         else
-            return instantiate_eltype(ex.args[2])
+            return instantiate_scalartype(ex.args[2])
         end
     elseif ex.head == :call && ex.args[1] == :conj
-        return instantiate_eltype(ex.args[2])
+        return instantiate_scalartype(ex.args[2])
     elseif isscalarexpr(ex)
         return :(typeof($ex))
     else
         # return :(eltype($ex)) # would probably lead to doing the same operation twice
-        throw(ArgumentError("unable to determine eltype"))
+        throw(ArgumentError("unable to determine scalartype"))
     end
 end
-instantiate_eltype(ex) = Expr(:call, :typeof, ex)
+instantiate_scalartype(ex) = Expr(:call, :typeof, ex)
 
 function instantiate_scalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
@@ -67,12 +66,12 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         if istemporary
             initex = quote
                 $αsym = $α*$α2
-                $dst = cached_similar_from_indices($(QuoteNode(dst)), promote_type(eltype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = cached_similar_from_indices($(QuoteNode(dst)), promote_type(scalartype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
             end
         else
             initex = quote
                 $αsym = $α*$α2
-                $dst = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = similar_from_indices(promote_type(scalartype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
             end
         end
     else
@@ -110,7 +109,7 @@ end
 function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # addition: add one by one
         if dst === nothing
-            αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_eltype(ex)))
+            αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_scalartype(ex)))
             ex1 = instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
             dst = gensym()
             returnex = :($dst = $ex1)
@@ -153,11 +152,11 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
 
     # prepare tensors or tensor expressions
     if dst === nothing
-        TA = instantiate_eltype(exA)
-        TB = instantiate_eltype(exB)
+        TA = instantiate_scalartype(exA)
+        TB = instantiate_scalartype(exB)
         TC = Expr(:call, :promote_type, TA, TB, :(typeof($α)))
     else
-        TC = Expr(:call, :eltype, dst)
+        TC = Expr(:call, :scalartype, dst)
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
@@ -172,7 +171,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         indA = vcat(indlA, indrA)
         poA = (map(l->findfirst(isequal(l), indA), oindA)...,)
         pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
-        TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
+        TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = Expr(:(=), symA, A)
     end

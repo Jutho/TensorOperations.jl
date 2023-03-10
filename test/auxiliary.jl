@@ -3,7 +3,7 @@
         using TensorOperations: isassignment, isdefinition, getlhs, getrhs, isindex,
             istensor, isgeneraltensor, istensorexpr, isscalarexpr, hastraceindices,
             hastraceindices, getindices, getallindices,
-            normalizeindex, instantiate_scalar, instantiate_eltype,
+            normalizeindex, instantiate_scalar, instantiate_scalartype,
             decomposetensor, decomposegeneraltensor
 
         @test isassignment(:(a[-1,-2,-3] = b[-1,-2,1]*c[1,-3]+d[-2,-3,-1]))
@@ -88,7 +88,7 @@
         @test !isscalarexpr(:(a[x,y]*b[y,x]))
         @test !isscalarexpr(:(3*scalar(a[x,y]*b[y,x]) + conj(c[z])))
 
-        @test instantiate_eltype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_type(promote_type(eltype(a), eltype(b)), eltype(c)))
+        @test instantiate_scalartype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_type(promote_type(scalartype(a), scalartype(b)), scalartype(c)))
     end
 
     @testset "parsecost" begin
