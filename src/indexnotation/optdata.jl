@@ -1,7 +1,7 @@
 function optdata(ex::Expr)
     allindices = getallindices(ex)
-    cost = Power{:χ}(1,1)
-    return Dict{Any, typeof(cost)}(i=>cost for i in allindices)
+    cost = Power{:χ}(1, 1)
+    return Dict{Any,typeof(cost)}(i => cost for i in allindices)
 end
 
 function optdata(optex::Expr, ex::Expr)
@@ -19,14 +19,14 @@ function optdata(optex::Expr, ex::Expr)
         else
             indices = map(normalizeindex, args)
             costtype = Power{:χ,Int}
-            costs = fill(Power{:χ,Int}(1,1), length(args))
+            costs = fill(Power{:χ,Int}(1, 1), length(args))
         end
-        return Dict{Any, costtype}(k=>v for (k,v) in zip(indices, costs))
+        return Dict{Any,costtype}(k => v for (k, v) in zip(indices, costs))
     elseif optex.head == :call && optex.args[1] == :!
         allindices = unique(getallindices(ex))
         excludeind = map(normalizeindex, optex.args[2:end])
-        cost = Power{:χ}(1,1)
-        d = Dict{Any, typeof(cost)}(i=>cost for i in allindices)
+        cost = Power{:χ}(1, 1)
+        d = Dict{Any,typeof(cost)}(i => cost for i in allindices)
         for i in excludeind
             d[i] = 1
         end
@@ -50,7 +50,7 @@ function _optdata(indexvec, costvec)
             push!(costs, parsecost(cost))
         end
     end
-    indices, costs
+    return indices, costs
 end
 
 # Process index cost specification for @tensoropt and friends
@@ -76,4 +76,4 @@ function parsecost(ex::Expr)
     end
 end
 parsecost(ex::Number) = ex
-parsecost(ex::Symbol) = Power{ex}(1,1)
+parsecost(ex::Symbol) = Power{ex}(1, 1)

@@ -5,10 +5,13 @@
 # type unstable; better use tuples instead
 tensorcopy(A, IA, IC=IA) = tensorcopy(A, tuple(IA...), tuple(IC...))
 tensoradd(A, IA, B, IB, IC=IA) = tensoradd(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
-tensortrace(A, IA, IC = unique2(IA)) = tensortrace(A, tuple(IA...), tuple(IC...))
-tensorcontract(A, IA, B, IB, IC = symdiff(IA, IB)) =
-    tensorcontract(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
-tensorproduct(A, IA, B, IB, IC = vcat(IA, IB)) = tensorproduct(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
+tensortrace(A, IA, IC=unique2(IA)) = tensortrace(A, tuple(IA...), tuple(IC...))
+function tensorcontract(A, IA, B, IB, IC=symdiff(IA, IB))
+    return tensorcontract(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
+end
+function tensorproduct(A, IA, B, IB, IC=vcat(IA, IB))
+    return tensorproduct(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
+end
 
 """
     tensorcopy(A, IA, IC = IA)
@@ -106,7 +109,7 @@ this is a special case of `tensorcontract` with no indices being contracted over
 This method checks whether the indices indeed specify a tensor product instead of
 a genuine contraction.
 """
-function tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple = (IA..., IB...))
+function tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple=(IA..., IB...))
     isempty(intersect(IA, IB)) || throw(IndexError("not a valid tensor product"))
-    tensorcontract(A, IA, B, IB, IC)
+    return tensorcontract(A, IA, B, IB, IC)
 end

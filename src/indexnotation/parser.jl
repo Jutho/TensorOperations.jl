@@ -6,16 +6,16 @@ mutable struct TensorParser
     postprocessors::Vector{Any}
     function TensorParser()
         preprocessors = [normalizeindices,
-                            expandconj,
-                            nconindexcompletion,
-                            extracttensorobjects]
+                         expandconj,
+                         nconindexcompletion,
+                         extracttensorobjects]
         contractiontreebuilder = defaulttreebuilder
         contractiontreesorter = defaulttreesorter
         postprocessors = [_flatten, removelinenumbernode, addtensoroperations]
         return new(preprocessors,
-                    contractiontreebuilder,
-                    contractiontreesorter,
-                    postprocessors)
+                   contractiontreebuilder,
+                   contractiontreesorter,
+                   postprocessors)
     end
 end
 
@@ -40,7 +40,8 @@ function processcontractions(ex::Expr, treebuilder, treesorter)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex
     end
-    ex = Expr(ex.head, map(e->processcontractions(e, treebuilder, treesorter), ex.args)...)
+    ex = Expr(ex.head,
+              map(e -> processcontractions(e, treebuilder, treesorter), ex.args)...)
     if istensorcontraction(ex) && length(ex.args) > 3
         args = ex.args[2:end]
         network = map(getindices, args)
@@ -60,8 +61,8 @@ function defaulttreesorter(args, tree)
         return args[tree]
     else
         return Expr(:call, :*,
-                        defaulttreesorter(args, tree[1]),
-                        defaulttreesorter(args, tree[2]))
+                    defaulttreesorter(args, tree[1]),
+                    defaulttreesorter(args, tree[2]))
     end
 end
 
@@ -69,8 +70,8 @@ function defaulttreebuilder(network)
     if isnconstyle(network)
         tree = ncontree(network)
     else
-        tree = Any[1,2]
-        for k = 3:length(network)
+        tree = Any[1, 2]
+        for k in 3:length(network)
             tree = Any[tree, k]
         end
     end
@@ -97,24 +98,31 @@ function tensorify(ex::Expr)
                 return :(throw(IndexError($err)))
             end
             dst, leftind, rightind = decomposetensor(lhs)
-            if Set(vcat(leftind,rightind)) != Set(indices)
+            if Set(vcat(leftind, rightind)) != Set(indices)
                 err = "non-matching indices between left and right hand side: $ex"
                 return :(throw(IndexError($err)))
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return Expr(:(=), dst,instantiate(dst, false, rhs, true, leftind, rightind))
+                    return Expr(:(=), dst,
+                                instantiate(dst, false, rhs, true, leftind, rightind))
                 elseif ex.head == :(+=)
-                    return Expr(:(=), dst,instantiate(dst, true, rhs, 1, leftind, rightind))
+                    return Expr(:(=), dst,
+                                instantiate(dst, true, rhs, 1, leftind, rightind))
                 else
-                    return Expr(:(=), dst,instantiate(dst, true, rhs, -1, leftind, rightind))
+                    return Expr(:(=), dst,
+                                instantiate(dst, true, rhs, -1, leftind, rightind))
                 end
             else
-                return Expr(:(=), dst, instantiate(nothing, false, rhs, true, leftind, rightind, false))
+                return Expr(:(=), dst,
+                            instantiate(nothing, false, rhs, true, leftind, rightind,
+                                        false))
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                return Expr(ex.head, instantiate_scalar(lhs), Expr(:call, :scalar, instantiate(nothing, false, rhs, true, [], [], true)))
+                return Expr(ex.head, instantiate_scalar(lhs),
+                            Expr(:call, :scalar,
+                                 instantiate(nothing, false, rhs, true, [], [], true)))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, instantiate_scalar(lhs), instantiate_scalar(rhs))
             end
@@ -142,6 +150,6 @@ function tensorify(ex::Expr)
         end
         return Expr(:call, :scalar, instantiate(nothing, false, ex, true, [], [], true))
     end
-    error("invalid syntax in @tensor macro: $ex")
+    return error("invalid syntax in @tensor macro: $ex")
 end
 tensorify(ex) = ex

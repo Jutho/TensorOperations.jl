@@ -25,8 +25,8 @@ over are labelled by increasing integers, i.e. first the contraction correspondi
 See also the macro version [`@ncon`](@ref).
 """
 function ncon(tensors, network,
-                conjlist = fill(false, length(tensors)), sym = nothing ;
-                order = nothing, output = nothing)
+              conjlist=fill(false, length(tensors)), sym=nothing;
+              order=nothing, output=nothing)
     length(tensors) >= 2 ||
         throw(ArgumentError("do not use `ncon` for less than two tensors"))
     length(tensors) == length(network) == length(conjlist) ||
@@ -41,7 +41,7 @@ function ncon(tensors, network,
         end
     end
     if output === nothing
-        output = sort(outputindices; rev = true)
+        output = sort(outputindices; rev=true)
     else
         for a in output
             a in outputindices ||
@@ -52,7 +52,7 @@ function ncon(tensors, network,
                 throw(ArgumentError("invalid NCON network: $network -> $output"))
         end
     end
-    (tensors,network) = resolve_traces(tensors,network);
+    (tensors, network) = resolve_traces(tensors, network)
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
     if sym !== nothing
@@ -75,7 +75,7 @@ function ncon(tensors, network,
         symcontract = nothing
     end
     contract!(true, A, CA, B, CB, false, C,
-                oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
+              oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
     return C
 end
 
@@ -109,6 +109,6 @@ function contracttree(tensors, network, conjlist, tree, sym)
         symcontract = nothing
     end
     contract!(true, A, CA, B, CB, false, C,
-                oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
+              oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
     return C, IC, :N
 end

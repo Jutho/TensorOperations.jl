@@ -2,7 +2,8 @@
 function instantiate_eltype(ex::Expr)
     if istensor(ex)
         return Expr(:call, :eltype, gettensorobject(ex))
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
+    elseif ex.head == :call &&
+           (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
         if length(ex.args) > 2
             return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
         else
@@ -32,60 +33,74 @@ end
 instantiate_scalar(ex::Symbol) = ex
 instantiate_scalar(ex) = ex
 
-function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
+                     istemporary=false)
     if isgeneraltensor(ex)
         return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # linear combination
         return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         if isscalarexpr(ex.args[2])
-            return instantiate(dst, β, ex.args[3], Expr(:call, :*, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
+            return instantiate(dst, β, ex.args[3],
+                               Expr(:call, :*, instantiate_scalar(ex.args[2]), α), leftind,
+                               rightind, istemporary)
         elseif isscalarexpr(ex.args[3])
-            return instantiate(dst, β, ex.args[2], Expr(:call, :*, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
+            return instantiate(dst, β, ex.args[2],
+                               Expr(:call, :*, α, instantiate_scalar(ex.args[3])), leftind,
+                               rightind, istemporary)
         else
             return instantiate_contraction(dst, β, ex, α, leftind, rightind, istemporary)
         end
     elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
-        return instantiate(dst, β, ex.args[2], Expr(:call, :/, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
+        return instantiate(dst, β, ex.args[2],
+                           Expr(:call, :/, α, instantiate_scalar(ex.args[3])), leftind,
+                           rightind, istemporary)
     elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
-        return instantiate(dst, β, ex.args[3], Expr(:call, :\, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
+        return instantiate(dst, β, ex.args[3],
+                           Expr(:call, :\, instantiate_scalar(ex.args[2]), α), leftind,
+                           rightind, istemporary)
     end
     throw(ArgumentError("problem with parsing $ex"))
 end
 
-function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                   rightind::Vector{Any}, istemporary=false)
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
 
-    p1 = (map(l->findfirst(isequal(l), srcind), leftind)...,)
-    p2 = (map(l->findfirst(isequal(l), srcind), rightind)...,)
+    p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
+    p2 = (map(l -> findfirst(isequal(l), srcind), rightind)...,)
 
     αsym = gensym()
     if dst === nothing
         dst = gensym()
         if istemporary
             initex = quote
-                $αsym = $α*$α2
-                $dst = cached_similar_from_indices($(QuoteNode(dst)), promote_type(eltype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $αsym = $α * $α2
+                $dst = cached_similar_from_indices($(QuoteNode(dst)),
+                                                   promote_type(eltype($src),
+                                                                typeof($αsym)), $p1, $p2,
+                                                   $src, $conjarg)
             end
         else
             initex = quote
-                $αsym = $α*$α2
-                $dst = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $αsym = $α * $α2
+                $dst = similar_from_indices(promote_type(eltype($src), typeof($αsym)), $p1,
+                                            $p2, $src, $conjarg)
             end
         end
     else
-        initex = :($αsym = $α*$α2)
+        initex = :($αsym = $α * $α2)
     end
 
     if hastraceindices(ex)
-        traceind = unique(setdiff(setdiff(srcind,leftind), rightind))
-        q1 = (map(l->findfirst(isequal(l), srcind), traceind)...,)
-        q2 = (map(l->findlast(isequal(l), srcind), traceind)...,)
-        if any(x->(x===nothing), (p1...,p2...,q1...,q2...)) ||
-            !isperm((p1...,p2...,q1...,q2...)) ||
-            length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
+        traceind = unique(setdiff(setdiff(srcind, leftind), rightind))
+        q1 = (map(l -> findfirst(isequal(l), srcind), traceind)...,)
+        q2 = (map(l -> findlast(isequal(l), srcind), traceind)...,)
+        if any(x -> (x === nothing), (p1..., p2..., q1..., q2...)) ||
+           !isperm((p1..., p2..., q1..., q2...)) ||
+           length(srcind) != length(leftind) + length(rightind) + 2 * length(traceind)
             err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
@@ -95,8 +110,8 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
             # $dst
         end
     else
-        if any(x->(x===nothing), (p1..., p2...)) || !isperm((p1...,p2...)) ||
-            length(srcind) != length(leftind) + length(rightind)
+        if any(x -> (x === nothing), (p1..., p2...)) || !isperm((p1..., p2...)) ||
+           length(srcind) != length(leftind) + length(rightind)
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
@@ -107,7 +122,8 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         end
     end
 end
-function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                       rightind::Vector{Any}, istemporary=false)
     if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # addition: add one by one
         if dst === nothing
             αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_eltype(ex)))
@@ -118,7 +134,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
             returnex = instantiate(dst, β, ex.args[2], α, leftind, rightind, istemporary)
         end
         αnew = (ex.args[1] == :-) ? Expr(:call, :-, α) : α
-        for k = 3:length(ex.args)
+        for k in 3:length(ex.args)
             ex1 = instantiate(dst, true, ex.args[k], αnew, leftind, rightind)
             returnex = quote
                 $returnex
@@ -133,9 +149,10 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
         throw(ArgumentError("unable to instantiate linear combination: $ex"))
     end
 end
-function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                 rightind::Vector{Any}, istemporary=false)
     @assert ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
-        istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
+            istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
     exA = ex.args[2]
     exB = ex.args[3]
 
@@ -170,8 +187,8 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     else
         A, indlA, indrA, αA, conj = decomposegeneraltensor(exA)
         indA = vcat(indlA, indrA)
-        poA = (map(l->findfirst(isequal(l), indA), oindA)...,)
-        pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
+        poA = (map(l -> findfirst(isequal(l), indA), oindA)...,)
+        pcA = (map(l -> findfirst(isequal(l), indA), cind)...,)
         TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = Expr(:(=), symA, A)
@@ -187,27 +204,30 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     else
         B, indlB, indrB, αB, conj = decomposegeneraltensor(exB)
         indB = vcat(indlB, indrB)
-        poB = (map(l->findfirst(isequal(l), indB), oindB)...,)
-        pcB = (map(l->findfirst(isequal(l), indB), cind)...,)
+        poB = (map(l -> findfirst(isequal(l), indB), oindB)...,)
+        pcB = (map(l -> findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
         initB = Expr(:(=), symB, B)
     end
 
     oindAB = vcat(oindA, oindB)
-    p1 = (map(l->findfirst(isequal(l), oindAB), leftind)...,)
-    p2 = (map(l->findfirst(isequal(l), oindAB), rightind)...,)
-    if any(x->(x===nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
-        !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
-        !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
-        !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
+    p1 = (map(l -> findfirst(isequal(l), oindAB), leftind)...,)
+    p2 = (map(l -> findfirst(isequal(l), oindAB), rightind)...,)
+    if any(x -> (x === nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
+       !(isperm((poA..., pcA...)) && length(indA) == length(poA) + length(pcA)) ||
+       !(isperm((pcB..., poB...)) && length(indB) == length(poB) + length(pcB)) ||
+       !(isperm((p1..., p2...)) && length(oindAB) == length(p1) + length(p2))
         err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA,
+                                                          $poB, $p1, $p2, $symA, $symB,
+                                                          $conjA, $conjB))
         else
-            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA,
+                                                   $symB, $conjA, $conjB))
         end
     else
         initC = :($symC = $dst)
@@ -218,9 +238,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         $initA
         $initB
         $initC
-        contract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
-                    $poA, $pcA, $poB, $pcB, $p1, $p2,
-                    $((gensym(),gensym(),gensym())))
+        contract!($α * $αA * $αB, $symA, $conjA, $symB, $conjB, $β, $symC,
+                  $poA, $pcA, $poB, $pcB, $p1, $p2,
+                  $((gensym(), gensym(), gensym())))
         # $symC
     end
 end

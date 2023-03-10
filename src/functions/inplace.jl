@@ -4,10 +4,13 @@
 tensorcopy!(A, IA, C, IC) = tensorcopy!(A, tuple(IA...), C, tuple(IC...))
 tensoradd!(α, A, IA, β, C, IC) = tensoradd!(α, A, tuple(IA...), β, C, tuple(IC...))
 tensortrace!(α, A, IA, β, C, IC) = tensortrace!(α, A, tuple(IA...), β, C, tuple(IC...))
-tensorcontract!(α, A, IA, conjA, B, IB, conjB, β, C, IC) =
-    tensorcontract!(α, A, tuple(IA...), conjA, B, tuple(IB...), conjB, β, C, tuple(IC...))
-tensorproduct!(α, A, IA, B, IB, β, C, IC) = tensorproduct!(α, A, tuple(IA...), B, tuple(IB...), β, C, tuple(IC...))
-
+function tensorcontract!(α, A, IA, conjA, B, IB, conjB, β, C, IC)
+    return tensorcontract!(α, A, tuple(IA...), conjA, B, tuple(IB...), conjB, β, C,
+                           tuple(IC...))
+end
+function tensorproduct!(α, A, IA, B, IB, β, C, IC)
+    return tensorproduct!(α, A, tuple(IA...), B, tuple(IB...), β, C, tuple(IC...))
+end
 
 """
     tensorcopy!(A, IA, C, IC)
@@ -30,7 +33,7 @@ See also: [`tensorcopy`](@ref)
 """
 function tensoradd!(α, A, IA::Tuple, β, C, IC::Tuple)
     indCinA = add_indices(IA, IC)
-    add!(α, A, :N, β, C, indCinA)
+    return add!(α, A, :N, β, C, indCinA)
 end
 
 """
@@ -60,9 +63,10 @@ or in the interaction of either `labelsA` or `labelsB` with `labelsC`, for indic
 in which the open indices should be match to the indices of the output array `C`.
 """
 function tensorcontract!(α, A, IA::Tuple, conjA, B, IB::Tuple, conjB, β, C, IC::Tuple)
-
-    conjA == 'N' || conjA == 'C' || throw(ArgumentError("Value of conjA should be 'N' or 'C' instead of $conjA"))
-    conjB == 'N' || conjB == 'C' || throw(ArgumentError("Value of conjB should be 'N' or 'C' instead of $conjB"))
+    conjA == 'N' || conjA == 'C' ||
+        throw(ArgumentError("Value of conjA should be 'N' or 'C' instead of $conjA"))
+    conjB == 'N' || conjB == 'C' ||
+        throw(ArgumentError("Value of conjB should be 'N' or 'C' instead of $conjB"))
     CA = conjA == 'N' ? :N : :C
     CB = conjB == 'N' ? :N : :C
 
@@ -78,5 +82,5 @@ Replaces C with `β C + α A * B` without any indices being contracted.
 """
 function tensorproduct!(α, A, IA::Tuple, B, IB::Tuple, β, C, IC::Tuple)
     isempty(intersect(IA, IB)) || throw(LabelError("not a valid tensor product"))
-    tensorcontract!(α, A, IA, 'N', B, IB, 'N', β, C, IC)
+    return tensorcontract!(α, A, IA, 'N', B, IB, 'N', β, C, IC)
 end

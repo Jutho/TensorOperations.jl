@@ -28,11 +28,11 @@ end
 macro tensor(ex::Expr, orderex::Expr)
     parser = TensorParser()
     if !(orderex.head == :(=) && orderex.args[1] == :order &&
-            orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
+         orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
         throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
     end
     indexorder = map(normalizeindex, orderex.args[2].args)
-    parser.contractiontreebuilder = network->indexordertree(network, indexorder)
+    parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
     return esc(parser(ex))
 end
 
@@ -81,7 +81,7 @@ macro tensoropt(expressions...)
     end
 
     parser = TensorParser()
-    parser.contractiontreebuilder = network->optimaltree(network, optdict)[1]
+    parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
     return esc(parser(ex))
 end
 
@@ -102,8 +102,7 @@ macro tensoropt_verbose(expressions...)
     end
 
     parser = TensorParser()
-    parser.contractiontreebuilder =
-        network->optimaltree(network, optdict; verbose = true)[1]
+    parser.contractiontreebuilder = network -> optimaltree(network, optdict; verbose=true)[1]
     return esc(parser(ex))
 end
 
@@ -123,7 +122,7 @@ macro optimalcontractiontree(expressions...)
     if !(ex.head == :call && ex.args[1] == :*)
         error("cannot compute optimal contraction tree for this expression")
     end
-    network = [getindices(ex.args[k]) for k = 2:length(ex.args)]
+    network = [getindices(ex.args[k]) for k in 2:length(ex.args)]
     tree, cost = optimaltree(network, optdict)
     return tree, cost
 end
@@ -164,16 +163,16 @@ macro ncon(args...)
         return _nconmacro(args[2], args[3], args[1])
     end
 end
-function _nconmacro(tensors, indices, kwargs = nothing)
+function _nconmacro(tensors, indices, kwargs=nothing)
     if !(tensors isa Expr) # there is not much that we can do
         if kwargs === nothing
             ex = Expr(:call, :ncon, tensors, indices,
-                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                        QuoteNode(gensym()))
+                      Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                      QuoteNode(gensym()))
         else
             ex = Expr(:call, :ncon, kwargs, tensors, indices,
-                        Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                        QuoteNode(gensym()))
+                      Expr(:call, :fill, false, Expr(:call, :length, tensors)),
+                      QuoteNode(gensym()))
         end
         return esc(ex)
     end
@@ -188,7 +187,7 @@ function _nconmacro(tensors, indices, kwargs = nothing)
         throw(ArgumentError("@ncon does not support splats (...) in tensor lists."))
     end
     conjlist = fill(false, length(tensorargs))
-    for i = 1:length(tensorargs)
+    for i in 1:length(tensorargs)
         if tensorargs[i] isa Expr
             if tensorargs[i].head == :call && tensorargs[i].args[1] == :conj
                 tensorargs[i] = tensorargs[i].args[2]

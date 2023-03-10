@@ -1,8 +1,8 @@
 macro cutensor(ex::Expr)
     cuwrapdict = Dict{Any,Any}()
     parser = TensorParser()
-    parser.preprocessors[end] = ex->extracttensorobjects(ex, cuwrapdict)
-    push!(parser.postprocessors, ex->addcutensorwraps(ex, cuwrapdict))
+    parser.preprocessors[end] = ex -> extracttensorobjects(ex, cuwrapdict)
+    push!(parser.postprocessors, ex -> addcutensorwraps(ex, cuwrapdict))
     return esc(parser(ex))
 end
 
@@ -10,13 +10,13 @@ macro cutensor(ex::Expr, orderex::Expr)
     cuwrapdict = Dict{Any,Any}()
     parser = TensorParser()
     if !(orderex.head == :(=) && orderex.args[1] == :order &&
-            orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
+         orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
         throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
     end
     indexorder = map(normalizeindex, orderex.args[2].args)
-    parser.contractiontreebuilder = network->indexordertree(network, indexorder)
-    parser.preprocessors[end] = ex->extracttensorobjects(ex, cuwrapdict)
-    push!(parser.postprocessors, ex->addcutensorwraps(ex, cuwrapdict))
+    parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
+    parser.preprocessors[end] = ex -> extracttensorobjects(ex, cuwrapdict)
+    push!(parser.postprocessors, ex -> addcutensorwraps(ex, cuwrapdict))
     return esc(parser(ex))
 end
 
@@ -29,25 +29,25 @@ function extracttensorobjects(ex, cuwrapdict)
     tensordict = Dict{Any,Any}(a => gensym() for a in alltensors)
     pre = Expr(:block, [Expr(:(=), tensordict[a], a) for a in existingtensors]...)
     cutensordict = Dict{Any,Any}(a => gensym() for a in alltensors)
-    ex = replacetensorobjects((obj,leftind,rightind)->get(cutensordict, obj, obj), ex)
+    ex = replacetensorobjects((obj, leftind, rightind) -> get(cutensordict, obj, obj), ex)
     post = Expr(:block,
                 [Expr(:call, :copyto!, a, cutensordict[a]) for a in outputtensors]...,
                 [Expr(:(=), a, cutensordict[a]) for a in newtensors]...)
     for k in inputtensors
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b=>(a,:($b = CuArray($a))))
+        push!(cuwrapdict, b => (a, :($b = CuArray($a))))
     end
     for k in setdiff(outputtensors, inputtensors)
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b=>(a,:($b = CuArray{eltype($a)}(undef, size($a)))))
+        push!(cuwrapdict, b => (a, :($b = CuArray{eltype($a)}(undef, size($a)))))
     end
     return Expr(:block, pre, ex, post)
 end
 
 function addcutensorwraps(ex, cuwrapdict)
-    for (b,(a,assignb)) in cuwrapdict
+    for (b, (a, assignb)) in cuwrapdict
         ex = _replace_in_eltype(ex, b, a)
         ex = _splice(ex, b, assignb)
     end
@@ -64,7 +64,7 @@ end
 _replace_in_eltype(ex, b, a) = ex
 
 # check if a subexpression contains/uses the variable s, but ignore `eltype` calls
-_contains(ex::Expr, s) = any(e->_contains(e, s), ex.args)
+_contains(ex::Expr, s) = any(e -> _contains(e, s), ex.args)
 _contains(ex::Symbol, s) = ex == s
 _contains(ex, s) = false
 
