@@ -1,8 +1,13 @@
 module TensorOperations
 
+using VectorInterface
+using TensorOperationsCore
+const TOC = TensorOperationsCore
+
 using TupleTools
 using Strided
-using Strided: AbstractStridedView, UnsafeStridedView
+
+# using Strided: AbstractStridedView, UnsafeStridedView
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
@@ -14,20 +19,14 @@ using Requires
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
 
+export StridedBackend, JuliaAllocator
+
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
 export ncon
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
-
-# Convenient type alias
-const IndexTuple{N} = NTuple{N,Int}
-
-# An exception type for reporting errors in the index specificatino
-struct IndexError{S<:AbstractString} <: Exception
-    msg::S
-end
 
 # Index notation
 #----------------
@@ -49,9 +48,10 @@ include("indexnotation/indexordertree.jl")
 # Implementations
 #-----------------
 include("implementation/indices.jl")
-include("implementation/tensorcache.jl")
+# include("implementation/tensorcache.jl")
+include("implementation/juliaalloc.jl")
 include("implementation/stridedarray.jl")
-include("implementation/diagonal.jl")
+# include("implementation/diagonal.jl")
 
 # Functions
 #-----------
