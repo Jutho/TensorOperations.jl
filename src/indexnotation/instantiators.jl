@@ -19,9 +19,9 @@ end
 instantiate_scalartype(ex) = Expr(:call, :typeof, ex)
 
 function instantiate_scalar(ex::Expr)
-    if ex.head == :call && ex.args[1] == :scalar
+    if ex.head == :call && ex.args[1] == :tensorscalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
+        return :(tensorscalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
     elseif ex.head == :call
         return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
     else
@@ -91,7 +91,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         end
         return quote
             $initex
-            trace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
+            tensortrace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
             # $dst
         end
     else
@@ -102,7 +102,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         end
         return quote
             $initex
-            add!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
+            tensoradd!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
             # $dst
         end
     end
@@ -223,7 +223,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         $initA
         $initB
         $initC
-        contract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
+        tensorcontract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
                     $poA, $pcA, $poB, $pcB, $p1, $p2,
                     $((gensym(),gensym(),gensym())))
         # $symC
