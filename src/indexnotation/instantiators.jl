@@ -59,6 +59,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
 
     p1 = (map(l->findfirst(isequal(l), srcind), leftind)...,)
     p2 = (map(l->findfirst(isequal(l), srcind), rightind)...,)
+    pC = (p1, p2)
 
     αsym = gensym()
     if dst === nothing
@@ -66,12 +67,12 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         if istemporary
             initex = quote
                 $αsym = $α*$α2
-                $dst = cached_similar_from_indices($(QuoteNode(dst)), promote_type(scalartype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = tensoralloctemp($(QuoteNode(dst)), promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
             end
         else
             initex = quote
                 $αsym = $α*$α2
-                $dst = similar_from_indices(promote_type(scalartype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = tensoralloc(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
             end
         end
     else
@@ -195,6 +196,11 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     oindAB = vcat(oindA, oindB)
     p1 = (map(l->findfirst(isequal(l), oindAB), leftind)...,)
     p2 = (map(l->findfirst(isequal(l), oindAB), rightind)...,)
+    
+    pC = (p1, p2)
+    pA = (poA, pcA)
+    pB = (pcB, poB)
+    
     if any(x->(x===nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
         !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
         !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
@@ -204,9 +210,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = tensoralloctemp($(QuoteNode(symC)), $symTC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB))
         else
-            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = tensoralloc($symTC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB))
         end
     else
         initC = :($symC = $dst)
