@@ -67,7 +67,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         if istemporary
             initex = quote
                 $αsym = $α*$α2
-                $dst = tensoralloctemp($(QuoteNode(dst)), promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
+                $dst = tensoralloc(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
             end
         else
             initex = quote
@@ -91,7 +91,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         end
         return quote
             $initex
-            tensortrace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
+            tensortrace!($dst, ($p1, $p2), $src, ($q1, $q2), $conjarg, $α * $α2, $β)
             # $dst
         end
     else
@@ -102,7 +102,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, 
         end
         return quote
             $initex
-            tensoradd!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
+            tensoradd!($dst, $src, ($p1, $p2), $conjarg, $α * $α2, $β)
             # $dst
         end
     end
@@ -210,9 +210,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = tensoralloctemp($(QuoteNode(symC)), $symTC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB))
+            initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
         else
-            initC = :($symC = tensoralloc($symTC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB))
+            initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
         end
     else
         initC = :($symC = $dst)
@@ -223,9 +223,8 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         $initA
         $initB
         $initC
-        tensorcontract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
-                    $poA, $pcA, $poB, $pcB, $p1, $p2,
-                    $((gensym(),gensym(),gensym())))
+        tensorcontract!($symC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB, $α*$αA*$αB, $β)
+                    # $((gensym(),gensym(),gensym())))
         # $symC
     end
 end

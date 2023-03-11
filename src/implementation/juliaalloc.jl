@@ -4,6 +4,10 @@ function TOC.tensoralloc(::JuliaAllocator, args...)
     return tensor_from_structure(tensorstructure(args...)...)
 end
 
+function TOC.tensoralloctemp(::JuliaAllocator, args...)
+    return TOC.tensoralloc(::JuliaAllocator, args...)
+end
+
 TOC.tensorfree(::JuliaAllocator, C) = nothing
 
 # ---------------------------------------------------------------------------------------- #
@@ -32,9 +36,17 @@ function tensor_from_structure end
 # ---------------------------------------------------------------------------------------- #
 
 tensorstructure(TC, pC, A::AbstractArray, _) = A, TC, map(n -> size(A, n), linearize(pC))
-function tensorstructure(TC, pC, A::AbstractArray, iA, _, B::AbstractArray, iB, _)
-    lA = length(iA)
-    sz = map(n -> ifelse(n <= lA, size(A, iA[n]), size(B, iB[n - lA])), linearize(pC))
+
+function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::AbstractArray, iB::IndexTuple, _)
+    sz = let lA = length(iA)
+        map(linearize(pC)) do n
+            if n <= lA
+                return size(A, iA[n])
+            else
+                return size(B, iB[n - lA])
+            end
+        end
+    end
     return A, TC, sz
 end
 

@@ -40,7 +40,10 @@ end
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensorcontract!(b::StridedBackend, C, pC, A, pA, conjA, B, pB, conjB, α, β)
+function TOC.tensorcontract!(b::StridedBackend, C::AbstractArray, pC::Index2Tuple, 
+                             A::AbstractArray, pA::Index2Tuple, conjA, 
+                             B::AbstractArray, pB::Index2Tuple, conjB, 
+                             α, β)
     (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
         throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
     (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
@@ -56,10 +59,14 @@ function TOC.tensorcontract!(b::StridedBackend, C, pC, A, pA, conjA, B, pB, conj
 
     TupleTools.getindices(szA, pA[2]) == TupleTools.getindices(szB, pB[1]) ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-
-    (TupleTools.getindices(szA, pA[1])..., TupleTools.getindices(szB, pB[2])...) ==
-    TupleTools.getindices(szC, linearize(pC)) ||
-        throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
+    
+    szoA = TupleTools.getindices(szA, pA[1])
+    szoB = TupleTools.getindices(szB, pB[2])
+    szoC = TupleTools.getindices(szC, linearize(pC))
+    szoC = TupleTools.getindices(szC, TupleTools.invperm(linearize(pC)))
+    (szoA..., szoB...) == szoC ||
+        throw(DimensionMismatch("non-matching sizes in uncontracted dimensions:" *
+            "$szoA, $szoB -> $szoC"))
 
     if b.use_blas && eltype(C) <: BlasFloat
         if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) >
@@ -211,9 +218,9 @@ end
 function TOC.tensortrace!(::StridedBackend, C::AbstractArray{<:Any,NC}, pC::Index2Tuple,
                           A::AbstractArray{<:Any,NA}, pA::Index2Tuple, conjA::Symbol, α,
                           β) where {NA,NC}
-    NC == length(pC) ||
-        throw(IndexError("Invalid selection of $NC out of $NA: $pC"))
-    NA - NC == length(pA[1]) == length(pA[2]) ||
+    NC == length(linearize(pC)) ||
+        throw(IndexError("invalid selection of $NC out of $NA: $pC"))
+    NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
         throw(IndexError("invalid number of trace dimension"))
 
     inds = ((linearize(pC)...,), pA[1], pA[2])

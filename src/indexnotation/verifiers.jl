@@ -92,7 +92,7 @@ end
 
 # test for a scalar expression, i.e. no indices
 function isscalarexpr(ex::Expr)
-    if ex.head == :call && ex.args[1] == :scalar
+    if ex.head == :call && ex.args[1] == :tensorscalar
         return istensorexpr(ex.args[2])
     elseif ex.head in (:ref, :typed_vcat, :typed_hcat)
         return false

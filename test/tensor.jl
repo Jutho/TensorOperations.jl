@@ -86,7 +86,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     A=rand(ComplexF64, (Da, Dc, Df, Da, De, Db, Db, Dg))
     B=rand(ComplexF64, (Dc, Dh, Dg, De, Dd))
     C=rand(ComplexF64, (Dd, Dh, Df))
-    @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d]+0.5 * C[d, h, f]
+    @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] + 0.5 * C[d, h, f]
     D2=zeros(ComplexF64, (Dd, Df, Dh))
     for d=1:Dd, f=1:Df, h=1:Dh
         D2[d, f, h] += 0.5 * C[d, h, f]
@@ -95,7 +95,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         end
     end
     @test D1 ≈ D2
-    @test norm(vec(D1)) ≈ sqrt(abs((@tensor scalar(D1[d, f, h] * conj(D1[d, f, h])))))
+    @test norm(vec(D1)) ≈ sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
     println("tensorcontract 3: $(time()-t0) seconds")
     t0 = time()
 
@@ -266,7 +266,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         @test HrA12′′ == @ncon([rhoL, H, A2, rhoR, A1],
                                 [[-1,1],[-2,-3,4,5],[2,5,3],[3,-4],[1,4,2]];
                                 order = [1,2,3,4,5], output=[-1,-2,-3,-4])
-        @test E ≈ @tensor scalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+        @test E ≈ @tensor tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
     println("tensor network examples: $(time()-t0) seconds")
     t0 = time()

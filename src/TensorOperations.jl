@@ -25,8 +25,7 @@ export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cach
 
 # export function based API
 export ncon
-export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
-export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
+export tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
 
 # Index notation
 #----------------
@@ -55,9 +54,9 @@ include("implementation/stridedarray.jl")
 
 # Functions
 #-----------
-include("functions/simple.jl")
-include("functions/ncon.jl")
-include("functions/inplace.jl")
+# include("functions/simple.jl")
+# include("functions/ncon.jl")
+# include("functions/inplace.jl")
 
 # Global package settings
 #-------------------------
