@@ -1,29 +1,27 @@
-
-function instantiate_eltype(ex::Expr)
+function instantiate_scalartype(ex::Expr)
     if istensor(ex)
-        return Expr(:call, :eltype, gettensorobject(ex))
-    elseif ex.head == :call &&
-           (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
+        return Expr(:call, :scalartype, gettensorobject(ex))
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
         if length(ex.args) > 2
-            return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
+            return Expr(:call, :promote_type, map(instantiate_scalartype, ex.args[2:end])...)
         else
-            return instantiate_eltype(ex.args[2])
+            return instantiate_scalartype(ex.args[2])
         end
     elseif ex.head == :call && ex.args[1] == :conj
-        return instantiate_eltype(ex.args[2])
+        return instantiate_scalartype(ex.args[2])
     elseif isscalarexpr(ex)
         return :(typeof($ex))
     else
         # return :(eltype($ex)) # would probably lead to doing the same operation twice
-        throw(ArgumentError("unable to determine eltype"))
+        throw(ArgumentError("unable to determine scalartype"))
     end
 end
-instantiate_eltype(ex) = Expr(:call, :typeof, ex)
+instantiate_scalartype(ex) = Expr(:call, :typeof, ex)
 
 function instantiate_scalar(ex::Expr)
-    if ex.head == :call && ex.args[1] == :scalar
+    if ex.head == :call && ex.args[1] == :tensorscalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
+        return :(tensorscalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
     elseif ex.head == :call
         return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
     else
@@ -69,25 +67,22 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
 
-    p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
-    p2 = (map(l -> findfirst(isequal(l), srcind), rightind)...,)
+    p1 = (map(l->findfirst(isequal(l), srcind), leftind)...,)
+    p2 = (map(l->findfirst(isequal(l), srcind), rightind)...,)
+    pC = (p1, p2)
 
     αsym = gensym()
     if dst === nothing
         dst = gensym()
         if istemporary
             initex = quote
-                $αsym = $α * $α2
-                $dst = cached_similar_from_indices($(QuoteNode(dst)),
-                                                   promote_type(eltype($src),
-                                                                typeof($αsym)), $p1, $p2,
-                                                   $src, $conjarg)
+                $αsym = $α*$α2
+                $dst = tensoralloc(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
             end
         else
             initex = quote
-                $αsym = $α * $α2
-                $dst = similar_from_indices(promote_type(eltype($src), typeof($αsym)), $p1,
-                                            $p2, $src, $conjarg)
+                $αsym = $α*$α2
+                $dst = tensoralloc(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
             end
         end
     else
@@ -106,7 +101,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         return quote
             $initex
-            trace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
+            tensortrace!($dst, ($p1, $p2), $src, ($q1, $q2), $conjarg, $α * $α2, $β)
             # $dst
         end
     else
@@ -117,7 +112,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         return quote
             $initex
-            add!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
+            tensoradd!($dst, $src, ($p1, $p2), $conjarg, $α * $α2, $β)
             # $dst
         end
     end
@@ -126,7 +121,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
                                        rightind::Vector{Any}, istemporary=false)
     if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # addition: add one by one
         if dst === nothing
-            αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_eltype(ex)))
+            αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_scalartype(ex)))
             ex1 = instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
             dst = gensym()
             returnex = :($dst = $ex1)
@@ -170,11 +165,11 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
 
     # prepare tensors or tensor expressions
     if dst === nothing
-        TA = instantiate_eltype(exA)
-        TB = instantiate_eltype(exB)
+        TA = instantiate_scalartype(exA)
+        TB = instantiate_scalartype(exB)
         TC = Expr(:call, :promote_type, TA, TB, :(typeof($α)))
     else
-        TC = Expr(:call, :eltype, dst)
+        TC = Expr(:call, :scalartype, dst)
     end
 
     if !isgeneraltensor(exA) || hastraceindices(exA)
@@ -187,9 +182,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     else
         A, indlA, indrA, αA, conj = decomposegeneraltensor(exA)
         indA = vcat(indlA, indrA)
-        poA = (map(l -> findfirst(isequal(l), indA), oindA)...,)
-        pcA = (map(l -> findfirst(isequal(l), indA), cind)...,)
-        TA = dst === nothing ? :(float(eltype($A))) : :(eltype($dst))
+        poA = (map(l->findfirst(isequal(l), indA), oindA)...,)
+        pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
+        TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = Expr(:(=), symA, A)
     end
@@ -211,23 +206,25 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     end
 
     oindAB = vcat(oindA, oindB)
-    p1 = (map(l -> findfirst(isequal(l), oindAB), leftind)...,)
-    p2 = (map(l -> findfirst(isequal(l), oindAB), rightind)...,)
-    if any(x -> (x === nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
-       !(isperm((poA..., pcA...)) && length(indA) == length(poA) + length(pcA)) ||
-       !(isperm((pcB..., poB...)) && length(indB) == length(poB) + length(pcB)) ||
-       !(isperm((p1..., p2...)) && length(oindAB) == length(p1) + length(p2))
+    p1 = (map(l->findfirst(isequal(l), oindAB), leftind)...,)
+    p2 = (map(l->findfirst(isequal(l), oindAB), rightind)...,)
+    
+    pC = (p1, p2)
+    pA = (poA, pcA)
+    pB = (pcB, poB)
+    
+    if any(x->(x===nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
+        !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
+        !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
+        !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
         err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA,
-                                                          $poB, $p1, $p2, $symA, $symB,
-                                                          $conjA, $conjB))
+            initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
         else
-            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA,
-                                                   $symB, $conjA, $conjB))
+            initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
         end
     else
         initC = :($symC = $dst)
@@ -238,9 +235,8 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         $initA
         $initB
         $initC
-        contract!($α * $αA * $αB, $symA, $conjA, $symB, $conjB, $β, $symC,
-                  $poA, $pcA, $poB, $pcB, $p1, $p2,
-                  $((gensym(), gensym(), gensym())))
+        tensorcontract!($symC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB, $α*$αA*$αB, $β)
+                    # $((gensym(),gensym(),gensym())))
         # $symC
     end
 end

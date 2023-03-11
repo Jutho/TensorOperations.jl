@@ -1,8 +1,13 @@
 module TensorOperations
 
+using VectorInterface
+using TensorOperationsCore
+const TOC = TensorOperationsCore
+
 using TupleTools
 using Strided
-using Strided: AbstractStridedView, UnsafeStridedView
+
+# using Strided: AbstractStridedView, UnsafeStridedView
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
@@ -14,20 +19,13 @@ using Requires
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
 
+export StridedBackend, JuliaAllocator
+
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
 export ncon
-export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalar
-export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!
-
-# Convenient type alias
-const IndexTuple{N} = NTuple{N,Int}
-
-# An exception type for reporting errors in the index specificatino
-struct IndexError{S<:AbstractString} <: Exception
-    msg::S
-end
+export tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
 
 # Index notation
 #----------------
@@ -49,15 +47,16 @@ include("indexnotation/indexordertree.jl")
 # Implementations
 #-----------------
 include("implementation/indices.jl")
-include("implementation/tensorcache.jl")
+# include("implementation/tensorcache.jl")
+include("implementation/juliaalloc.jl")
 include("implementation/stridedarray.jl")
-include("implementation/diagonal.jl")
+# include("implementation/diagonal.jl")
 
 # Functions
 #-----------
-include("functions/simple.jl")
-include("functions/ncon.jl")
-include("functions/inplace.jl")
+# include("functions/simple.jl")
+# include("functions/ncon.jl")
+# include("functions/inplace.jl")
 
 # Global package settings
 #-------------------------
@@ -180,45 +179,41 @@ function _precompile_()
     for N in 1:8
         @assert precompile(Tuple{typeof(isperm),NTuple{N,Int}})
     end
-    @assert precompile(Tuple{typeof(_intersect),Base.BitArray{1},Base.BitArray{1}})
-    @assert precompile(Tuple{typeof(_intersect),Base.BitSet,Base.BitSet})
-    @assert precompile(Tuple{typeof(_intersect),UInt128,UInt128})
-    @assert precompile(Tuple{typeof(_intersect),UInt32,UInt32})
-    @assert precompile(Tuple{typeof(_intersect),UInt64,UInt64})
-    @assert precompile(Tuple{typeof(_isemptyset),Base.BitArray{1}})
-    @assert precompile(Tuple{typeof(_isemptyset),Base.BitSet})
-    @assert precompile(Tuple{typeof(_isemptyset),UInt128})
-    @assert precompile(Tuple{typeof(_isemptyset),UInt32})
-    @assert precompile(Tuple{typeof(_isemptyset),UInt64})
-    @assert precompile(Tuple{typeof(_ncontree!),AVector,Vector{Vector{Int64}}})
-    @assert precompile(Tuple{typeof(_setdiff),Base.BitArray{1},Base.BitArray{1}})
-    @assert precompile(Tuple{typeof(_setdiff),Base.BitSet,Base.BitSet})
-    @assert precompile(Tuple{typeof(_setdiff),UInt128,UInt128})
-    @assert precompile(Tuple{typeof(_setdiff),UInt32,UInt32})
-    @assert precompile(Tuple{typeof(_setdiff),UInt64,UInt64})
-    @assert precompile(Tuple{typeof(_union),Base.BitArray{1},Base.BitArray{1}})
-    @assert precompile(Tuple{typeof(_union),Base.BitSet,Base.BitSet})
-    @assert precompile(Tuple{typeof(_union),UInt128,UInt128})
-    @assert precompile(Tuple{typeof(_union),UInt32,UInt32})
-    @assert precompile(Tuple{typeof(_union),UInt64,UInt64})
-    @assert precompile(Tuple{typeof(_nconmacro),Int,Int,Int})
-    @assert precompile(Tuple{typeof(addcost),Power{:χ,Int64},Power{:χ,Int64}})
-    @assert precompile(Tuple{typeof(degree),Power{:x,Int64}})
-    @assert precompile(Tuple{typeof(instantiate_contraction),Int,Int,Expr,Int,AVector,
-                             AVector,Int})
-    @assert precompile(Tuple{typeof(instantiate_generaltensor),Int,Int,Expr,Int,AVector,
-                             AVector,Int})
-    @assert precompile(Tuple{typeof(instantiate_linearcombination),Int,Int,Expr,Int,AVector,
-                             AVector,Int})
-    @assert precompile(Tuple{typeof(instantiate),Int,Int,Expr,Int,AVector,AVector,Int})
-    @assert precompile(Tuple{typeof(instantiate),Int,Int,Expr,Int,AVector,AVector})
-    @assert precompile(Tuple{typeof(instantiate),Expr,Bool,Expr,Int64,AVector,AVector})
-    @assert precompile(Tuple{typeof(instantiate),Nothing,Bool,Expr,Bool,AVector,AVector,
-                             Bool})
-    @assert precompile(Tuple{typeof(instantiate),Symbol,Bool,Expr,Bool,AVector,AVector})
-    @assert precompile(Tuple{typeof(instantiate_eltype),Expr})
-    @assert precompile(Tuple{typeof(instantiate_scalar),Expr})
-    @assert precompile(Tuple{typeof(instantiate_scalar),Float64})
+    @assert precompile(Tuple{typeof(_intersect), Base.BitArray{1}, Base.BitArray{1}})
+    @assert precompile(Tuple{typeof(_intersect), Base.BitSet, Base.BitSet})
+    @assert precompile(Tuple{typeof(_intersect), UInt128, UInt128})
+    @assert precompile(Tuple{typeof(_intersect), UInt32, UInt32})
+    @assert precompile(Tuple{typeof(_intersect), UInt64, UInt64})
+    @assert precompile(Tuple{typeof(_isemptyset), Base.BitArray{1}})
+    @assert precompile(Tuple{typeof(_isemptyset), Base.BitSet})
+    @assert precompile(Tuple{typeof(_isemptyset), UInt128})
+    @assert precompile(Tuple{typeof(_isemptyset), UInt32})
+    @assert precompile(Tuple{typeof(_isemptyset), UInt64})
+    @assert precompile(Tuple{typeof(_ncontree!), AVector, Vector{Vector{Int64}}})
+    @assert precompile(Tuple{typeof(_setdiff), Base.BitArray{1}, Base.BitArray{1}})
+    @assert precompile(Tuple{typeof(_setdiff), Base.BitSet, Base.BitSet})
+    @assert precompile(Tuple{typeof(_setdiff), UInt128, UInt128})
+    @assert precompile(Tuple{typeof(_setdiff), UInt32, UInt32})
+    @assert precompile(Tuple{typeof(_setdiff), UInt64, UInt64})
+    @assert precompile(Tuple{typeof(_union), Base.BitArray{1}, Base.BitArray{1}})
+    @assert precompile(Tuple{typeof(_union), Base.BitSet, Base.BitSet})
+    @assert precompile(Tuple{typeof(_union), UInt128, UInt128})
+    @assert precompile(Tuple{typeof(_union), UInt32, UInt32})
+    @assert precompile(Tuple{typeof(_union), UInt64, UInt64})
+    @assert precompile(Tuple{typeof(_nconmacro), Int, Int, Int})
+    @assert precompile(Tuple{typeof(addcost), Power{:χ, Int64}, Power{:χ, Int64}})
+    @assert precompile(Tuple{typeof(degree), Power{:x, Int64}})
+    @assert precompile(Tuple{typeof(instantiate_contraction), Int, Int, Expr, Int, AVector, AVector, Int})
+    @assert precompile(Tuple{typeof(instantiate_generaltensor), Int, Int, Expr, Int, AVector, AVector, Int})
+    @assert precompile(Tuple{typeof(instantiate_linearcombination), Int, Int, Expr, Int, AVector, AVector, Int})
+    @assert precompile(Tuple{typeof(instantiate), Int, Int, Expr, Int, AVector, AVector, Int})
+    @assert precompile(Tuple{typeof(instantiate), Int, Int, Expr, Int, AVector, AVector})
+    @assert precompile(Tuple{typeof(instantiate), Expr, Bool, Expr, Int64, AVector, AVector})
+    @assert precompile(Tuple{typeof(instantiate), Nothing, Bool, Expr, Bool, AVector, AVector, Bool})
+    @assert precompile(Tuple{typeof(instantiate), Symbol, Bool, Expr, Bool, AVector, AVector})
+    @assert precompile(Tuple{typeof(instantiate_scalartype), Expr})
+    @assert precompile(Tuple{typeof(instantiate_scalar), Expr})
+    @assert precompile(Tuple{typeof(instantiate_scalar), Float64})
     @assert precompile(Tuple{typeof(disable_blas)})
     @assert precompile(Tuple{typeof(disable_cache)})
     @assert precompile(Tuple{typeof(enable_blas)})

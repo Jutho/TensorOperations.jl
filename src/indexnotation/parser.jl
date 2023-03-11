@@ -148,7 +148,7 @@ function tensorify(ex::Expr)
             err = "cannot evaluate $ex to a scalar: uncontracted indices"
             return :(throw(IndexError($err)))
         end
-        return Expr(:call, :scalar, instantiate(nothing, false, ex, true, [], [], true))
+        return Expr(:call, :tensorscalar, instantiate(nothing, false, ex, true, [], [], true))
     end
     return error("invalid syntax in @tensor macro: $ex")
 end
