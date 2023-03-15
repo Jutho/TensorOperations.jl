@@ -99,9 +99,9 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
         tensoradd!(C, C_, pC, :N, α, β)
     end
 
-    flagA || tensorfree(A_)
-    flagB || tensorfree(B_)
-    flagC || tensorfree(C_)
+    flagA || tensorfree!(A_)
+    flagB || tensorfree!(B_)
+    flagC || tensorfree!(C_)
 
     return C
 end

@@ -4,11 +4,11 @@ function TOC.tensoralloc(::JuliaAllocator, args...)
     return tensor_from_structure(tensorstructure(args...)...)
 end
 
-function TOC.tensoralloctemp(::JuliaAllocator, args...)
-    return TOC.tensoralloc(::JuliaAllocator, args...)
+function TOC.tensoralloctemp(backend::JuliaAllocator, args...)
+    return TOC.tensoralloc(backend, args...)
 end
 
-TOC.tensorfree(::JuliaAllocator, C) = nothing
+TOC.tensorfree!(::JuliaAllocator, C) = nothing
 
 # ---------------------------------------------------------------------------------------- #
 # Interface for custom types
