@@ -120,9 +120,15 @@ function tensorify(ex::Expr)
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                return Expr(ex.head, instantiate_scalar(lhs),
-                            Expr(:call, :scalar,
-                                 instantiate(nothing, false, rhs, true, [], [], true)))
+                tempvar = gensym()
+                returnvar = gensym()
+                scalar_expr = quote
+                    $tempvar = $(instantiate(nothing, false, rhs, true, [], [], true))
+                    $returnvar = tensorscalar($tempvar)
+                    tensorfree!($tempvar)
+                    $returnvar
+                end
+                return Expr(ex.head, instantiate_scalar(lhs), scalar_expr)
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, instantiate_scalar(lhs), instantiate_scalar(rhs))
             end
@@ -148,7 +154,14 @@ function tensorify(ex::Expr)
             err = "cannot evaluate $ex to a scalar: uncontracted indices"
             return :(throw(IndexError($err)))
         end
-        return Expr(:call, :tensorscalar, instantiate(nothing, false, ex, true, [], [], true))
+        tempvar = gensym()
+        returnvar = gensym()
+        return quote
+            $tempvar = $(instantiate(nothing, false, ex, true, [], [], true))
+            $returnvar = tensorscalar($tempvar)
+            tensorfree!($tempvar)
+            $returnvar
+        end
     end
     return error("invalid syntax in @tensor macro: $ex")
 end

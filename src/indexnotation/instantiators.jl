@@ -21,7 +21,14 @@ instantiate_scalartype(ex) = Expr(:call, :typeof, ex)
 function instantiate_scalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :tensorscalar
         @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(tensorscalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
+        tempvar = gensym()
+        returnvar = gensym()
+        return quote
+            $tempvar = $((instantiate(nothing, 0, ex.args[2], 1, [], [], true)))
+            $returnvar = tensorscalar($tempvar)
+            tensorfree!($tempvar)
+            $returnvar
+        end
     elseif ex.head == :call
         return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
     else
@@ -77,7 +84,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         if istemporary
             initex = quote
                 $αsym = $α*$α2
-                $dst = tensoralloc(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
+                $dst = tensoralloctemp(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
             end
         else
             initex = quote
@@ -179,6 +186,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         conjA = :(:N)
         initA = Expr(:(=), symA, initA)
         αA = 1
+        Atemp = true
     else
         A, indlA, indrA, αA, conj = decomposegeneraltensor(exA)
         indA = vcat(indlA, indrA)
@@ -187,6 +195,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = Expr(:(=), symA, A)
+        Atemp = false
     end
 
     if !isgeneraltensor(exB) || hastraceindices(exB)
@@ -196,6 +205,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         conjB = :(:N)
         initB = Expr(:(=), symB, initB)
         αB = 1
+        Btemp = true
     else
         B, indlB, indrB, αB, conj = decomposegeneraltensor(exB)
         indB = vcat(indlB, indrB)
@@ -203,6 +213,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         pcB = (map(l -> findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
         initB = Expr(:(=), symB, B)
+        Btemp = false
     end
 
     oindAB = vcat(oindA, oindB)
@@ -222,7 +233,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
+            initC = :($symC = tensoralloctemp($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
         else
             initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
         end
@@ -230,13 +241,30 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         initC = :($symC = $dst)
     end
 
-    return quote
+    returnex = quote
         $symTC = $TC
         $initA
         $initB
         $initC
         tensorcontract!($symC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB, $α*$αA*$αB, $β)
-                    # $((gensym(),gensym(),gensym())))
-        # $symC
+    end
+    
+    if Atemp
+        returnex = quote
+            $returnex
+            tensorfree!($symA)
+        end
+    end
+    
+    if Btemp
+        returnex = quote
+            $returnex
+            tensorfree!($symB)
+        end
+    end
+    
+    return quote
+        $returnex
+        $symC
     end
 end

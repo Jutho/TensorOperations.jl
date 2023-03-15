@@ -35,7 +35,7 @@ function removelinenumbernode(ex::Expr)
 end
 removelinenumbernode(ex) = ex
 
-const tensoroperationsfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree,
+const tensoroperationsfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!,
                                     :tensoradd!, :tensortrace!, :tensorcontract!,
                                     :tensorscalar, :IndexError,
                                     :scalartype)
