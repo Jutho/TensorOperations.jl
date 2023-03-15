@@ -95,10 +95,14 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
     oindA = map(l -> _findfirst(isequal(l), IA), IopenA)
     oindB = map(l -> _findfirst(isequal(l), IB), IopenB)
     indCinoAB = map(l -> _findfirst(isequal(l), (IopenA..., IopenB...)), IC)
+    
+    pA = (oindA, cindA)
+    pB = (cindB, oindB)
+    pC = (indCinoAB, ())
 
     if !isperm((oindA..., cindA...)) || !isperm((oindB..., cindB...)) || !isperm(indCinoAB)
         throw(IndexError("invalid contraction pattern: $IA and $IB to $IC"))
     end
 
-    return oindA, cindA, oindB, cindB, indCinoAB
+    return pA, pB, pC
 end

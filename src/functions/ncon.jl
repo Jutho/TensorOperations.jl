@@ -65,17 +65,20 @@ function ncon(tensors, network,
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2], symb)
     IC = tuple(output...)
 
-    oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    T = promote_type(eltype(A), eltype(B))
+    pA, pB, pC = contract_indices(IA, IB, IC)
+    T = promote_type(scalartype(A), scalartype(B))
     # end result: don't use cache
-    C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    if sym !== nothing
-        symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
-    else
-        symcontract = nothing
-    end
-    contract!(true, A, CA, B, CB, false, C,
-              oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
+    C = tensoralloc(T, pC, A, pA[1], CA, B, pB[2], CB)
+    tensorcontract!(C, pC, A, pA, CA, B, pB, CB, true, false)
+    
+    # C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
+    # if sym !== nothing
+    #     symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
+    # else
+    #     symcontract = nothing
+    # end
+    # contract!(true, A, CA, B, CB, false, C,
+    #           oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
     return C
 end
 
@@ -95,20 +98,24 @@ function contracttree(tensors, network, conjlist, tree, sym)
     A, IA, CA = contracttree(tensors, network, conjlist, tree[1], syma)
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2], symb)
     IC = tuple(symdiff(IA, IB)...)
-    oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    T = promote_type(eltype(A), eltype(B))
-    if sym !== nothing
-        symc = Symbol(sym, "_c")
-        C = cached_similar_from_indices(symc, T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    else
-        C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    end
-    if sym !== nothing
-        symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
-    else
-        symcontract = nothing
-    end
-    contract!(true, A, CA, B, CB, false, C,
-              oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
+    pA, pB, pC = contract_indices(IA, IB, IC)
+    T = promote_type(scalartype(A), scalartype(B))
+    # if sym !== nothing
+    #     symc = Symbol(sym, "_c")
+    #     C = cached_similar_from_indices(symc, T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
+    # else
+    #     C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
+    # end
+
+    C = tensoralloctemp(T, pC, A, pA[1], CA, B, pB[2], CB)
+    tensorcontract!(C, pC, A, pA, CA, B, pB, CB, true, false)
+
+    # if sym !== nothing
+    #     symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
+    # else
+    #     symcontract = nothing
+    # end
+    # contract!(true, A, CA, B, CB, false, C,
+    #           oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
     return C, IC, :N
 end
