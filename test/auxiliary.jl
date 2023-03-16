@@ -84,9 +84,9 @@
         @test isscalarexpr(:(2. + im*3))
         @test isscalarexpr(:(3*a+c))
         @test isscalarexpr(:(sin(x)+exp(-y)))
-        @test isscalarexpr(:(scalar(a[x,y]*b[y,x])))
+        @test isscalarexpr(:(tensorscalar(a[x,y]*b[y,x])))
         @test !isscalarexpr(:(a[x,y]*b[y,x]))
-        @test !isscalarexpr(:(3*scalar(a[x,y]*b[y,x]) + conj(c[z])))
+        @test !isscalarexpr(:(3*tensorscalar(a[x,y]*b[y,x]) + conj(c[z])))
 
         @test instantiate_scalartype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_type(promote_type(scalartype(a), scalartype(b)), scalartype(c)))
     end

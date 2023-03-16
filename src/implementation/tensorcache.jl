@@ -1,8 +1,136 @@
-# should always be specified for custom array/tensor types
-function similarstructure_from_indices end
+
+# ---------------------------------------------------------------------------------------- #
+# Cache implementation
+# ---------------------------------------------------------------------------------------- #
+
+
+
+struct LinkedNode{T}
+    next::Union{LinkedNode,Nothing}
+    val::T
+end
+
+mutable struct ObjectPool{K,V}
+    pool::ConcurrentDict{K,V}
+    @atomic currentsize::Int
+    maxsize::Int
+    ObjectPool{K,V}(maxsize::Int) where {K,V} = new{K,V}(ConcurrentDict{K,V}(), 0, maxsize)
+end
+
+ObjectPool(maxsize::Int) = ObjectPool{Any,Any}(maxsize)
 
 # generic definition, net very efficient, provide more efficient version if possible
 memsize(a::Any) = Base.summarysize(a)
+
+modify!(f, pool::ObjectPool, key) = modify!(f, pool.pool, key)
+
+# request an object from a pool, or allocate a new object
+function allocate(objpool::ObjectPool, T, structure)
+    allocated::Ref{T} = Ref{T}()
+    is_set::Bool = false
+
+    # key is not in pool
+    function pop_create(::Nothing)
+        is_set = false
+        return Some(nothing)
+    end
+
+    # key is in pool
+    function pop_create(ref)
+        stack = ref[]
+        if !isnothing(stack)
+            allocated = Ref(stack.val)
+            is_set = true
+            Some(stack.next)
+        else
+            is_set = false
+            Some(stack)
+        end
+    end
+
+    modify!(pop_create, objpool, (T, structure))
+
+    if is_set
+        toret = allocated[]
+        @atomic objpool.currentsize -= memsize(toret)
+        return toret::T
+    else
+        return tensor_from_structure(structure...)::T
+    end
+end
+
+# free an object by returning it to a pool
+function deallocate!(objpool::ObjectPool, obj::T) where {T}
+    let obj = obj
+        str = tensorstructure(obj)
+
+        cs = @atomic objpool.currentsize += memsize(obj)
+        cs > objpool.maxsize && unsafe_process!(objpool)
+
+        pop_create(::Nothing) = Some(LinkedNode(nothing, obj))
+        pop_create(val) = Some(LinkedNode(val[], obj))
+        modify!(pop_create, pool, (T, str))
+    end
+end
+
+# clean up overfull pool
+function unsafe_process!(objp)
+    cur::Ref{LinkedNode} = Ref{LinkedNode}()
+    is_set::Bool = false
+
+    function cleanup(val::Nothing)
+        is_set = false
+        return nothing
+    end
+
+    function cleanup(val)
+        cur = val
+        is_set = true
+        return nothing
+    end
+
+    # iterate over slots, free up every pool
+    for (k, v) in objp.pool
+        modify!(cleanup, objp.pool, k)
+
+        if is_set
+            node = cur[]
+            while is_set
+                @atomic objp.cursize -= memsize(node.val)
+                isnothing(node.next) && break
+                node = node.next
+            end
+        end
+    end
+end
+
+# ---------------------------------------------------------------------------------------- #
+# Pool options
+# ---------------------------------------------------------------------------------------- #
+
+function default_cache_size()
+    return min(1 << 32, Int(Sys.total_memory()) >> 2)
+end
+const GlobalPool = ObjectPool(default_cache_size())
+
+cachesize() = GlobalPool.currentsize
+
+struct TensorCache <: Backend end
+
+function TOC.tensoralloc(::TensorCache, args...)
+    return tensor_from_structure(tensorstructure(args...)...)
+end
+
+function TOC.tensoralloctemp(::TensorCache, args...)
+    str = tensorstructure(args...)
+    return allocate(GlobalPool, str)
+end
+
+TOC.tensorfree!(::TensorCache, obj) = deallocate!(GlobalPool, obj)
+
+
+
+
 
 # generic definitions, should be overwritten if your array/tensor type does not support
 # Base.similar(object, eltype, structure)
