@@ -68,7 +68,7 @@ function TOC.tensorcontract!(b::StridedBackend, C::AbstractArray, pC::Index2Tupl
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions:" *
             "$szoA, $szoB -> $szoC"))
 
-    if b.use_blas && eltype(C) <: BlasFloat
+    if b.use_blas && eltype(C) <: BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
         if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) >
            reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
             return blas_reversecontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
