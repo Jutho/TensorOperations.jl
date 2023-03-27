@@ -12,6 +12,7 @@ using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using ConcurrentCollections
 using Requires
+using LRUCache
 
 using Preferences
 
@@ -29,6 +30,9 @@ export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cach
 # export function based API
 export ncon
 export tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
+
+# export debug functionality
+export checkcontractible, tensorcost
 
 # Index notation
 #----------------
@@ -166,10 +170,10 @@ Return the current memory size (in bytes) of all the objects in the cache.
 function __init__()
     # resize!(cache; maxsize=default_cache_size())
     # by default, load strided for arrays
-    operationbackend!(StridedBackend(false), AbstractArray)
+    # operationbackend!(StridedBackend(false), AbstractArray)
 
     # by default, load juliaallocator for Any
-    allocationbackend!(JuliaAllocator())
+    # allocationbackend!(JuliaAllocator())
     @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
         if CUDA.functional() && CUDA.has_cutensor()
             const CuArray = CUDA.CuArray
