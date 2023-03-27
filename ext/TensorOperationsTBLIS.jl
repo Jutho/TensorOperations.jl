@@ -26,7 +26,7 @@ function tblisidx_contract(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
     pC_lin = linearize(pC)
     
     idx_A = Vector{Char}(undef, length(pA[1]) + length(pA[2]))
-    idx_B = Vector{Char}(undef, length(pB[1]) + length(pB[1]))
+    idx_B = Vector{Char}(undef, length(pB[1]) + length(pB[2]))
     
     # open idx
     for i = 1:length(pA[1])
@@ -37,7 +37,7 @@ function tblisidx_contract(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
     end
     
     # contracted idx
-    for i = 1:length(pC_lin)
+    for i = 1:length(pA[2])
         idx_A[pA[2][i]] = i + 'A' - 1
         idx_B[pB[1][i]] = i + 'A' - 1
     end
