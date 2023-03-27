@@ -8,11 +8,10 @@ struct TBLISBackend <: TensorOperationsCore.Backend end
 
 function TensorOperationsCore.tensoradd!(::TBLISBackend, C::AbstractArray, A::AbstractArray,
      pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
-    conjA === :C && throw(ArgumentError("conjugation not implemented"))
-
     # convert to TBLIS tensors
     C_TT = TTensor{scalartype(C)}(C, β)
     A_TT = TTensor{scalartype(A)}(A, α)
+    conjA === :C && conj!(A_TT)
     
     # convert to TBLIS idx
     pA_lin = linearize(pA)
@@ -55,19 +54,18 @@ function TensorOperationsCore.tensorcontract!(::TBLISBackend, C::AbstractArray,
                                               A::AbstractArray, pA::Index2Tuple, conjA,
                                               B::AbstractArray, pB::Index2Tuple, conjB,
                                               α, β)
-    conjA === :C && throw(ArgumentError("conjugation not implemented"))
-    conjB === :C && throw(ArgumentError("conjugation not implemented"))
-    
     # convert to TBLIS tensors
     C_TT = TTensor{scalartype(C)}(C, β)
     A_TT = TTensor{scalartype(A)}(A, α)
     B_TT = TTensor{scalartype(B)}(B)
+
+    conjA === :C && conj!(A_TT)
+    conjB === :C && conj!(B_TT)
     
     # convert to TBLIS idx
     idx_A, idx_B, idx_C = tblisidx_contract(pA, pB, pC)
-    
+
     TBLIS.mul!(C_TT, A_TT, B_TT, idx_A, idx_B, idx_C)
-    
     return C
 end
 
