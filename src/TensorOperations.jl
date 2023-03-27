@@ -174,6 +174,15 @@ function __init__()
 
     # by default, load juliaallocator for Any
     # allocationbackend!(JuliaAllocator())
+    
+    @static if !isdefined(Base, :get_extension)
+        @require TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9" begin
+            include("../ext/TensorOperationsTBLIS.jl")
+            using .TensorOperationsTBLIS
+            export TBLISBackend
+        end
+    end
+    
     @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
         if CUDA.functional() && CUDA.has_cutensor()
             const CuArray = CUDA.CuArray

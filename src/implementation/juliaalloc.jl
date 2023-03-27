@@ -36,7 +36,11 @@ function tensor_from_structure end
 # ---------------------------------------------------------------------------------------- #
 
 tensorstructure(A::AbstractArray{T,N}) where {T,N} = (typeof(A), size(A))
-tensorstructure(TC, pC, A::AbstractArray, _) = A, TC, map(n -> size(A, n), linearize(pC))
+function tensorstructure(TC, pC, A::AbstractArray, _)
+    sz = map(n -> size(A, n), linearize(pC))
+    TType = Array{TC, length(sz)}
+    return TType, sz
+end
 
 function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::AbstractArray,
                          iB::IndexTuple, _)
