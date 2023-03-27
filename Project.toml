@@ -17,7 +17,6 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 [compat]
 LRUCache = "1"
 Requires = "0.5,1"
-Strided = "2"
 TupleTools = "1.1"
 julia = "1.6"
 

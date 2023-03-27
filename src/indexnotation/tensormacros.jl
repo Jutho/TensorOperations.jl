@@ -25,14 +25,50 @@ macro tensor(ex::Expr)
     return esc(defaultparser(ex))
 end
 
-macro tensor(ex::Expr, orderex::Expr)
-    parser = TensorParser()
-    if !(orderex.head == :(=) && orderex.args[1] == :order &&
-         orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
-        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+macro tensor(kwargsex::Expr, ex::Expr)
+    if !(kwargsex.head == :tuple || kwargsex.head == :(=))
+        throw(ArgumentError("Unknown first argument in @tensor, should be named tuple or single keyword."))
     end
-    indexorder = map(normalizeindex, orderex.args[2].args)
-    parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
+
+    kwargs = kwargsex.head == :tuple ? kwargsex.args : [kwargsex]
+    parser = TensorParser()
+    for kwarg in kwargs
+        if kwarg.head != :(=)
+            throw(ArgumentError("Unknown first argument in @tensor, should be `kwargs` named tuple."))
+        end
+
+        if kwarg.args[1] == :order
+            if !(kwarg.args[2] isa Expr && kwarg.args[2].head == :tuple)
+                throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
+            end
+            indexorder = map(normalizeindex, kwarg.args[2].args)
+            parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
+
+        elseif kwarg.args[1] == :contractcheck
+            if !(kwarg.args[2] isa Bool)
+                throw(ArgumentError("Invalid use of `contractcheck`, should be `contractcheck=bool`."))
+            end
+            kwarg.args[2] && push!(parser.preprocessors, ex -> insertcompatiblechecks(ex))
+
+        elseif kwarg.args[1] == :costcheck
+            if !(kwarg.args[2] in (:warn, :cache))
+                throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
+            end
+            push!(parser.preprocessors,
+                  ex -> costcheck(ex, __source__, parser, kwarg.args[2]))
+        elseif kwarg.args[1] == :opt
+            if kwarg.args[2] isa Bool && kwarg.args[2]
+                optdict = optdata(ex)
+                parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
+            elseif kwarg.args[2] isa Expr
+                optdict = optdata(kwarg.args[2], ex)
+                parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
+            end
+        else
+            throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))
+        end
+    end
+
     return esc(parser(ex))
 end
 

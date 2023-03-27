@@ -194,7 +194,6 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
         TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
         conjA = conj ? :(:C) : :(:N)
-        symA = A
         initA = Expr(:(=), symA, A)
         Atemp = false
     end
@@ -213,7 +212,6 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         poB = (map(l -> findfirst(isequal(l), indB), oindB)...,)
         pcB = (map(l -> findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
-        symB = B
         initB = Expr(:(=), symB, B)
         Btemp = false
     end
