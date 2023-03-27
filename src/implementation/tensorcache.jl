@@ -3,8 +3,6 @@
 # Cache implementation
 # ---------------------------------------------------------------------------------------- #
 
-
-
 struct LinkedNode{T}
     next::Union{LinkedNode,Nothing}
     val::T
@@ -22,11 +20,11 @@ ObjectPool(maxsize::Int) = ObjectPool{Any,Any}(maxsize)
 # generic definition, net very efficient, provide more efficient version if possible
 memsize(a::Any) = Base.summarysize(a)
 
-modify!(f, pool::ObjectPool, key) = modify!(f, pool.pool, key)
+modify!(f, pool::ObjectPool, key) = ConcurrentCollections.modify!(f, pool.pool, key)
 
 # request an object from a pool, or allocate a new object
-function allocate(objpool::ObjectPool, T, structure)
-    allocated::Ref{T} = Ref{T}()
+function allocate(objpool::ObjectPool, TType, structure)
+    allocated::Ref{TType} = Ref{TType}()
     is_set::Bool = false
 
     # key is not in pool
@@ -41,63 +39,51 @@ function allocate(objpool::ObjectPool, T, structure)
         if !isnothing(stack)
             allocated = Ref(stack.val)
             is_set = true
-            Some(stack.next)
+            return Some(stack.next)
         else
             is_set = false
-            Some(stack)
+            return Some(stack)
         end
     end
 
-    modify!(pop_create, objpool, (T, structure))
+    modify!(pop_create, objpool, (TType, structure))
 
     if is_set
-        toret = allocated[]
+        toret::TType = allocated[]
         @atomic objpool.currentsize -= memsize(toret)
-        return toret::T
+        return toret
     else
-        return tensor_from_structure(structure...)::T
+        return tensor_from_structure(TType, structure)::TType
     end
 end
 
 # free an object by returning it to a pool
-function deallocate!(objpool::ObjectPool, obj::T) where {T}
+function deallocate!(objpool::ObjectPool, obj)
     let obj = obj
-        str = tensorstructure(obj)
+        TType, structure = tensorstructure(obj)
 
         cs = @atomic objpool.currentsize += memsize(obj)
         cs > objpool.maxsize && unsafe_process!(objpool)
 
         pop_create(::Nothing) = Some(LinkedNode(nothing, obj))
         pop_create(val) = Some(LinkedNode(val[], obj))
-        modify!(pop_create, pool, (T, str))
+        modify!(pop_create, objpool, (TType, structure))
     end
 end
 
 # clean up overfull pool
 function unsafe_process!(objp)
-    cur::Ref{LinkedNode} = Ref{LinkedNode}()
-    is_set::Bool = false
-
-    function cleanup(val::Nothing)
-        is_set = false
-        return nothing
-    end
-
-    function cleanup(val)
-        cur = val
-        is_set = true
-        return nothing
-    end
-
     # iterate over slots, free up every pool
-    for (k, v) in objp.pool
-        modify!(cleanup, objp.pool, k)
+    for k in keys(objp.pool)
+        y = modify!(objp, k) do x
+            isnothing(x) && return nothing
+            return Delete(x)
+        end
 
-        if is_set
-            node = cur[]
-            while is_set
-                @atomic objp.cursize -= memsize(node.val)
-                isnothing(node.next) && break
+        if !isnothing(y)
+            node = y.value[]
+            while !isnothing(node)
+                @atomic objp.currentsize -= memsize(node.val)
                 node = node.next
             end
         end
@@ -122,15 +108,11 @@ function TOC.tensoralloc(::TensorCache, args...)
 end
 
 function TOC.tensoralloctemp(::TensorCache, args...)
-    str = tensorstructure(args...)
-    return allocate(GlobalPool, str)
+    TType, str = tensorstructure(args...)
+    return allocate(GlobalPool, TType, str)::TType
 end
 
 TOC.tensorfree!(::TensorCache, obj) = deallocate!(GlobalPool, obj)
-
-
-
-
 
 # generic definitions, should be overwritten if your array/tensor type does not support
 # Base.similar(object, eltype, structure)

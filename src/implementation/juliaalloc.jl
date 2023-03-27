@@ -35,10 +35,11 @@ function tensor_from_structure end
 # AbstractArray implementation
 # ---------------------------------------------------------------------------------------- #
 
-tensorstructure(A::AbstractArray{T,N}) where {T,N} = (A, scalartype(T), size(A))
+tensorstructure(A::AbstractArray{T,N}) where {T,N} = (typeof(A), size(A))
 tensorstructure(TC, pC, A::AbstractArray, _) = A, TC, map(n -> size(A, n), linearize(pC))
 
-function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::AbstractArray, iB::IndexTuple, _)
+function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::AbstractArray,
+                         iB::IndexTuple, _)
     sz = let lA = length(iA)
         map(linearize(pC)) do n
             if n <= lA
@@ -48,13 +49,9 @@ function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::Abstrac
             end
         end
     end
-    return A, TC, sz
+    
+    TType = Array{TC, length(sz)}
+    return TType, sz
 end
 
-function tensor_from_structure(A::AbstractArray, T, sz)
-    if isbitstype(T)
-        return similar(A, T, sz)
-    else
-        return fill!(similar(A, T, sz), zero(T))
-    end
-end
+tensor_from_structure(TType::Type{<:AbstractArray}, structure) = similar(TType, structure)
