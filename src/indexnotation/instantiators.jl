@@ -78,9 +78,9 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
     p2 = (map(l->findfirst(isequal(l), srcind), rightind)...,)
     pC = (p1, p2)
 
-    αsym = gensym()
+    αsym = gensym(:α)
     if dst === nothing
-        dst = gensym()
+        dst = gensym(:dst)
         if istemporary
             initex = quote
                 $αsym = $α*$α2
@@ -130,7 +130,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
         if dst === nothing
             αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_scalartype(ex)))
             ex1 = instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
-            dst = gensym()
+            dst = gensym(:dst)
             returnex = :($dst = $ex1)
         else
             returnex = instantiate(dst, β, ex.args[2], α, leftind, rightind, istemporary)
@@ -165,10 +165,10 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     oindA = intersect(indA, indC) # in the order they appear in A
     oindB = intersect(indB, indC) # in the order they appear in B
 
-    symA = gensym()
-    symB = gensym()
-    symC = gensym()
-    symTC = gensym()
+    symA = gensym(:A)
+    symB = gensym(:B)
+    symC = gensym(:C)
+    symTC = gensym(:TC)
 
     # prepare tensors or tensor expressions
     if dst === nothing
@@ -194,6 +194,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
         TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
         conjA = conj ? :(:C) : :(:N)
+        symA = A
         initA = Expr(:(=), symA, A)
         Atemp = false
     end
@@ -212,6 +213,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         poB = (map(l -> findfirst(isequal(l), indB), oindB)...,)
         pcB = (map(l -> findfirst(isequal(l), indB), cind)...,)
         conjB = conj ? :(:C) : :(:N)
+        symB = B
         initB = Expr(:(=), symB, B)
         Btemp = false
     end
