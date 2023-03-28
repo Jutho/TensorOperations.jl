@@ -48,3 +48,26 @@ function addtensoroperations(ex::Expr)
     end
 end
 addtensoroperations(ex) = ex
+
+
+const operationfunctions = (:tensoradd!, :tensortrace!, :tensorcontract!)
+insertoperationbackend(ex, backend) = ex
+function insertoperationbackend(ex::Expr, backend)
+    if ex.head == :call && ex.args[1] in operationfunctions
+        insert!(ex.args, 2, backend)
+        return ex
+    else
+        return Expr(ex.head, (insertoperationbackend(e, backend) for e in ex.args)...)
+    end
+end
+
+const allocationfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!)
+insertallocationbackend(ex, backend) = ex
+function insertallocationbackend(ex::Expr, backend)
+    if ex.head == :call && ex.args[1] in allocationfunctions
+        insert!(ex.args, 2, backend)
+        return ex
+    else
+        return Expr(ex.head, (insertallocationbackend(e, backend) for e in ex.args)...)
+    end
+end
