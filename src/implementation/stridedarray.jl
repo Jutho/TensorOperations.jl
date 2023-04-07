@@ -64,9 +64,9 @@ function TOC.tensorcontract!(b::StridedBackend, C::AbstractArray, pC::Index2Tupl
     szoB = TupleTools.getindices(szB, pB[2])
     szoC = TupleTools.getindices(szC, linearize(pC))
     szoC = TupleTools.getindices(szC, TupleTools.invperm(linearize(pC)))
-    (szoA..., szoB...) == szoC ||
+    TupleTools.getindices((szoA..., szoB...), linearize(pC)) == szC ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions:" *
-            "$szoA, $szoB -> $szoC"))
+            "($szoA, $szoB)[$(linearize(pC))] -> $szC"))
 
     if b.use_blas && eltype(C) <: BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
         if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) >
@@ -215,13 +215,13 @@ end
 # tensortrace!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensortrace!(::StridedBackend, C::AbstractArray{<:Any,NC}, pC::Index2Tuple,
-                          A::AbstractArray{<:Any,NA}, pA::Index2Tuple, conjA::Symbol, α,
-                          β) where {NA,NC}
+function TOC.tensortrace!(::StridedBackend, C::AbstractArray, pC::Index2Tuple,
+                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β)
+    NA, NC = ndims(A), ndims(C)
     NC == length(linearize(pC)) ||
         throw(IndexError("invalid selection of $NC out of $NA: $pC"))
     NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
-        throw(IndexError("invalid number of trace dimension"))
+        throw(IndexError("invalid number of trace dimensions"))
 
     inds = ((linearize(pC)...,), pA[1], pA[2])
     if conjA == :N
@@ -319,7 +319,7 @@ function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
         end
     end
 end
-_trivtuple(t::NTuple{N}) where {N} = ntuple(identity, Val(N))
+_trivtuple(::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
 function oindABinC(pC, pA, pB)
     ipC = TupleTools.invperm(linearize(pC))
