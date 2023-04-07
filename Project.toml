@@ -1,29 +1,43 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 authors = ["Jutho Haegeman"]
-version = "3.2.4"
+version = "4.0.0"
 
 [deps]
+
 ConcurrentCollections = "5060bff5-0b44-40c5-b522-fcd3ca5cecdd"
 LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
-TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9"
 TensorOperationsCore = "46150444-48fb-4c36-b392-fdd2916ece7e"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
+
+
+[weakdeps]
+TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
+
+[extensions]
+TensorOperationsTBLIS = "TBLIS"
+TensorOperationsCUDA = ["CUDA", "cuTENSOR"]
 
 [compat]
 LRUCache = "1"
 Requires = "0.5,1"
 TupleTools = "1.1"
-julia = "1.6"
+julia = "1.9"
+CUDA = "4"
 
 [extras]
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
-test = ["Test", "Random"]
+test = ["Test", "Random", "TBLIS", "CUDA", "cuTENSOR"]

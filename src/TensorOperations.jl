@@ -55,7 +55,7 @@ include("indexnotation/indexordertree.jl")
 #-----------------
 include("implementation/indices.jl")
 include("implementation/tensorcache.jl")
-include("implementation/juliaalloc.jl")
+include("implementation/allocator.jl")
 include("implementation/stridedarray.jl")
 include("implementation/diagonal.jl")
 
@@ -68,23 +68,20 @@ include("functions/ncon.jl")
 # Backends
 # ---------
 
-function operationbackend!(backend::Backend, type::Type=Any)
+function operationbackend!(backend, type::Type=Any)
     for f in (contractbackend!, addbackend!, tracebackend!)
         f(backend, type)
     end
     @info "operation backend for $type set to $backend"
     return nothing
 end
-function allocationbackend!(backend::Backend, type::Type=Any)
+function allocationbackend!(backend, type::Type=Any)
     for f in (allocatebackend!, allocatetempbackend!)
         f(backend, type)
     end
     @info "allocation backend for $type set to $backend"
     return nothing
 end
-
-
-
 
 # Global package settings
 #-------------------------
@@ -174,41 +171,25 @@ function __init__()
 
     # by default, load juliaallocator for Any
     # allocationbackend!(JuliaAllocator())
-    
+
     @static if !isdefined(Base, :get_extension)
         @require TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9" begin
             include("../ext/TensorOperationsTBLIS.jl")
             using .TensorOperationsTBLIS
             export TBLISBackend
         end
-    end
-    
-    @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
-        if CUDA.functional() && CUDA.has_cutensor()
-            const CuArray = CUDA.CuArray
-            const CublasFloat = CUDA.CUBLAS.CublasFloat
-            const CublasReal = CUDA.CUBLAS.CublasReal
-            for s in (:handle, :CuTensorDescriptor, :cudaDataType,
-                      :cutensorContractionDescriptor_t, :cutensorContractionFind_t,
-                      :cutensorContractionPlan_t,
-                      :CUTENSOR_OP_IDENTITY, :CUTENSOR_OP_CONJ, :CUTENSOR_OP_ADD,
-                      :CUTENSOR_ALGO_DEFAULT, :CUTENSOR_WORKSPACE_RECOMMENDED,
-                      :cutensorPermutation, :cutensorElementwiseBinary, :cutensorReduction,
-                      :cutensorReductionGetWorkspace, :cutensorComputeType,
-                      :cutensorGetAlignmentRequirement, :cutensorInitContractionDescriptor,
-                      :cutensorInitContractionFind, :cutensorContractionGetWorkspace,
-                      :cutensorInitContractionPlan, :cutensorContraction)
-                eval(:(const $s = CUDA.CUTENSOR.$s))
+
+        @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
+            @require cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1" begin
+                if CUDA.functional() && cuTENSOR.has_cutensor()
+                    include("../ext/TensorOperationsCUDA.jl")
+                    using .TensorOperationsCUDA
+                    export CUDABackend
+                    # @nospecialize
+                    # include("indexnotation/cutensormacros.jl")
+                    # @specialize
+                end
             end
-            if isdefined(CUDA, :default_stream)
-                const default_stream = CUDA.default_stream
-            else
-                const default_stream = CUDA.CuDefaultStream
-            end
-            include("implementation/cuarray.jl")
-            @nospecialize
-            include("indexnotation/cutensormacros.jl")
-            @specialize
         end
     end
 end

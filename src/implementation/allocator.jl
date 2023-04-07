@@ -1,14 +1,12 @@
-struct JuliaAllocator <: Backend end
-
-function TOC.tensoralloc(::JuliaAllocator, args...)
+function TOC.tensoralloc(::DefaultBackend, args...)
     return tensor_from_structure(tensorstructure(args...)...)
 end
 
-function TOC.tensoralloctemp(backend::JuliaAllocator, args...)
+function TOC.tensoralloctemp(backend::DefaultBackend, args...)
     return TOC.tensoralloc(backend, args...)
 end
 
-TOC.tensorfree!(::JuliaAllocator, C) = nothing
+TOC.tensorfree!(::DefaultBackend, C) = nothing
 
 # ---------------------------------------------------------------------------------------- #
 # Interface for custom types
