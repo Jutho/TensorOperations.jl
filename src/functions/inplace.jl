@@ -1,19 +1,19 @@
 # methods/inplace.jl
 #
 # Method-based access to tensor operations using inplace definitions.
-tensorcopy!(A, IA, C, IC) = tensorcopy!(A, tuple(IA...), C, tuple(IC...))
-tensoradd!(α, A, IA, β, C, IC) = tensoradd!(α, A, tuple(IA...), β, C, tuple(IC...))
-tensortrace!(α, A, IA, β, C, IC) = tensortrace!(α, A, tuple(IA...), β, C, tuple(IC...))
-function tensorcontract!(α, A, IA, conjA, B, IB, conjB, β, C, IC)
-    return tensorcontract!(α, A, tuple(IA...), conjA, B, tuple(IB...), conjB, β, C,
-                           tuple(IC...))
+tensorcopy!(C, A, IA, IC) = tensorcopy!(C, A, tuple(IA...), tuple(IC...))
+tensoradd!(C, A, IA, IC, α, β) = tensoradd!(C, A, tuple(IA...), tuple(IC...), α, β)
+tensortrace!(C, A, IA, IC, α, β) = tensortrace!(C, A, tuple(IA...), tuple(IC...), α, β)
+function tensorcontract!(C, IC, A, IA, conjA, B, IB, conjB, α, β)
+    return tensorcontract!(C, tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB,
+                           α, β)
 end
 function tensorproduct!(α, A, IA, B, IB, β, C, IC)
     return tensorproduct!(α, A, tuple(IA...), B, tuple(IB...), β, C, tuple(IC...))
 end
 
 """
-    tensorcopy!(A, IA, C, IC)
+    tensorcopy!(C, A, IA, IC)
 
 Copies `A` into `C` by permuting the dimensions according to the pattern specified by
 `IA` and `IC`. Both iterables should contain the same elements in a different order.
@@ -21,19 +21,21 @@ The result of this method is equivalent to `permutedims!(C, A, p)` where `p` is 
 permutation such that `IC=IA[p]`. The implementation of tensorcopy! is however more
 efficient on average, especially if `Threads.nthreads() > 1`.
 """
-tensorcopy!(A, IA::Tuple, C, IC::Tuple) = tensoradd!(1, A, IA, 0, C, IC)
+function tensorcopy!(C, A, IA::Tuple, IC::Tuple)
+    return tensoradd!(C, A, IA, IC, one(scalartype(C)), zero(scalartype(C)))
+end
 
 """
-    tensoradd!(α, A, IA, β, C, IC)
+    tensoradd!(C, A, IA::Tuple, IC::Tuple, α, β)
 
 Updates `C` to `β*C + α * tensorcopy(A,IA,IC)`, but without creating the temporary
 permuted array.
 
 See also: [`tensorcopy`](@ref)
 """
-function tensoradd!(α, A, IA::Tuple, β, C, IC::Tuple)
-    indCinA = add_indices(IA, IC)
-    return add!(α, A, :N, β, C, indCinA)
+function tensoradd!(C, A, IA::Tuple, IC::Tuple, α, β)
+    pC = add_indices(IA, IC)
+    return tensoradd!(C, A, pC, :N, α, β)
 end
 
 """
@@ -44,10 +46,9 @@ traced array.
 
 See also: [`tensortrace`](@ref)
 """
-function tensortrace!(α, A, IA::Tuple, β, C, IC::Tuple)
-    indCinA, cindA1, cindA2 = trace_indices(IA, IC)
-    trace!(α, A, :N, β, C, indCinA, cindA1, cindA2)
-    return C
+function tensortrace!(C, A, IA::Tuple, IC::Tuple, α, β)
+    pC, cindA1, cindA2 = trace_indices(IA, IC)
+    return tensortrace!(C, pC, A, (cindA1, cindA2), :N, α, β)
 end
 
 """
@@ -62,7 +63,7 @@ either in the intersection of `labelsA` and `labelsB` (for indices that need to 
 or in the interaction of either `labelsA` or `labelsB` with `labelsC`, for indicating the order
 in which the open indices should be match to the indices of the output array `C`.
 """
-function tensorcontract!(α, A, IA::Tuple, conjA, B, IB::Tuple, conjB, β, C, IC::Tuple)
+function tensorcontract!(C, IC::Tuple, A, IA::Tuple, conjA, B, IB::Tuple, conjB, α, β)
     conjA == 'N' || conjA == 'C' ||
         throw(ArgumentError("Value of conjA should be 'N' or 'C' instead of $conjA"))
     conjB == 'N' || conjB == 'C' ||
@@ -70,9 +71,8 @@ function tensorcontract!(α, A, IA::Tuple, conjA, B, IB::Tuple, conjB, β, C, IC
     CA = conjA == 'N' ? :N : :C
     CB = conjB == 'N' ? :N : :C
 
-    oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, indCinoAB)
-    return C
+    pA, pB, pC = contract_indices(IA, IB, IC)
+    return tensorcontract!(C, pC, A, pA, CA, B, pB, CB, α, β)
 end
 
 """
@@ -80,7 +80,7 @@ end
 
 Replaces C with `β C + α A * B` without any indices being contracted.
 """
-function tensorproduct!(α, A, IA::Tuple, B, IB::Tuple, β, C, IC::Tuple)
+function tensorproduct!(C, IC::Tuple, A, IA::Tuple, B, IB::Tuple, α, β)
     isempty(intersect(IA, IB)) || throw(LabelError("not a valid tensor product"))
-    return tensorcontract!(α, A, IA, 'N', B, IB, 'N', β, C, IC)
+    return tensorcontract!(C, IC, A, IA, 'N', B, IB, 'N', α, β)
 end

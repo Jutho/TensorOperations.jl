@@ -25,16 +25,17 @@ such that `IC = IA[p]`. The implementation of `tensorcopy` is however more effic
 average, especially if `Threads.nthreads() > 1`.
 """
 function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
-    indCinA = add_indices(IA, IC)
-    C = similar_from_indices(eltype(A), indCinA, (), A, :N)
-    add!(1, A, :N, 0, C, indCinA)
-    return C
+    pA = add_indices(IA, IC)
+    TC = scalartype(A)
+    C = tensoralloc(TC, pA, A, :N)
+    return tensoradd!(C, A, pA, :N, one(TC), zero(TC))
 end
+
 
 """
     tensoradd(A, IA, B, IB, IC = IA)
 
-Returns the result of adding arrays `A` and `B` where the iterabels `IA` and `IB`
+Returns the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
 the result of this method is equivalent to
 
@@ -45,13 +46,12 @@ tensorcopy(A, IA, IC) + tensorcopy(B, IB, IC)
 but without creating the temporary permuted arrays.
 """
 function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
-    T = promote_type(eltype(A), eltype(B))
-    indCinA = add_indices(IA, IC)
-    C = similar_from_indices(T, indCinA, (), A, :N)
-    add!(1, A, :N, 0, C, indCinA)
-    indCinB = add_indices(IB, IC)
-    add!(1, B, :N, 1, C, indCinB)
-    return C
+    TC = promote_type(scalartype(A), scalartype(B))
+    pA = add_indices(IA, IC)
+    C = tensoralloc(TC, pA, A, :N)
+    tensoradd!(C, A, pA, :N, one(TC), zero(TC))
+    pB = add_indices(IB, IC)
+    return tensoradd!(C, B, pB, :N, one(TC), one(TC))
 end
 
 """
@@ -65,10 +65,10 @@ so that every index in `IA` can appear only once (for an untraced index) or twic
 (for an index in a contracted pair).
 """
 function tensortrace(A, IA::Tuple, IC::Tuple)
-    indCinA, cindA1, cindA2 = trace_indices(IA, IC)
-    C = similar_from_indices(eltype(A), indCinA, (), A, :N)
-    trace!(1, A, :N, 0, C, indCinA, cindA1, cindA2)
-    return C
+    pC, cindA1, cindA2 = trace_indices(IA, IC)
+    TC = scalartype(A)
+    C = tensoralloc(TC, pC, A, :N)
+    return tensortrace!(C, pC, A, (cindA1, cindA2), :N, one(TC), zero(TC))
 end
 
 """
@@ -90,13 +90,10 @@ large arrays. The choice of method is globally controlled by the methods
 [`enable_blas()`](@ref) and [`disable_blas()`](@ref).
 """
 function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
-    oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-
-    T = promote_type(eltype(A), eltype(B))
-    C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, :N, :N)
-
-    contract!(1, A, :N, B, :N, 0, C, oindA, cindA, oindB, cindB, indCinoAB)
-    return C
+    pA, pB, pC = contract_indices(IA, IB, IC)
+    TC = promote_type(scalartype(A), scalartype(B))
+    C = tensoralloc(TC, pC, A, pA[1], :N, B, pB[2], :N)
+    return tensorcontract!(C, pC, A, pA, :N, B, pB, :N, one(TC), zero(TC))
 end
 
 """

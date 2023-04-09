@@ -3,6 +3,10 @@ module TensorOperations
 using VectorInterface
 
 using TensorOperationsCore
+import TensorOperationsCore: tensoradd!, tensortrace!, tensorcontract!, tensorscalar
+import TensorOperationsCore: tensoralloc, tensoralloctemp, tensorfree!
+import TensorOperationsCore: tensorcost, checkcontractible
+
 const TOC = TensorOperationsCore
 
 using TupleTools
@@ -29,7 +33,8 @@ export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cach
 
 # export function based API
 export ncon
-export tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
+export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
+export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct
 
 # export debug functionality
 export checkcontractible, tensorcost
@@ -61,9 +66,9 @@ include("implementation/diagonal.jl")
 
 # Functions
 #-----------
-# include("functions/simple.jl")
+include("functions/simple.jl")
 include("functions/ncon.jl")
-# include("functions/inplace.jl")
+include("functions/inplace.jl")
 
 # Backends
 # ---------
