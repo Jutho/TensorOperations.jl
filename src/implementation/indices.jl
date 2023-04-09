@@ -60,7 +60,7 @@ function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     indCinA = map(l -> _findfirst(isequal(l), IA), IC)
     (NA == NC && isperm(indCinA)) ||
         throw(IndexError("invalid index specification: $IA to $IC"))
-    return indCinA
+    return (indCinA, ())
 end
 
 function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
@@ -76,7 +76,7 @@ function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     pA = (indCinA..., cindA1..., cindA2...)
     (isperm(pA) && length(pA) == NA) ||
         throw(IndexError("invalid trace specification: $IA to $IC"))
-    return indCinA, cindA1, cindA2
+    return (indCinA, ()), cindA1, cindA2
 end
 
 function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
