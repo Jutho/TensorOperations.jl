@@ -1,11 +1,17 @@
 function instantiate_scalartype(ex::Expr)
     if istensor(ex)
         return Expr(:call, :scalartype, gettensorobject(ex))
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :/)
         if length(ex.args) > 2
             return Expr(:call, :promote_type, map(instantiate_scalartype, ex.args[2:end])...)
         else
             return instantiate_scalartype(ex.args[2])
+        end
+    elseif ex.head == :call && ex.args[1] == :*
+        if length(ex.args) == 2
+            return instantiate_scalartype(ex.args[2])
+        else
+            return Expr(:call, :promote_contract, map(instantiate_scalartype, ex.args[2:end])...)
         end
     elseif ex.head == :call && ex.args[1] == :conj
         return instantiate_scalartype(ex.args[2])
@@ -16,7 +22,7 @@ function instantiate_scalartype(ex::Expr)
         throw(ArgumentError("unable to determine scalartype"))
     end
 end
-instantiate_scalartype(ex) = Expr(:call, :typeof, ex)
+instantiate_scalartype(ex) = Expr(:call, :scalartype, ex)
 
 function instantiate_scalar(ex::Expr)
     if ex.head == :call && ex.args[1] == :tensorscalar
@@ -174,7 +180,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     if dst === nothing
         TA = instantiate_scalartype(exA)
         TB = instantiate_scalartype(exB)
-        TC = Expr(:call, :promote_type, TA, TB, :(typeof($α)))
+        TC = Expr(:call, :promote_contract, TA, TB, :(typeof($α)))
     else
         TC = Expr(:call, :scalartype, dst)
     end

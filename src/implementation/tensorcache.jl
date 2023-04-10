@@ -101,7 +101,7 @@ const GlobalPool = ObjectPool(default_cache_size())
 
 cachesize() = GlobalPool.currentsize
 
-struct TensorCache <: Backend end
+struct TensorCache <: TOC.Backend end
 
 function TOC.tensoralloc(::TensorCache, args...)
     return tensor_from_structure(tensorstructure(args...)...)

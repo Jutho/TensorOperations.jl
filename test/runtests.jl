@@ -6,7 +6,10 @@ using CUDA, cuTENSOR
 
 Random.seed!(1234567)
 
+operationbackend!(StridedBackend(false))
+
 include("methods.jl")
+include("tensor.jl")
 
 # TensorOperations.enable_blas()
 # TensorOperations.enable_cache()

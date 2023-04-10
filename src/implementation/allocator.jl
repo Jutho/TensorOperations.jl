@@ -1,12 +1,12 @@
-function TOC.tensoralloc(::DefaultBackend, args...)
+function TOC.tensoralloc(::Backend, args...)
     return tensor_from_structure(tensorstructure(args...)...)
 end
 
-function TOC.tensoralloctemp(backend::DefaultBackend, args...)
+function TOC.tensoralloctemp(backend::Backend, args...)
     return TOC.tensoralloc(backend, args...)
 end
 
-TOC.tensorfree!(::DefaultBackend, C) = nothing
+TOC.tensorfree!(::Backend, C) = nothing
 
 # ---------------------------------------------------------------------------------------- #
 # Interface for custom types
@@ -33,15 +33,22 @@ function tensor_from_structure end
 # AbstractArray implementation
 # ---------------------------------------------------------------------------------------- #
 
-tensorstructure(A::AbstractArray{T,N}) where {T,N} = (typeof(A), size(A))
-function tensorstructure(TC, pC, A::AbstractArray, _)
+tensorop(args...) = +(*(args...), *(args...))
+promote_contract(args...) = Base.promote_op(tensorop, args...)
+promote_add(args...) = Base.promote_op(+, args...)
+
+# output_scalartype() = Base.promote_op(tensorop, scalartype(A), scalartype(α))
+# output_scalartype(A, B, α) = Base.promote_op(tensorop, scalartype(A), scalartype(B), scalartype(α))
+
+tensorstructure(A::AbstractArray) = (typeof(A), size(A))
+function tensorstructure(TC, pC, A::AbstractArray, conjA)
     sz = map(n -> size(A, n), linearize(pC))
     TType = Array{TC, length(sz)}
     return TType, sz
 end
 
-function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::AbstractArray,
-                         iB::IndexTuple, _)
+function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, conjA, B::AbstractArray,
+                         iB::IndexTuple, conjB)
     sz = let lA = length(iA)
         map(linearize(pC)) do n
             if n <= lA
@@ -56,4 +63,8 @@ function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, _, B::Abstrac
     return TType, sz
 end
 
-tensor_from_structure(TType::Type{<:AbstractArray}, structure) = similar(TType, structure)
+function tensor_from_structure(TType::Type{<:AbstractArray}, structure)
+    A = similar(TType, structure)
+    isbitstype(eltype(TType)) || fill!(A, zero(scalartype(TType)))
+    return A
+end

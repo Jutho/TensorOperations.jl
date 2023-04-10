@@ -2,13 +2,8 @@ module TensorOperations
 
 using VectorInterface
 
+import TensorOperationsCore as TOC
 using TensorOperationsCore
-import TensorOperationsCore: tensoradd!, tensortrace!, tensorcontract!, tensorscalar
-import TensorOperationsCore: tensoralloc, tensoralloctemp, tensorfree!
-import TensorOperationsCore: tensorcost, checkcontractible
-
-const TOC = TensorOperationsCore
-
 using TupleTools
 using Strided
 

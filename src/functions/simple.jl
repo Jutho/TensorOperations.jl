@@ -27,8 +27,8 @@ average, especially if `Threads.nthreads() > 1`.
 function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     pA = add_indices(IA, IC)
     TC = scalartype(A)
-    C = tensoralloc(TC, pA, A, :N)
-    return tensoradd!(C, A, pA, :N, one(TC), zero(TC))
+    C = TOC.tensoralloc(TC, pA, A, :N)
+    return TOC.tensoradd!(C, A, pA, :N, one(TC), zero(TC))
 end
 
 
@@ -46,12 +46,12 @@ tensorcopy(A, IA, IC) + tensorcopy(B, IB, IC)
 but without creating the temporary permuted arrays.
 """
 function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
-    TC = promote_type(scalartype(A), scalartype(B))
+    TC = promote_add(scalartype(A), scalartype(B))
     pA = add_indices(IA, IC)
-    C = tensoralloc(TC, pA, A, :N)
-    tensoradd!(C, A, pA, :N, one(TC), zero(TC))
+    C = TOC.tensoralloc(TC, pA, A, :N)
+    TOC.tensoradd!(C, A, pA, :N, one(TC), zero(TC))
     pB = add_indices(IB, IC)
-    return tensoradd!(C, B, pB, :N, one(TC), one(TC))
+    return TOC.tensoradd!(C, B, pB, :N, one(TC), one(TC))
 end
 
 """
@@ -66,9 +66,9 @@ so that every index in `IA` can appear only once (for an untraced index) or twic
 """
 function tensortrace(A, IA::Tuple, IC::Tuple)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
-    TC = scalartype(A)
-    C = tensoralloc(TC, pC, A, :N)
-    return tensortrace!(C, pC, A, (cindA1, cindA2), :N, one(TC), zero(TC))
+    TC = promote_contract(scalartype(A))
+    C = TOC.tensoralloc(TC, pC, A, :N)
+    return TOC.tensortrace!(C, pC, A, (cindA1, cindA2), :N, one(TC), zero(TC))
 end
 
 """
@@ -91,9 +91,9 @@ large arrays. The choice of method is globally controlled by the methods
 """
 function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
     pA, pB, pC = contract_indices(IA, IB, IC)
-    TC = promote_type(scalartype(A), scalartype(B))
-    C = tensoralloc(TC, pC, A, pA[1], :N, B, pB[2], :N)
-    return tensorcontract!(C, pC, A, pA, :N, B, pB, :N, one(TC), zero(TC))
+    TC = promote_contract(scalartype(A), scalartype(B))
+    C = TOC.tensoralloc(TC, pC, A, pA[1], :N, B, pB[2], :N)
+    return TOC.tensorcontract!(C, pC, A, pA, :N, B, pB, :N, one(TC), zero(TC))
 end
 
 """

@@ -68,8 +68,8 @@ function ncon(tensors, network,
     pA, pB, pC = contract_indices(IA, IB, IC)
     T = promote_type(scalartype(A), scalartype(B))
     # end result: don't use cache
-    C = tensoralloc(T, pC, A, pA[1], CA, B, pB[2], CB)
-    tensorcontract!(C, pC, A, pA, CA, B, pB, CB, true, false)
+    C = TOC.tensoralloc(T, pC, A, pA[1], CA, B, pB[2], CB)
+    TOC.tensorcontract!(C, pC, A, pA, CA, B, pB, CB, true, false)
     
     # C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
     # if sym !== nothing
@@ -107,8 +107,8 @@ function contracttree(tensors, network, conjlist, tree, sym)
     #     C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
     # end
 
-    C = tensoralloctemp(T, pC, A, pA[1], CA, B, pB[2], CB)
-    tensorcontract!(C, pC, A, pA, CA, B, pB, CB, true, false)
+    C = TOC.tensoralloctemp(T, pC, A, pA[1], CA, B, pB[2], CB)
+    TOC.tensorcontract!(C, pC, A, pA, CA, B, pB, CB, true, false)
 
     # if sym !== nothing
     #     symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
