@@ -129,7 +129,7 @@ for T in (Float64, ComplexF64)
         @testset "tensortrace!" begin
             Abig = rand(T, (30, 30, 30, 30))
             A = view(Abig, 1 .+ 3 * (0:8), 2 .+ 2 * (0:14), 5 .+ 4 * (0:6), 7 .+ 2 * (0:8))
-            Bbig = rand(ComplexF64, (50, 50))
+            Bbig = rand(T, (50, 50))
             B = view(Bbig, 13 .+ (0:14), 3 .+ 5 * (0:6))
             Acopy = tensorcopy(A, 1:4)
             Bcopy = tensorcopy(B, 1:2)
