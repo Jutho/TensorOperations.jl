@@ -1,19 +1,22 @@
 module TensorOperations
 
 using VectorInterface
-
-import TensorOperationsCore as TOC
 using TensorOperationsCore
+import TensorOperationsCore as TOC
+
 using TupleTools
-using Strided
 
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using ConcurrentCollections
-using Requires
 using LRUCache
 
-using Preferences
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+
+using Preferences, Pkg
 
 # Exports
 #---------
@@ -21,15 +24,14 @@ using Preferences
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
 
-export StridedBackend, JuliaAllocator, TensorCache
-export operationbackend!, allocationbackend!
+export TensorCache
 
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
 export ncon
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
-export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct
+export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalartype
 
 # export debug functionality
 export checkcontractible, tensorcost
@@ -48,16 +50,19 @@ include("indexnotation/poly.jl")
 include("indexnotation/optdata.jl")
 include("indexnotation/optimaltree.jl")
 include("indexnotation/tensormacros.jl")
+include("indexnotation/cutensormacros.jl")
 include("indexnotation/indexordertree.jl")
 @specialize
 
 # Implementations
 #-----------------
+include("implementation/backends.jl")
 include("implementation/indices.jl")
 include("implementation/tensorcache.jl")
 include("implementation/allocator.jl")
-include("implementation/stridedarray.jl")
-include("implementation/diagonal.jl")
+# include("implementation/stridedarray.jl")
+TOC.tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
+# include("implementation/diagonal.jl")
 
 # Functions
 #-----------
@@ -65,23 +70,8 @@ include("functions/simple.jl")
 include("functions/ncon.jl")
 include("functions/inplace.jl")
 
-# Backends
-# ---------
 
-function operationbackend!(backend, type::Type=Any)
-    for f in (contractbackend!, addbackend!, tracebackend!)
-        f(backend, type)
-    end
-    @info "operation backend for $type set to $backend"
-    return nothing
-end
-function allocationbackend!(backend, type::Type=Any)
-    for f in (allocatebackend!, allocatetempbackend!)
-        f(backend, type)
-    end
-    @info "allocation backend for $type set to $backend"
-    return nothing
-end
+
 
 # Global package settings
 #-------------------------
@@ -165,29 +155,22 @@ Return the current memory size (in bytes) of all the objects in the cache.
 # Initialization
 #-----------------
 function __init__()
-    # resize!(cache; maxsize=default_cache_size())
-    # by default, load strided for arrays
-    # operationbackend!(StridedBackend(false), AbstractArray)
-
-    # by default, load juliaallocator for Any
-    # allocationbackend!(JuliaAllocator())
-
+    allocator()
+    backend()
+    
     @static if !isdefined(Base, :get_extension)
+        @require Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67" begin
+            include("../ext/TensorOperationsStrided.jl")
+        end
+        
         @require TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9" begin
             include("../ext/TensorOperationsTBLIS.jl")
-            using .TensorOperationsTBLIS
-            export TBLISBackend
         end
 
         @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
             @require cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1" begin
                 if CUDA.functional() && cuTENSOR.has_cutensor()
                     include("../ext/TensorOperationsCUDA.jl")
-                    using .TensorOperationsCUDA
-                    export CUDABackend
-                    # @nospecialize
-                    # include("indexnotation/cutensormacros.jl")
-                    # @specialize
                 end
             end
         end

@@ -124,7 +124,7 @@ function getinputtensorobjects(ex)
         end
     elseif isa(ex, Expr) && ex.head in (:for, :while)
         append!(list, getinputtensorobjects(ex.args[2]))
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :scalar
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :tensorscalar
         append!(list, gettensorobjects(ex.args[2]))
     end
     return unique!(list)

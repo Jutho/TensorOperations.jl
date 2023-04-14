@@ -2,25 +2,42 @@ module TensorOperationsCUDA
 
 import TensorOperationsCore as TOC
 using TensorOperationsCore
-using CUDA: CUDA, CuArray
-using CUDA.CUBLAS: CublasFloat, CublasReal
 using TupleTools
+
+if isdefined(Base, :get_extension)
+    using CUDA: CUDA, CuArray
+    using CUDA.CUBLAS: CublasFloat, CublasReal
+    using cuTENSOR: handle, CuTensorDescriptor, cudaDataType_t,
+                    cutensorContractionDescriptor_t,
+                    cutensorContractionFind_t, cutensorContractionPlan_t,
+                    CUTENSOR_OP_IDENTITY,
+                    CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD, CUTENSOR_ALGO_DEFAULT,
+                    CUTENSOR_WORKSPACE_RECOMMENDED, cutensorPermutation,
+                    cutensorElementwiseBinary, cutensorReduction,
+                    cutensorReductionGetWorkspace,
+                    cutensorComputeType, cutensorGetAlignmentRequirement,
+                    cutensorInitContractionDescriptor, cutensorInitContractionFind,
+                    cutensorContractionGetWorkspace, cutensorInitContractionPlan,
+                    cutensorContraction
+else
+    using ..CUDA: CUDA, CuArray
+    using ..CUDA.CUBLAS: CublasFloat, CublasReal
+    using ..cuTENSOR: handle, CuTensorDescriptor, cudaDataType_t,
+                      cutensorContractionDescriptor_t,
+                      cutensorContractionFind_t, cutensorContractionPlan_t,
+                      CUTENSOR_OP_IDENTITY,
+                      CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD, CUTENSOR_ALGO_DEFAULT,
+                      CUTENSOR_WORKSPACE_RECOMMENDED, cutensorPermutation,
+                      cutensorElementwiseBinary, cutensorReduction,
+                      cutensorReductionGetWorkspace,
+                      cutensorComputeType, cutensorGetAlignmentRequirement,
+                      cutensorInitContractionDescriptor, cutensorInitContractionFind,
+                      cutensorContractionGetWorkspace, cutensorInitContractionPlan,
+                      cutensorContraction
+end
 
 import TensorOperations: tensorstructure, tensor_from_structure
 
-using cuTENSOR: handle, CuTensorDescriptor, cudaDataType_t, cutensorContractionDescriptor_t,
-                cutensorContractionFind_t, cutensorContractionPlan_t, CUTENSOR_OP_IDENTITY,
-                CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD, CUTENSOR_ALGO_DEFAULT,
-                CUTENSOR_WORKSPACE_RECOMMENDED, cutensorPermutation,
-                cutensorElementwiseBinary, cutensorReduction, cutensorReductionGetWorkspace,
-                cutensorComputeType, cutensorGetAlignmentRequirement,
-                cutensorInitContractionDescriptor, cutensorInitContractionFind,
-                cutensorContractionGetWorkspace, cutensorInitContractionPlan,
-                cutensorContraction
-
-export CUDABackend
-                
-                
 if isdefined(CUDA, :default_stream)
     const default_stream = CUDA.default_stream
 else
@@ -40,42 +57,32 @@ else
     end
 end
 
-# ---------------------------------------------------------------------------------------- #
-# backend
-# ---------------------------------------------------------------------------------------- #
-
-"""
-    CUDABackend <: TOC.Backend
-
-backend using CUDA.jl
-"""
-struct CUDABackend <: TOC.Backend end
-
 TOC.tensorscalar(C::CuArray) = ndims(C) == 0 ? collect(C)[] : throw(DimensionMismatch())
 
 # ---------------------------------------------------------------------------------------- #
 # tensoradd!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensoradd!(::DefaultBackend, C::CuArray, A::CuArray, pA::IndexTuple,
+function TOC.tensoradd!(::AbstractBackend, C::CuArray, A::CuArray, pA::Index2Tuple,
                         conjA::Symbol, α::Number, β::Number)
     N = ndims(C)
     N == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    N == length(pA) || throw(IndexError("Invalid permutation of length $N: $pA"))
+    N == length(pA[1]) + length(pA[2]) ||
+        throw(IndexError("Invalid permutation of length $N: $pA"))
 
     T = eltype(C)
 
     conjA == :N || conjA == :C ||
         throw(ArgumentError("Value of conjA should be :N or :C instead of $conjA"))
-    opA = (T <: Real || CA == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+    opA = (T <: Real || conjA == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
     opAC = CUTENSOR_OP_ADD
 
     descA = CuTensorDescriptor(A; op=opA)
     descC = CuTensorDescriptor(C; op=CUTENSOR_OP_IDENTITY)
     # descD = descC
-    typeCompute = convert(cudaDataType, T)
+    typeCompute = convert(cudaDataType_t, T)
     modeA = collect(Cint, 1:N)
-    modeC = collect(Cint, indCinA)
+    modeC = collect(Cint, linearize(pA))
     stream = default_stream()
     if β == zero(β)
         cutensorPermutation(handle(), T[α], A, descA, modeA, C, descC, modeC,
@@ -88,16 +95,11 @@ function TOC.tensoradd!(::DefaultBackend, C::CuArray, A::CuArray, pA::IndexTuple
     return C
 end
 
-function TOC.tensoradd!(backend::DefaultBackend, C::CuArray, A::CuArray,
-                        pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
-    return TOC.tensoradd!(backend, C, A, linearize(pA), conjA, α, β)
-end
-
 # ---------------------------------------------------------------------------------------- #
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensorcontract!(::DefaultBackend, C::CuArray, pC::Index2Tuple,
+function TOC.tensorcontract!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
                              A::CuArray, pA::Index2Tuple, conjA::Symbol,
                              B::CuArray, pB::Index2Tuple, conjB::Symbol,
                              α, β)
@@ -208,7 +210,7 @@ end
 # tensortrace!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensortrace!(::DefaultBackend, C::CuArray, pC::Index2Tuple,
+function TOC.tensortrace!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
                           A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
     T = eltype(C)
     NA, NC = ndims(A), ndims(C)

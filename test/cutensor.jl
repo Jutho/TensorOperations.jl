@@ -1,3 +1,7 @@
+using TensorOperations
+using Test
+using LinearAlgebra
+
 @testset "cutensor macro for elementary operations" begin
     t0 = time()
     A = randn(Float64, (3,5,4,6))
@@ -20,7 +24,7 @@
     @cutensor C1[3,1,4,2] := A[3,1,4,2] + α * B[1,2,3,4] # mixed eltype add/permutation
     C2 = A + α * permutedims(B, p)
     @test collect(C1) ≈ C2
-    @test_throws CUDA.CUTENSOR.CUTENSORError begin
+    @test_throws cuTENSOR.CUTENSORError begin
         @cutensor C[1,2,3,4] := A[1,2,3,4] + B[1,2,3,4]
     end
     println("tensoradd: $(time()-t0) seconds")
@@ -95,7 +99,7 @@ end
         end
     end
     @test collect(D1) ≈ D2
-    @test norm(vec(D1)) ≈ sqrt(abs((@cutensor scalar(D1[d, f, h] * conj(D1[d, f, h])))))
+    @test norm(vec(D1)) ≈ sqrt(abs((@cutensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
     println("tensorcontract 3: $(time()-t0) seconds")
     t0 = time()
 
@@ -131,7 +135,7 @@ end
         @test collect(HrA12′) == collect(HrA12′′) # should be exactly equal
         @test HrA12 ≈ collect(HrA12′)
         @test HrA12 ≈ collect(HrA12′′)
-        @test E ≈ @cutensor scalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+        @test E ≈ @cutensor tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] * H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
     println("tensor network examples: $(time()-t0) seconds")
     t0 = time()

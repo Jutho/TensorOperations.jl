@@ -1,12 +1,11 @@
 # test index notation using @tensor macro
 #-----------------------------------------
 
-module TestTensor
-
 using Test
 using TensorOperations
 using TensorOperations: IndexError
 using LinearAlgebra
+
 @testset "macros" verbose = true begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3, 5, 4, 6))
@@ -56,7 +55,7 @@ using LinearAlgebra
         @test C1 ≈ C2
     end
 
-    @testset "tensorcontract" verbose = true begin
+    @testset "tensorcontract" begin
         @testset begin
             A = randn(Float64, (3, 20, 5, 3, 4))
             B = randn(Float64, (5, 6, 20, 3))
@@ -109,7 +108,7 @@ using LinearAlgebra
                   sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
         end
     end
-    @testset "views" verbose = true begin
+    @testset "views" begin
         @testset begin
             Abig = randn(Float64, (30, 30, 30, 30))
             A = view(Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
@@ -427,5 +426,4 @@ using LinearAlgebra
             @test reshape(G, (100, 100)) ≈ kron(Diagonal(B), F)
         end
     end
-end
 end

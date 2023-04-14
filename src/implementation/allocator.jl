@@ -1,12 +1,12 @@
-function TOC.tensoralloc(::Backend, args...)
+function TOC.tensoralloc(::AbstractBackend, args...)
     return tensor_from_structure(tensorstructure(args...)...)
 end
 
-function TOC.tensoralloctemp(backend::Backend, args...)
+function TOC.tensoralloctemp(backend::AbstractBackend, args...)
     return TOC.tensoralloc(backend, args...)
 end
 
-TOC.tensorfree!(::Backend, C) = nothing
+TOC.tensorfree!(::AbstractBackend, C) = nothing
 
 # ---------------------------------------------------------------------------------------- #
 # Interface for custom types

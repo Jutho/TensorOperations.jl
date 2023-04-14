@@ -41,29 +41,29 @@ function extracttensorobjects(ex, cuwrapdict)
     for k in setdiff(outputtensors, inputtensors)
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b => (a, :($b = CuArray{eltype($a)}(undef, size($a)))))
+        push!(cuwrapdict, b => (a, :($b = CuArray{scalartype($a)}(undef, size($a)))))
     end
     return Expr(:block, pre, ex, post)
 end
 
 function addcutensorwraps(ex, cuwrapdict)
     for (b, (a, assignb)) in cuwrapdict
-        ex = _replace_in_eltype(ex, b, a)
+        ex = _replace_in_scalartype(ex, b, a)
         ex = _splice(ex, b, assignb)
     end
     return ex
 end
 
-function _replace_in_eltype(ex::Expr, b, a)
-    if ex.head == :call && ex.args[1] == :eltype && ex.args[2] == b
-        return Expr(:call, :eltype, a)
+function _replace_in_scalartype(ex::Expr, b, a)
+    if ex.head == :call && ex.args[1] == :scalartype && ex.args[2] == b
+        return Expr(:call, :scalartype, a)
     else
-        return Expr(ex.head, (_replace_in_eltype(arg, b, a) for arg in ex.args)...)
+        return Expr(ex.head, (_replace_in_scalartype(arg, b, a) for arg in ex.args)...)
     end
 end
-_replace_in_eltype(ex, b, a) = ex
+_replace_in_scalartype(ex, b, a) = ex
 
-# check if a subexpression contains/uses the variable s, but ignore `eltype` calls
+# check if a subexpression contains/uses the variable s, but ignore `scalartype` calls
 _contains(ex::Expr, s) = any(e -> _contains(e, s), ex.args)
 _contains(ex::Symbol, s) = ex == s
 _contains(ex, s) = false

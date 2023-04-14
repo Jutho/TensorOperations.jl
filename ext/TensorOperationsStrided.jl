@@ -1,48 +1,44 @@
-"""
-    struct StridedBackend <: TOC.Backend
+module TensorOperationsStrided
 
-backend using Strided.jl
-"""
-struct StridedBackend <: TOC.Backend
-    use_blas::Bool
-end
+using TensorOperations
+isdefined(Base, :get_extension) ? (using Strided) : (using ..Strided)
+using TupleTools
+using TensorOperationsCore: Index2Tuple, IndexTuple, linearize, IndexError
+import TensorOperationsCore as TOC
+using LinearAlgebra
+using VectorInterface
 
-TOC.tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
+const StridedBackends = Union{StridedBackend,StridedBLASBackend}
 
 # ---------------------------------------------------------------------------------------- #
 # tensoradd!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensoradd!(::StridedBackend, C::AbstractArray, A::AbstractArray,
-                        pA::IndexTuple, conjA::Symbol, α::Number, β::Number)
+function TOC.tensoradd!(::StridedBackends, C::AbstractArray, A::AbstractArray,
+                        pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    ndims(C) == length(pA) ||
+    ndims(C) == length(pA[1]) + length(pA[2]) ||
         throw(IndexError("Invalid permutation of length $(ndims(C)): $pA"))
 
     if conjA == :N
-        add!(StridedView(C), permutedims(StridedView(A), pA), α, β)
+        add!(StridedView(C), permutedims(StridedView(A), linearize(pA)), α, β)
     elseif conjA == :C
-        add!(StridedView(C), permutedims(conj(StridedView(A)), pA), α, β)
+        add!(StridedView(C), permutedims(conj(StridedView(A)), linearize(pA)), α, β)
     elseif conjA == :A
-        add!(StridedView(C), permutedims(adjoint(StridedView(A)), pA), α, β)
+        add!(StridedView(C), permutedims(adjoint(StridedView(A)), linearize(pA)), α, β)
     else
         throw(ArgumentError("unknown conjugation flag: $conjA"))
     end
     return C
 end
 
-function TOC.tensoradd!(backend::StridedBackend, C::AbstractArray, A::AbstractArray,
-                        pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
-    return TOC.tensoradd!(backend, C, A, linearize(pA), conjA, α, β)
-end
-
 # ---------------------------------------------------------------------------------------- #
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensorcontract!(b::StridedBackend, C::AbstractArray, pC::Index2Tuple, 
-                             A::AbstractArray, pA::Index2Tuple, conjA, 
-                             B::AbstractArray, pB::Index2Tuple, conjB, 
+function TOC.tensorcontract!(backend::StridedBackends, C::AbstractArray, pC::Index2Tuple,
+                             A::AbstractArray, pA::Index2Tuple, conjA,
+                             B::AbstractArray, pB::Index2Tuple, conjB,
                              α, β)
     (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
         throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
@@ -59,16 +55,17 @@ function TOC.tensorcontract!(b::StridedBackend, C::AbstractArray, pC::Index2Tupl
 
     TupleTools.getindices(szA, pA[2]) == TupleTools.getindices(szB, pB[1]) ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-    
+
     szoA = TupleTools.getindices(szA, pA[1])
     szoB = TupleTools.getindices(szB, pB[2])
     szoC = TupleTools.getindices(szC, linearize(pC))
     szoC = TupleTools.getindices(szC, TupleTools.invperm(linearize(pC)))
     TupleTools.getindices((szoA..., szoB...), linearize(pC)) == szC ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions:" *
-            "($szoA, $szoB)[$(linearize(pC))] -> $szC"))
+                                "($szoA, $szoB)[$(linearize(pC))] -> $szC"))
 
-    if b.use_blas && eltype(C) <: BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
+    if isa(backend, StridedBLASBackend) && eltype(C) <: LinearAlgebra.BlasFloat &&
+       !isa(B, Diagonal) && !isa(A, Diagonal)
         if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) >
            reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
             return blas_reversecontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
@@ -93,15 +90,15 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
         C_ = C
         _blas_contract!(α, A_, conjA, B_, conjB, β, C_, pA, pB, pC_)
     else
-        C_ = tensoralloc(TC, pC_, C, :N)
+        C_ = TOC.tensoralloc(TC, pC_, C, :N)
         pC__ = (_trivtuple(pA[1]), length(pA[1]) .+ _trivtuple(pB[2]))
         _blas_contract!(1, A_, conjA, B_, conjB, 0, C_, pA, pB, pC__)
-        tensoradd!(C, C_, pC, :N, α, β)
+        TOC.tensoradd!(C, C_, pC, :N, α, β)
     end
 
-    flagA || tensorfree!(A_)
-    flagB || tensorfree!(B_)
-    flagC || tensorfree!(C_)
+    flagA || TOC.tensorfree!(A_)
+    flagB || TOC.tensorfree!(B_)
+    flagC || TOC.tensorfree!(C_)
 
     return C
 end
@@ -118,8 +115,8 @@ end
 function makeblascontractable(A, pA, conjA, TC)
     flagA = isblascontractable(A, pA[1], pA[2], conjA) && eltype(A) == TC
     if !flagA
-        A_ = tensoralloc(TC, pA, A, conjA)
-        A = tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
+        A_ = TOC.tensoralloc(TC, pA, A, conjA)
+        A = TOC.tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
         conjA = :N
         pA = (_trivtuple(pA[1]), _trivtuple(pA[2]) .+ length(pA[1]))
     end
@@ -136,24 +133,14 @@ function _blas_contract!(α, A::AbstractArray, conjA, B::AbstractArray, conjB, �
     osizeB = TupleTools.getindices(sizeB, pB[2])
 
     pABinC = oindABinC(pC, pA, pB)
+    mul!(sreshape(permutedims(StridedView(C), linearize(pABinC)),
+                  (prod(osizeA), prod(osizeB))),
+         flag2op(conjA)(sreshape(permutedims(StridedView(A), linearize(pA)),
+                                 (prod(osizeA), prod(csizeA)))),
+         flag2op(conjB)(sreshape(permutedims(StridedView(B), linearize(pB)),
+                                 (prod(csizeB), prod(osizeB)))),
+         α, β)
 
-    @strided begin
-        A_ = sreshape(permutedims(A, linearize(pA)), (prod(osizeA), prod(csizeA)))
-        B_ = sreshape(permutedims(B, linearize(pB)), (prod(csizeB), prod(osizeB)))
-        C_ = sreshape(permutedims(C, linearize(pABinC)), (prod(osizeA), prod(osizeB)))
-
-        if conjA == :N && conjB == :N
-            mul!(C_, A_, B_, α, β)
-        elseif (conjA == :C || conjA == :A) && conjB == :N
-            mul!(C_, conj(A_), B_, α, β)
-        elseif conjA == :N && (conjB == :C || conjB == :A)
-            mul!(C_, A_, conj(B_), α, β)
-        elseif (conjA == :C || conjA == :A) && (conjB == :C || conjB == :A)
-            mul!(C_, conj(A_), conj(B_), α, β)
-        else
-            throw(ArgumentError("unknown conjugation flag $conjA and $conjB"))
-        end
-    end
     return C
 end
 
@@ -203,6 +190,81 @@ function native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
     return C
 end
 
+function native_contract!(C, pC, A::AbstractArray, pA, conjA, B::Diagonal, pB, conjB, α, β)
+    Bd = B.diag
+    oindA, cindA = pA
+    cindB, oindB = pB
+    indCinoAB = linearize(pC)
+
+    @strided begin
+        if conjA == :N && conjB == :N
+            _contract!(α, A, Bd, β, C, oindA, cindA, oindB, cindB, indCinoAB)
+        elseif conjA == :C && conjB == :N
+            _contract!(α, conj(A), Bd, β, C, oindA, cindA, oindB, cindB, indCinoAB)
+        elseif conjA == :N && conjB == :C
+            _contract!(α, A, conj(Bd), β, C, oindA, cindA, oindB, cindB, indCinoAB)
+        elseif conjA == :C && conjB == :C
+            _contract!(α, conj(A), conj(Bd), β, C, oindA, cindA, oindB, cindB, indCinoAB)
+        else
+            throw(ArgumentError("unknown conjugation flag $conjA and $conjB"))
+        end
+    end
+
+    return C
+end
+
+function native_contract!(C, pC, A::Diagonal, pA, conjA, B::AbstractArray, pB, conjB, α, β)
+    indCinoBA = let N₁ = length(pA[1]), N₂ = length(pB[2])
+        map(n -> ifelse(n > N₁, n - N₁, n + N₂), linearize(pC))
+    end
+    pC_BA = (TupleTools.getindices(indCinoBA, _trivtuple(pC[1])),
+             TupleTools.getindices(indCinoBA, length(pC[1]) .+ _trivtuple(pC[2])))
+    return native_contract!(C, pC_BA, B, reverse(pB), conjB, A, reverse(pA), conjA, α, β)
+end
+
+function _contract!(α, A::StridedView, Bd::StridedView,
+                    β, C::StridedView, oindA, cindA, oindB, cindB, indCinoAB)
+    sizeA = i -> size(A, i)
+    csizeA = sizeA.(cindA)
+    osizeA = sizeA.(oindA)
+
+    if length(oindB) == 1 # length(cindA) == length(cindB) == 1
+        A2 = permutedims(A, (oindA..., cindA...))
+        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+        B2 = sreshape(Bd, ((one.(osizeA))..., csizeA...))
+        totsize = (osizeA..., csizeA...)
+
+    elseif length(oindB) == 0
+        strideA = i -> stride(A, i)
+        newstrides = (strideA.(oindA)..., strideA(cindA[1]) + strideA(cindA[2]))
+        totsize = (osizeA..., csizeA[1])
+        A2 = StridedView(A.parent, totsize, newstrides, A.offset, A.op)
+        B2 = sreshape(Bd, ((one.(osizeA))..., csizeA[1]))
+        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+
+    else # length(oindB) == 2
+        if β != 1
+            rmul!(C, β)
+            β = 1
+        end
+        A2 = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., 1))
+        C3 = permutedims(C, TupleTools.invperm(indCinoAB))
+        B2 = sreshape(Bd, ((one.(osizeA))..., length(Bd)))
+
+        sC = strides(C3)
+        newstrides = (Base.front(Base.front(sC))..., sC[end - 1] + sC[end])
+        totsize = (osizeA..., length(Bd))
+
+        C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
+    end
+
+    op1 = α == 1 ? (*) : (x, y) -> α * x * y
+    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
+    Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
+
+    return C
+end
+
 function flag2op(flag::Symbol)
     op = flag == :N ? identity :
          flag == :C ? conj :
@@ -215,7 +277,7 @@ end
 # tensortrace!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensortrace!(::StridedBackend, C::AbstractArray, pC::Index2Tuple,
+function TOC.tensortrace!(::StridedBackends, C::AbstractArray, pC::Index2Tuple,
                           A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β)
     NA, NC = ndims(A), ndims(C)
     NC == length(linearize(pC)) ||
@@ -339,4 +401,6 @@ end
 
 function reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
     return contract_memcost(C, reverse(pC), B, reverse(pB), conjB, A, reverse(pA), conjA)
+end
+
 end

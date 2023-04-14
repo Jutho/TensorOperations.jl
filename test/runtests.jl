@@ -1,38 +1,18 @@
 using Test
-using TensorOperations, TensorOperationsCore
+using TensorOperations
 using Random
-using LinearAlgebra
-using CUDA, cuTENSOR
+using CUDA
 
 Random.seed!(1234567)
 
-operationbackend!(StridedBackend(false))
+# @testset "tensoropt" include("tensoropt.jl")
+# @testset "auxiliary" include("auxiliary.jl")
 
-include("methods.jl")
-include("tensor.jl")
+# @testset "Strided" verbose = true include("strided.jl")
+@testset "TBLIS" verbose = true include("tblis.jl")
 
-# TensorOperations.enable_blas()
-# TensorOperations.enable_cache()
-# include("methods.jl")
+if CUDA.functional()
+    @testset "CUDA" verbose = true include("cuda.jl")
+end
 
-
-
-# include("tensor.jl")
-# allocationbackend!(TensorCache())
-# include("tensor.jl")
-
-# TensorOperations.disable_cache()
-# include("methods.jl")
-# include("tensor.jl")
-# TensorOperations.disable_blas()
-# include("methods.jl")
-# include("tensor.jl")
-# TensorOperations.enable_blas()
-# TensorOperations.enable_cache()
-
-# if CUDA.functional()
-#     include("cutensor.jl")
-# end
-
-# include("tensoropt.jl")
-# include("auxiliary.jl")
+# @testset "Polynomials" include("polynomials.jl")

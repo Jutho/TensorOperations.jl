@@ -1,9 +1,9 @@
 function instantiate_scalartype(ex::Expr)
     if istensor(ex)
         return Expr(:call, :scalartype, gettensorobject(ex))
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :/)
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         if length(ex.args) > 2
-            return Expr(:call, :promote_type, map(instantiate_scalartype, ex.args[2:end])...)
+            return Expr(:call, :promote_add, map(instantiate_scalartype, ex.args[2:end])...)
         else
             return instantiate_scalartype(ex.args[2])
         end
@@ -13,10 +13,16 @@ function instantiate_scalartype(ex::Expr)
         else
             return Expr(:call, :promote_contract, map(instantiate_scalartype, ex.args[2:end])...)
         end
+    elseif ex.head == :call && ex.args[1] == :/
+        if length(ex.args) == 2
+            return instantiate_scalartype(ex.args[2])
+        else
+            return Expr(:call, :promote_type, map(instantiate_scalartype, ex.args[2:end])...)
+        end
     elseif ex.head == :call && ex.args[1] == :conj
         return instantiate_scalartype(ex.args[2])
     elseif isscalarexpr(ex)
-        return :(typeof($ex))
+        return :(scalartype($ex))
     else
         # return :(eltype($ex)) # would probably lead to doing the same operation twice
         throw(ArgumentError("unable to determine scalartype"))

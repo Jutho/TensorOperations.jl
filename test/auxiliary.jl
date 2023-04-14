@@ -88,7 +88,7 @@
         @test !isscalarexpr(:(a[x,y]*b[y,x]))
         @test !isscalarexpr(:(3*tensorscalar(a[x,y]*b[y,x]) + conj(c[z])))
 
-        @test instantiate_scalartype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_type(promote_type(scalartype(a), scalartype(b)), scalartype(c)))
+        @test instantiate_scalartype(:(a[1,2,3]*b[3,4,5]+c[1,2,4,5])) == :(promote_add(promote_contract(scalartype(a), scalartype(b)), scalartype(c)))
     end
 
     @testset "parsecost" begin

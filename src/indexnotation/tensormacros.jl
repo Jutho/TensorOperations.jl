@@ -64,9 +64,9 @@ macro tensor(kwargsex::Expr, ex::Expr)
                 optdict = optdata(kwarg.args[2], ex)
                 parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
             end
-        elseif kwarg.args[1] == :operationbackend
+        elseif kwarg.args[1] == :backend
             pushfirst!(parser.postprocessors, ex -> insertoperationbackend(ex, kwarg.args[2]))
-        elseif kwarg.args[1] == :allocationbackend
+        elseif kwarg.args[1] == :allocator
             pushfirst!(parser.postprocessors, ex -> insertallocationbackend(ex, kwarg.args[2]))
         else
             throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))

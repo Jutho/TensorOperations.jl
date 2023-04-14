@@ -95,7 +95,7 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
     oindA = map(l -> _findfirst(isequal(l), IA), IopenA)
     oindB = map(l -> _findfirst(isequal(l), IB), IopenB)
     indCinoAB = map(l -> _findfirst(isequal(l), (IopenA..., IopenB...)), IC)
-    
+
     pA = (oindA, cindA)
     pB = (cindB, oindB)
     pC = (indCinoAB, ())
@@ -105,4 +105,42 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
     end
 
     return pA, pB, pC
+end
+
+# Generate index information
+#---------------------------
+const OFFSET_OPEN = 'a' - 1
+const OFFSET_CLOSED = 'A' - 1
+
+function add_labels(pA::Index2Tuple)
+    einA = OFFSET_OPEN .+ (1:sum(length.(pA)))
+    einB = getindex.(Ref(einA), linearize(pA))
+    return tuple(einA...), tuple(einB...)
+end
+
+function trace_labels(pC::Index2Tuple, iA₁::IndexTuple, iA₂::IndexTuple)
+    length(iA₁) == length(iA₂) ||
+        throw(IndexError("number of traced indices not consistent."))
+    einA = Vector{Char}(undef, sum(length.(pC)) + length(iA₁) + length(iA₂))
+    setindex!.(Ref(einA), (1:sum(length.(pC))) .+ OFFSET_OPEN, linearize(pC))
+    setindex!.(Ref(einA), (1:length(iA₁)) .+ OFFSET_CLOSED, iA₁)
+    setindex!.(Ref(einA), (1:length(iA₂)) .+ OFFSET_CLOSED, iA₂)
+    return tuple(einA...), tuple(((1:sum(length.(pC))) .+ OFFSET_OPEN)...)
+end
+
+function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
+    length(pA[1]) + length(pB[2]) == sum(length.(pC)) ||
+        throw(IndexError("number of outer indices not consistent."))
+    length(pA[2]) == length(pB[1]) ||
+        throw(IndexError("number of contracted indices not consistent."))
+
+    einA = Vector{Char}(undef, sum(length.(pA)))
+    setindex!.(Ref(einA), (1:length(pA[1])) .+ OFFSET_OPEN, pA[1])
+    setindex!.(Ref(einA), (1:length(pA[2])) .+ OFFSET_CLOSED, pA[2])
+    
+    einB = Vector{Char}(undef, sum(length.(pB)))
+    setindex!.(Ref(einB), (1:length(pB[2])) .+ (OFFSET_OPEN + length(pA[1])), pB[2])
+    setindex!.(Ref(einB), (1:length(pB[1])) .+ OFFSET_CLOSED, pB[1])
+    
+    return tuple(einA...), tuple(einB...), tuple((linearize(pC) .+ OFFSET_OPEN)...)
 end
