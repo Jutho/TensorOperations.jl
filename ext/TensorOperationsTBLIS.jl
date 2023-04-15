@@ -3,13 +3,14 @@ module TensorOperationsTBLIS
 using TensorOperationsCore
 using TensorOperations
 using TupleTools
+using LinearAlgebra: BlasFloat
 
 isdefined(Base, :get_extension) ? (using TBLIS) : (using ..TBLIS)
 
 
-function TensorOperationsCore.tensoradd!(::TBLISBackend, C::AbstractArray, A::AbstractArray,
+function TensorOperationsCore.tensoradd!(::TBLISBackend, C::StridedArray{T}, A::StridedArray{T},
                                          pA::Index2Tuple, conjA::Symbol, α::Number,
-                                         β::Number)
+                                         β::Number) where {T<:BlasFloat}
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     ndims(C) == length(pA[1]) + length(pA[2]) ||
         throw(IndexError("Invalid permutation of length $(ndims(C)): $pA"))
@@ -30,10 +31,10 @@ function TensorOperationsCore.tensoradd!(::TBLISBackend, C::AbstractArray, A::Ab
     return C
 end
 
-function TensorOperationsCore.tensortrace!(::TBLISBackend, C::AbstractArray,
+function TensorOperationsCore.tensortrace!(::TBLISBackend, C::StridedArray{T},
                                            pC::Index2Tuple,
-                                           A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                                           α, β)
+                                           A::StridedArray{T}, pA::Index2Tuple, conjA::Symbol,
+                                           α, β) where {T<:BlasFloat}
     NA, NC = ndims(A), ndims(C)
     NC == sum(length.(pC)) ||
         throw(IndexError("invalid selection of $NC out of $NA: $pC"))
@@ -56,11 +57,11 @@ function TensorOperationsCore.tensortrace!(::TBLISBackend, C::AbstractArray,
     return C
 end
 
-function TensorOperationsCore.tensorcontract!(::TBLISBackend, C::AbstractArray,
+function TensorOperationsCore.tensorcontract!(::TBLISBackend, C::StridedArray{T},
                                               pC::Index2Tuple,
-                                              A::AbstractArray, pA::Index2Tuple, conjA,
-                                              B::AbstractArray, pB::Index2Tuple, conjB,
-                                              α, β)
+                                              A::StridedArray{T}, pA::Index2Tuple, conjA,
+                                              B::StridedArray{T}, pB::Index2Tuple, conjB,
+                                              α, β) where {T<:BlasFloat}
     (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
         throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
     (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
@@ -86,9 +87,9 @@ function TensorOperationsCore.tensorcontract!(::TBLISBackend, C::AbstractArray,
                                 "($szoA, $szoB)[$(linearize(pC))] -> $szC"))
 
     # convert to TBLIS tensors
-    C_TT = TTensor{scalartype(C)}(C, β)
-    A_TT = TTensor{scalartype(A)}(A, α)
-    B_TT = TTensor{scalartype(B)}(B)
+    C_TT = TTensor{T}(C, β)
+    A_TT = TTensor{T}(A, α)
+    B_TT = TTensor{T}(B)
 
     conjA === :C && conj!(A_TT)
     conjB === :C && conj!(B_TT)
