@@ -11,13 +11,15 @@ function instantiate_scalartype(ex::Expr)
         if length(ex.args) == 2
             return instantiate_scalartype(ex.args[2])
         else
-            return Expr(:call, :promote_contract, map(instantiate_scalartype, ex.args[2:end])...)
+            return Expr(:call, :promote_contract,
+                        map(instantiate_scalartype, ex.args[2:end])...)
         end
     elseif ex.head == :call && ex.args[1] == :/
         if length(ex.args) == 2
             return instantiate_scalartype(ex.args[2])
         else
-            return Expr(:call, :promote_type, map(instantiate_scalartype, ex.args[2:end])...)
+            return Expr(:call, :promote_type,
+                        map(instantiate_scalartype, ex.args[2:end])...)
         end
     elseif ex.head == :call && ex.args[1] == :conj
         return instantiate_scalartype(ex.args[2])
@@ -86,23 +88,19 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
 
-    p1 = (map(l->findfirst(isequal(l), srcind), leftind)...,)
-    p2 = (map(l->findfirst(isequal(l), srcind), rightind)...,)
+    p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
+    p2 = (map(l -> findfirst(isequal(l), srcind), rightind)...,)
     pC = (p1, p2)
 
     αsym = gensym(:α)
     if dst === nothing
+        TC = gensym(:TC)
         dst = gensym(:dst)
-        if istemporary
-            initex = quote
-                $αsym = $α*$α2
-                $dst = tensoralloctemp(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
-            end
-        else
-            initex = quote
-                $αsym = $α*$α2
-                $dst = tensoralloc(promote_type(scalartype($src), typeof($αsym)), $pC, $src, $conjarg)
-            end
+
+        initex = quote
+            $αsym = $α * $α2
+            $TC = promote_type(promote_type(scalartype($src), typeof($αsym)))
+            $dst = tensoralloc_add($TC, $src, $pC, $conjarg, $istemporary)
         end
     else
         initex = :($αsym = $α * $α2)
@@ -202,9 +200,9 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     else
         A, indlA, indrA, αA, conj = decomposegeneraltensor(exA)
         indA = vcat(indlA, indrA)
-        poA = (map(l->findfirst(isequal(l), indA), oindA)...,)
-        pcA = (map(l->findfirst(isequal(l), indA), cind)...,)
-        TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
+        poA = (map(l -> findfirst(isequal(l), indA), oindA)...,)
+        pcA = (map(l -> findfirst(isequal(l), indA), cind)...,)
+        # TA = dst === nothing ? :(float(scalartype($A))) : :(scalartype($dst))
         conjA = conj ? :(:C) : :(:N)
         initA = Expr(:(=), symA, A)
         Atemp = false
@@ -229,26 +227,23 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     end
 
     oindAB = vcat(oindA, oindB)
-    p1 = (map(l->findfirst(isequal(l), oindAB), leftind)...,)
-    p2 = (map(l->findfirst(isequal(l), oindAB), rightind)...,)
-    
+    p1 = (map(l -> findfirst(isequal(l), oindAB), leftind)...,)
+    p2 = (map(l -> findfirst(isequal(l), oindAB), rightind)...,)
+
     pC = (p1, p2)
     pA = (poA, pcA)
     pB = (pcB, poB)
-    
-    if any(x->(x===nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
-        !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
-        !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
-        !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
+
+    if any(x -> (x === nothing), (poA..., pcA..., poB..., pcB..., p1..., p2...)) ||
+       !(isperm((poA..., pcA...)) && length(indA) == length(poA) + length(pcA)) ||
+       !(isperm((pcB..., poB...)) && length(indB) == length(poB) + length(pcB)) ||
+       !(isperm((p1..., p2...)) && length(oindAB) == length(p1) + length(p2))
         err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
     end
     if dst === nothing
-        if istemporary
-            initC = :($symC = tensoralloctemp($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
-        else
-            initC = :($symC = tensoralloc($symTC, $pC, $symA, $poA, $conjA, $symB, $poB, $conjB))
-        end
+        initC = :($symC = tensoralloc_contract($symTC, $pC, $symA, $pA, $conjA, $symB, $pB,
+                                               $conjB, $istemporary))
     else
         initC = :($symC = $dst)
     end
@@ -258,23 +253,24 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         $initA
         $initB
         $initC
-        tensorcontract!($symC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB, $α*$αA*$αB, $β)
+        tensorcontract!($symC, $pC, $symA, $pA, $conjA, $symB, $pB, $conjB,
+                        $α * $αA * $αB, $β)
     end
-    
+
     if Atemp
         returnex = quote
             $returnex
             tensorfree!($symA)
         end
     end
-    
+
     if Btemp
         returnex = quote
             $returnex
             tensorfree!($symB)
         end
     end
-    
+
     return quote
         $returnex
         $symC

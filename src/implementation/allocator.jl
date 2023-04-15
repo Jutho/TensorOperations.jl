@@ -1,70 +1,63 @@
-function TOC.tensoralloc(::AbstractBackend, args...)
-    return tensor_from_structure(tensorstructure(args...)...)
-end
-
-function TOC.tensoralloctemp(backend::AbstractBackend, args...)
-    return TOC.tensoralloc(backend, args...)
-end
-
-TOC.tensorfree!(::AbstractBackend, C) = nothing
-
-# ---------------------------------------------------------------------------------------- #
-# Interface for custom types
-# ---------------------------------------------------------------------------------------- #
-
-"""
-    tensorstructure(TC, pC, A, conjA)
-    tensorstructure(TC, pC, A, iA, conjA, B, iB, conjB)
-
-Obtain the information needed to construct a new tensor with indices `pC`, based on the
-indices `iA` (`iB`) of `opA(A)` (`opB(B)`). The operation `opA` (`opB`) acts as `conj` if
-`conjA` (`conjB`) equals `:C` or as the identity if `conjA` (`conjB`) equals `:N`.
-"""
-function tensorstructure end
-
-"""
-    tensor_from_structure(T, structure)
-    
-Create a tensor based on a given structure.
-"""
-function tensor_from_structure end
-
-# ---------------------------------------------------------------------------------------- #
-# AbstractArray implementation
-# ---------------------------------------------------------------------------------------- #
+#===========================================================================================
+    Generic implementation
+===========================================================================================#
 
 tensorop(args...) = +(*(args...), *(args...))
 promote_contract(args...) = Base.promote_op(tensorop, args...)
 promote_add(args...) = Base.promote_op(+, args...)
 
-# output_scalartype() = Base.promote_op(tensorop, scalartype(A), scalartype(α))
-# output_scalartype(A, B, α) = Base.promote_op(tensorop, scalartype(A), scalartype(B), scalartype(α))
-
-tensorstructure(A::AbstractArray) = (typeof(A), size(A))
-function tensorstructure(TC, pC, A::AbstractArray, conjA)
-    sz = map(n -> size(A, n), linearize(pC))
-    TType = Array{TC, length(sz)}
-    return TType, sz
+function tensoralloc_add(TC, A, pA, conjA, istemp=false)
+    return tensoralloc_add(allocator(), TC, A, pA, conjA, istemp)
+end
+function tensoralloc_add(backend::AbstractBackend, TC, A, pA, conjA, istemp=false)
+    ttype = tensoradd_type(TC, A, pA, conjA)
+    structure = tensoradd_structure(A, pA, conjA)
+    return tensoralloc(backend, ttype, structure, istemp)::ttype
 end
 
-function tensorstructure(TC, pC, A::AbstractArray, iA::IndexTuple, conjA, B::AbstractArray,
-                         iB::IndexTuple, conjB)
-    sz = let lA = length(iA)
-        map(linearize(pC)) do n
-            if n <= lA
-                return size(A, iA[n])
-            else
-                return size(B, iB[n - lA])
-            end
-        end
+function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB, istemp=false)
+    return tensoralloc_contract(allocator(), TC, pC, A, pA, conjA, B, pB, conjB, istemp)
+end
+function tensoralloc_contract(backend::AbstractBackend, TC, pC, A, pA, conjA, B, pB, conjB,
+                              istemp=false)
+    ttype = tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
+    structure = tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
+    return tensoralloc(backend, ttype, structure, istemp)::ttype
+end
+
+TOC.tensorfree!(C) = tensorfree!(allocator(), C)
+TOC.tensorfree!(::AbstractBackend, C) = nothing
+
+#===========================================================================================
+    AbstractArray implementation
+===========================================================================================#
+
+tensorstructure(A::AbstractArray) = size(A)
+tensorstructure(A::AbstractArray, iA::Int, conjA::Symbol) = size(A, iA)
+
+function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
+    return Array{TC,sum(length.(pA))}
+end
+
+function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
+    return size.(Ref(A), linearize(pA))
+end
+
+function tensorcontract_type(TC, pC, A::AbstractArray, pA, conjA,
+                             B::AbstractArray, pB, conjB)
+    return Array{TC,sum(length.(pC))}
+end
+
+function tensorcontract_structure(pC::Index2Tuple,
+                                  A::AbstractArray, pA::Index2Tuple, conjA,
+                                  B::AbstractArray, pB::Index2Tuple, conjB)
+    return let lA = length(pA[1])
+        map(n -> n <= lA ? size(A, pA[1][n]) : size(B, pB[2][n - lA]), linearize(pC))
     end
-    
-    TType = Array{TC, length(sz)}
-    return TType, sz
 end
 
-function tensor_from_structure(TType::Type{<:AbstractArray}, structure)
-    A = similar(TType, structure)
-    isbitstype(eltype(TType)) || fill!(A, zero(scalartype(TType)))
-    return A
+function tensoralloc(::AbstractBackend, ttype, structure, istemp=false)
+    C = ttype(undef, structure)
+    isbitstype(scalartype(ttype)) || fill!(C, zero(scalartype(ttype)))
+    return C
 end

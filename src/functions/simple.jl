@@ -27,7 +27,7 @@ average, especially if `Threads.nthreads() > 1`.
 function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     pA = add_indices(IA, IC)
     TC = scalartype(A)
-    C = TOC.tensoralloc(TC, pA, A, :N)
+    C = tensoralloc_add(TC, A, pA, :N)
     return TOC.tensoradd!(C, A, pA, :N, one(TC), zero(TC))
 end
 
@@ -48,7 +48,7 @@ but without creating the temporary permuted arrays.
 function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
     TC = promote_add(scalartype(A), scalartype(B))
     pA = add_indices(IA, IC)
-    C = TOC.tensoralloc(TC, pA, A, :N)
+    C = tensoralloc_add(TC, A, pA, :N)
     TOC.tensoradd!(C, A, pA, :N, one(TC), zero(TC))
     pB = add_indices(IB, IC)
     return TOC.tensoradd!(C, B, pB, :N, one(TC), one(TC))
@@ -67,7 +67,7 @@ so that every index in `IA` can appear only once (for an untraced index) or twic
 function tensortrace(A, IA::Tuple, IC::Tuple)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
     TC = promote_contract(scalartype(A))
-    C = TOC.tensoralloc(TC, pC, A, :N)
+    C = tensoralloc_add(TC, A, pC, :N)
     return TOC.tensortrace!(C, pC, A, (cindA1, cindA2), :N, one(TC), zero(TC))
 end
 
@@ -92,7 +92,7 @@ large arrays. The choice of method is globally controlled by the methods
 function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
     pA, pB, pC = contract_indices(IA, IB, IC)
     TC = promote_contract(scalartype(A), scalartype(B))
-    C = TOC.tensoralloc(TC, pC, A, pA[1], :N, B, pB[2], :N)
+    C = tensoralloc_contract(TC, pC, A, pA, :N, B, pB, :N)
     return TOC.tensorcontract!(C, pC, A, pA, :N, B, pB, :N, one(TC), zero(TC))
 end
 

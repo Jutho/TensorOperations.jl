@@ -255,15 +255,3 @@ end
 function TOC.tensortrace!(C, pC, A, pA, conjA, α, β)
     return TOC.tensortrace!(backend(), C, pC, A, pA, conjA, α, β)
 end
-
-TOC.tensoralloc(TC, pC, A, conjA) = TOC.tensoralloc(allocator(), TC, pC, A, conjA)
-function TOC.tensoralloc(TC, pC, A, iA, conjA, B, iB, conjB)
-    return TOC.tensoralloc(allocator(), TC, pC, A, iA, conjA, B, iB, conjB)
-end
-
-TOC.tensoralloctemp(TC, pC, A, conjA) = TOC.tensoralloctemp(allocator(), TC, pC, A, conjA)
-function TOC.tensoralloctemp(TC, pC, A, iA, conjA, B, iB, conjB)
-    return TOC.tensoralloctemp(allocator(), TC, pC, A, iA, conjA, B, iB, conjB)
-end
-
-TOC.tensorfree!(C) = TOC.tensorfree!(allocator(), C)

@@ -60,7 +60,7 @@ end
 # free an object by returning it to a pool
 function deallocate!(objpool::ObjectPool, obj)
     let obj = obj
-        TType, structure = tensorstructure(obj)
+        TType, structure = typeof(obj), tensorstructure(obj)
 
         cs = @atomic objpool.currentsize += memsize(obj)
         cs > objpool.maxsize && unsafe_process!(objpool)
@@ -101,13 +101,13 @@ const GlobalPool = ObjectPool(default_cache_size())
 
 cachesize() = GlobalPool.currentsize
 
-function TOC.tensoralloc(::CacheBackend, args...)
-    return tensor_from_structure(tensorstructure(args...)...)
-end
+# function TOC.tensoralloc(::CacheBackend, args...)
+#     return tensor_from_structure(tensorstructure(args...)...)
+# end
 
-function TOC.tensoralloctemp(::CacheBackend, args...)
-    TType, str = tensorstructure(args...)
-    return allocate(GlobalPool, TType, str)::TType
-end
+# function TOC.tensoralloctemp(::CacheBackend, args...)
+#     TType, str = tensorstructure(args...)
+#     return allocate(GlobalPool, TType, str)::TType
+# end
 
 TOC.tensorfree!(::CacheBackend, obj) = deallocate!(GlobalPool, obj)

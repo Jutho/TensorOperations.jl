@@ -300,6 +300,7 @@ using LinearAlgebra
             @test HrA12′′ == @ncon([rhoL, H, A2, rhoR, A1],
                                    [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]];
                                    order=[1, 2, 3, 4, 5], output=[-1, -2, -3, -4])
+
             @test E ≈
                   @tensor tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] *
                                        rhoR[c, c'] *

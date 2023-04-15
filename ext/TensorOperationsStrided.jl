@@ -90,7 +90,7 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
         C_ = C
         _blas_contract!(α, A_, conjA, B_, conjB, β, C_, pA, pB, pC_)
     else
-        C_ = TOC.tensoralloc(TC, pC_, C, :N)
+        C_ = TensorOperations.tensoralloc_add(TC, C, pC_, :N)
         pC__ = (_trivtuple(pA[1]), length(pA[1]) .+ _trivtuple(pB[2]))
         _blas_contract!(1, A_, conjA, B_, conjB, 0, C_, pA, pB, pC__)
         TOC.tensoradd!(C, C_, pC, :N, α, β)
@@ -115,7 +115,7 @@ end
 function makeblascontractable(A, pA, conjA, TC)
     flagA = isblascontractable(A, pA[1], pA[2], conjA) && eltype(A) == TC
     if !flagA
-        A_ = TOC.tensoralloc(TC, pA, A, conjA)
+        A_ = TensorOperations.tensoralloc_add(TC, A, pA, conjA)
         A = TOC.tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
         conjA = :N
         pA = (_trivtuple(pA[1]), _trivtuple(pA[2]) .+ length(pA[1]))

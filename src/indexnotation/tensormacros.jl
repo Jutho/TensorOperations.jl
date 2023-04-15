@@ -65,9 +65,11 @@ macro tensor(kwargsex::Expr, ex::Expr)
                 parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
             end
         elseif kwarg.args[1] == :backend
-            pushfirst!(parser.postprocessors, ex -> insertoperationbackend(ex, kwarg.args[2]))
+            pushfirst!(parser.postprocessors,
+                       ex -> insertoperationbackend(ex, kwarg.args[2]))
         elseif kwarg.args[1] == :allocator
-            pushfirst!(parser.postprocessors, ex -> insertallocationbackend(ex, kwarg.args[2]))
+            pushfirst!(parser.postprocessors,
+                       ex -> insertallocationbackend(ex, kwarg.args[2]))
         else
             throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))
         end
@@ -207,12 +209,10 @@ function _nconmacro(tensors, indices, kwargs=nothing)
     if !(tensors isa Expr) # there is not much that we can do
         if kwargs === nothing
             ex = Expr(:call, :ncon, tensors, indices,
-                      Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                      QuoteNode(gensym()))
+                      Expr(:call, :fill, false, Expr(:call, :length, tensors)))
         else
             ex = Expr(:call, :ncon, kwargs, tensors, indices,
-                      Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                      QuoteNode(gensym()))
+                      Expr(:call, :fill, false, Expr(:call, :length, tensors)))
         end
         return esc(ex)
     end
@@ -241,9 +241,9 @@ function _nconmacro(tensors, indices, kwargs=nothing)
         tensorex = Expr(:ref, :Any, tensorargs...)
     end
     if kwargs === nothing
-        ex = Expr(:call, :ncon, tensorex, indices, conjlist, QuoteNode(gensym()))
+        ex = Expr(:call, :ncon, tensorex, indices, conjlist)
     else
-        ex = Expr(:call, :ncon, kwargs, tensorex, indices, conjlist, QuoteNode(gensym()))
+        ex = Expr(:call, :ncon, kwargs, tensorex, indices, conjlist)
     end
     return esc(ex)
 end
