@@ -5,10 +5,11 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
 @testset "Method syntax $withblas BLAS and $withcache cache" begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3,5,4,6))
-        p = randperm(4)
+        p = (3,1,4,2)
         C1 = permutedims(A,p)
         C2 = @inferred tensorcopy(A,(1:4...,),(p...,))
         @test C1 ≈ C2
+        @test C1 ≈ ncon(Any[A],Any[[-2,-4,-1,-3]])
         @test_throws TensorOperations.IndexError tensorcopy(A,1:3,1:4)
         @test_throws TensorOperations.IndexError tensorcopy(A,[1,2,2,4],1:4)
     end
@@ -20,6 +21,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         C1 = @inferred tensoradd(A,p,B,(1:4...,))
         C2 = A+permutedims(B,p)
         @test C1 ≈ C2
+        @test C1 ≈ A + ncon(Any[B],Any[[-2,-4,-1,-3]])
         @test_throws DimensionMismatch tensoradd(A,1:4,B,1:4)
     end
 
@@ -33,6 +35,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
             end
         end
         @test C1 ≈ C2
+        @test C1 ≈ ncon(Any[A],Any[[-1,1,1]])
         A = randn(Float64, (3,20,5,3,20,4,5))
         C1 = @inferred tensortrace(A,(:a,:b,:c,:d,:b,:e,:c),(:e,:a,:d))
         C2 = zeros(4,3,3)
@@ -42,6 +45,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
             end
         end
         @test C1 ≈ C2
+        @test C1 ≈ ncon(Any[A],Any[[-2,1,2,-3,1,-1,2]])
     end
 
     @testset "tensorcontract" begin
@@ -55,6 +59,7 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
         end
         @test C1 ≈ C3
         @test C2 ≈ C3
+        @test C1 ≈ ncon(Any[A,B],Any[[-1,1,2,-4,-3],[2,-5,1,-2]])
         @test_throws TensorOperations.IndexError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
         @test_throws TensorOperations.IndexError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
     end

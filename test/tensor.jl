@@ -379,5 +379,12 @@ withcache = TensorOperations.use_cache() ? "with" : "without"
     println("diagonal examples: $(time()-t0) seconds")
     t0 = time()
 
+    @testset "Issue 133" begin
+        vec=[1,2];
+        mat1=rand(2,2);
+        mat2=rand(2,2);
+        @tensor res[mu]:=-(mat1[mu,alpha]*vec[alpha]+mat2[mu,alpha]*vec[alpha])
+        @test res ≈ -(mat1 * vec + mat2 * vec)
+    end
 
 end
