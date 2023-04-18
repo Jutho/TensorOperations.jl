@@ -27,8 +27,8 @@ See also the macro version [`@ncon`](@ref).
 function ncon(tensors, network,
                 conjlist = fill(false, length(tensors)), sym = nothing ;
                 order = nothing, output = nothing)
-    length(tensors) >= 2 ||
-        throw(ArgumentError("do not use `ncon` for less than two tensors"))
+    # length(tensors) >= 2 ||
+    #     throw(ArgumentError("do not use `ncon` for less than two tensors"))
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
@@ -50,6 +50,13 @@ function ncon(tensors, network,
         for a in outputindices
             a in output ||
                 throw(ArgumentError("invalid NCON network: $network -> $output"))
+        end
+    end
+    if length(tensors) == 1
+        if length(output) == length(network[1])
+            return tensorcopy(tensors[1], network[1], output)
+        else
+            return tensortrace(tensors[1], network[1], output)
         end
     end
     (tensors,network) = resolve_traces(tensors,network);
