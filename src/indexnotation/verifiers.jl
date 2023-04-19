@@ -66,7 +66,7 @@ function isgeneraltensor(ex::Expr)
     elseif ex.head == :call && ex.args[1] == :*
         # scalar multiplication
         count = 0
-        for i = 2:length(ex.args)
+        for i in 2:length(ex.args)
             if isgeneraltensor(ex.args[i])
                 count += 1
             elseif !isscalarexpr(ex.args[i])
@@ -120,7 +120,7 @@ function istensorexpr(ex)
         return all(istensorexpr, ex.args[2:end]) # all arguments should be tensor expressions (we are not checking matching indices yet)
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :*
         count = 0
-        for i = 2:length(ex.args)
+        for i in 2:length(ex.args)
             if istensorexpr(ex.args[i])
                 count += 1
             elseif !isscalarexpr(ex.args[i])
@@ -134,7 +134,8 @@ function istensorexpr(ex)
         return istensorexpr(ex.args[3]) && isscalarexpr(ex.args[2])
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2
         return istensorexpr(ex.args[2])
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :adjoint && length(ex.args) == 2
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :adjoint &&
+           length(ex.args) == 2
         return istensorexpr(ex.args[2])
     elseif isa(ex, Expr) && ex.head == prime
         return istensorexpr(ex.args[1])

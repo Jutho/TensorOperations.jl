@@ -8,7 +8,7 @@ function _verify_indexorder(network, indexorder)
         if i ∈ indexorder # contraction index
             k = findfirst(isequal(i), allindices)
             k === nothing && return false
-            l = findnext(isequal(i), allindices, k+1)
+            l = findnext(isequal(i), allindices, k + 1)
             l !== nothing && return false
             deleteat!(allindices, k)
         else
@@ -22,23 +22,23 @@ function indexordertree(network, indexorder)
     _verify_indexorder(network, indexorder) ||
         throw(ArgumentError("not a valid contraction tree with contraction indices $indexorder"))
     contractionindices = Vector{Vector{Any}}(undef, length(network))
-    for k = 1:length(network)
+    for k in 1:length(network)
         indices = network[k]
         # trace indices have already been removed, remove open indices by filtering on positive values
         contractionindices[k] = filter(in(indexorder), indices)
     end
     partialtrees = collect(Any, 1:length(network))
-    _indexordertree!(partialtrees, contractionindices, indexorder)
+    return _indexordertree!(partialtrees, contractionindices, indexorder)
 end
 
 function _indexordertree!(partialtrees, contractionindices, indexorder)
     while length(indexorder) > 0
         c = indexorder[1]
-        i1 = findfirst(x->in(c,x), contractionindices)
+        i1 = findfirst(x -> in(c, x), contractionindices)
         if i1 === nothing
             indexorder = indexorder[2:end]
         else
-            i2 = findnext(x->in(c,x), contractionindices, i1+1)
+            i2 = findnext(x -> in(c, x), contractionindices, i1 + 1)
             @assert i2 !== nothing
             cs = intersect(contractionindices[i1], contractionindices[i2])
             indexorder = setdiff(indexorder, cs)
@@ -53,7 +53,7 @@ function _indexordertree!(partialtrees, contractionindices, indexorder)
     if length(partialtrees) > 1
         @assert all(isempty, contractionindices) # disconnected network
         while length(partialtrees) > 1
-            partialtrees[end-1] = Any[partialtrees[end-1], partialtrees[end]]
+            partialtrees[end - 1] = Any[partialtrees[end - 1], partialtrees[end]]
             pop!(partialtrees)
             pop!(contractionindices)
         end

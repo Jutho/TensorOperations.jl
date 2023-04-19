@@ -113,9 +113,9 @@ function getinputtensorobjects(ex)
         end
         append!(list, gettensorobjects(getrhs(ex)))
     elseif isa(ex, Expr) && ex.head == :block
-        for i = 1:length(ex.args)
+        for i in 1:length(ex.args)
             list2 = getinputtensorobjects(ex.args[i])
-            for j = 1:i-1
+            for j in 1:(i - 1)
                 # if objects have previously been defined or assigned to, they are not inputs
                 list2 = setdiff(list2, getnewtensorobjects(ex.args[j]))
                 list2 = setdiff(list2, getoutputtensorobjects(ex.args[j]))
@@ -138,9 +138,9 @@ function getoutputtensorobjects(ex)
             push!(list, gettensorobject(lhs))
         end
     elseif isa(ex, Expr) && ex.head == :block
-        for i = 1:length(ex.args)
+        for i in 1:length(ex.args)
             list2 = getoutputtensorobjects(ex.args[i])
-            for j = 1:i-1
+            for j in 1:(i - 1)
                 # if objects have previously been defined, they are not existing outputs
                 list2 = setdiff(list2, getnewtensorobjects(ex.args[j]))
             end
@@ -172,13 +172,13 @@ end
 # for any tensor expression, get the list of uncontracted indices that would remain after evaluating that expression
 function getindices(ex::Expr)
     if istensor(ex)
-        _,leftind,rightind = decomposetensor(ex)
+        _, leftind, rightind = decomposetensor(ex)
         return unique2(vcat(leftind, rightind))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         return getindices(ex.args[2]) # getindices on any of the args[2:end] should yield the same result
     elseif ex.head == :call && ex.args[1] == :*
         indices = getindices(ex.args[2])
-        for k = 3:length(ex.args)
+        for k in 3:length(ex.args)
             append!(indices, getindices(ex.args[k]))
         end
         return unique2(indices)
@@ -197,16 +197,16 @@ getindices(ex) = Any[]
 # get all unique indices appearing in a tensor expression
 function getallindices(ex::Expr)
     if istensor(ex)
-        _,leftind,rightind = decomposetensor(ex)
+        _, leftind, rightind = decomposetensor(ex)
         return unique!(vcat(leftind, rightind))
     elseif isassignment(ex) || isdefinition(ex)
         return getallindices(getrhs(ex))
     else
         return unique!(mapreduce(getallindices, vcat, ex.args))
-    # elseif istensorexpr(ex)
-    #     return unique!(mapreduce(getallindices, vcat, ex.args))
-    # else
-    #     return Any[]
+        # elseif istensorexpr(ex)
+        #     return unique!(mapreduce(getallindices, vcat, ex.args))
+        # else
+        #     return Any[]
     end
 end
 getallindices(ex) = Any[]

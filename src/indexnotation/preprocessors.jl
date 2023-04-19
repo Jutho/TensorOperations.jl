@@ -8,10 +8,10 @@ function replaceindices((@nospecialize f), ex::Expr)
                 arg2 = ex.args[2]
                 return Expr(ex.head, ex.args[1],
                             Expr(arg2.head, map(f, arg2.args)...),
-                            (f(ex.args[i]) for i = 3:length(ex.args))...)
+                            (f(ex.args[i]) for i in 3:length(ex.args))...)
             else
                 return Expr(ex.head, ex.args[1],
-                            (f(ex.args[i]) for i = 2:length(ex.args))...)
+                            (f(ex.args[i]) for i in 2:length(ex.args))...)
             end
             return ex
         else #if ex.head == :typed_vcat
@@ -109,9 +109,13 @@ function extracttensorobjects(ex::Expr)
     alltensors = unique!(vcat(existingtensors, newtensors))
     tensordict = Dict{Any,Any}(a => gensym() for a in alltensors)
     pre = Expr(:block, [Expr(:(=), tensordict[a], a) for a in existingtensors]...)
-    ex = replacetensorobjects((obj,leftind,rightind)->get(tensordict, obj, obj), ex)
-    post = Expr(:block, [Expr(:(=), a, tensordict[a]) for a in unique!(vcat(newtensors,outputtensors))]...)
-    pre2 = Expr(:macrocall, Symbol("@notensor"), LineNumberNode(@__LINE__, Symbol(@__FILE__)), pre)
-    post2 = Expr(:macrocall, Symbol("@notensor"), LineNumberNode(@__LINE__, Symbol(@__FILE__)), post)
+    ex = replacetensorobjects((obj, leftind, rightind) -> get(tensordict, obj, obj), ex)
+    post = Expr(:block,
+                [Expr(:(=), a, tensordict[a])
+                 for a in unique!(vcat(newtensors, outputtensors))]...)
+    pre2 = Expr(:macrocall, Symbol("@notensor"),
+                LineNumberNode(@__LINE__, Symbol(@__FILE__)), pre)
+    post2 = Expr(:macrocall, Symbol("@notensor"),
+                 LineNumberNode(@__LINE__, Symbol(@__FILE__)), post)
     return Expr(:block, pre2, ex, post2)
 end

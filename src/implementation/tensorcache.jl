@@ -16,37 +16,37 @@ end
 
 function similar_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple, A, CA::Symbol)
     structure = similarstructure_from_indices(T, p1, p2, A, CA)
-    similar_from_structure(A, T, structure)
+    return similar_from_structure(A, T, structure)
 end
 function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
-                                p1::IndexTuple, p2::IndexTuple,
-                                A, B, CA::Symbol, CB::Symbol)
+                              p1::IndexTuple, p2::IndexTuple,
+                              A, B, CA::Symbol, CB::Symbol)
     structure = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
-    similar_from_structure(A, T, structure)
+    return similar_from_structure(A, T, structure)
 end
 
 # should work generically but can be overwritten
 function similartype_from_indices(T::Type, p1, p2, A, CA)
-    Core.Compiler.return_type(similar_from_indices,
-                                Tuple{Type{T}, typeof(p1), typeof(p2), typeof(A), Symbol})
+    return Core.Compiler.return_type(similar_from_indices,
+                                     Tuple{Type{T},typeof(p1),typeof(p2),typeof(A),Symbol})
 end
 function similartype_from_indices(T::Type, poA, poB, p1, p2, A, B, CA, CB)
-    Core.Compiler.return_type(similar_from_indices,
-                                Tuple{Type{T}, typeof(poA), typeof(poB),
-                                        typeof(p1), typeof(p2), typeof(A), typeof(B),
-                                        Symbol, Symbol})
+    return Core.Compiler.return_type(similar_from_indices,
+                                     Tuple{Type{T},typeof(poA),typeof(poB),
+                                           typeof(p1),typeof(p2),typeof(A),typeof(B),
+                                           Symbol,Symbol})
 end
 
 # generic, should probably not be overwritten
 function cached_similar_from_indices(sym::Symbol, T::Type,
-                                        p1::IndexTuple, p2::IndexTuple,
-                                        A, CA::Symbol)
+                                     p1::IndexTuple, p2::IndexTuple,
+                                     A, CA::Symbol)
     if use_cache()
         structure = similarstructure_from_indices(T, p1, p2, A, CA)
         typ = similartype_from_indices(T, p1, p2, A, CA)
         key = (sym, taskid(), typ, structure)
         C::typ = get!(cache, key) do
-            similar_from_indices(T, p1, p2, A, CA)
+            return similar_from_indices(T, p1, p2, A, CA)
         end
         return C
     else
@@ -54,16 +54,15 @@ function cached_similar_from_indices(sym::Symbol, T::Type,
     end
 end
 function cached_similar_from_indices(sym::Symbol, T::Type,
-                                        poA::IndexTuple, poB::IndexTuple,
-                                        p1::IndexTuple, p2::IndexTuple,
-                                        A, B, CA::Symbol, CB::Symbol)
-
+                                     poA::IndexTuple, poB::IndexTuple,
+                                     p1::IndexTuple, p2::IndexTuple,
+                                     A, B, CA::Symbol, CB::Symbol)
     if use_cache()
         structure = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
         typ = similartype_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
         key = (sym, taskid(), typ, structure)
         C::typ = get!(cache, key) do
-            similar_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
+            return similar_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
         end
         return C
     else
