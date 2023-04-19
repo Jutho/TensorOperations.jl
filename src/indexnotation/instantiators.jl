@@ -57,7 +57,12 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
     if isgeneraltensor(ex)
         return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # linear combination
-        return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
+        if length(ex.args) == 2
+            αnew = (ex.args[1] == :+) ? α : Expr(:call, :*, -1, α)
+            return instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
+        else
+            return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
+        end
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         if isscalarexpr(ex.args[2])
             return instantiate(dst, β, ex.args[3],
