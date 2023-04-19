@@ -362,6 +362,14 @@ using LinearAlgebra
         @test b != c
     end
 
+    @testset "Issue 133" begin
+        vec = [1, 2]
+        mat1 = rand(2, 2)
+        mat2 = rand(2, 2)
+        @tensor res[mu] := -(mat1[mu, alpha] * vec[alpha] + mat2[mu, alpha] * vec[alpha])
+        @test res ≈ -(mat1 * vec + mat2 * vec)
+    end
+
     @testset "diagonal" verbose = true begin
         @testset "$T" for T in (Float32, Float64, ComplexF32, ComplexF64)
             A = randn(T, 10, 10, 10, 10)
