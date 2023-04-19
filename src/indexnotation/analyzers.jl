@@ -42,14 +42,13 @@ function decomposegeneraltensor(ex)
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation: flip conjugation flag and conjugate scalar factor
         (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
         return (object, leftind, rightind, Expr(:call, :conj, α), !conj)
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: multiply scalar factors
-        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
-            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
-            return (object, leftind, rightind, Expr(:call, :*, ex.args[2], α), conj)
-        elseif isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
-            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
-            return (object, leftind, rightind, Expr(:call, :*, α, ex.args[3]), conj)
-        end
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) >= 3 && count(a -> isgeneraltensor(a), ex.args) == 1 # scalar multiplication: multiply scalar factors
+        idx = findfirst(a -> isgeneraltensor(a), ex.args)
+        (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[idx])
+        scalars = Expr(:call)
+        append!(scalars.args, deepcopy(ex.args))
+        scalars.args[idx] = α
+        return (object, leftind, rightind, scalars, conj)
     elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
         if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
             (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
