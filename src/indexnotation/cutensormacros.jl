@@ -20,7 +20,7 @@ macro cutensor(ex::Expr, orderex::Expr)
     return esc(parser(ex))
 end
 
-function extracttensorobjects(ex, cuwrapdict)
+function extracttensorobjects(ex, cuwrapdict, tensortype)
     inputtensors = getinputtensorobjects(ex)
     outputtensors = getoutputtensorobjects(ex)
     newtensors = getnewtensorobjects(ex)
@@ -36,12 +36,12 @@ function extracttensorobjects(ex, cuwrapdict)
     for k in inputtensors
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b => (a, :($b = CuArray($a))))
+        push!(cuwrapdict, b => (a, :($b = adapt($tensortype, $a))))
     end
     for k in setdiff(outputtensors, inputtensors)
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b => (a, :($b = CuArray{scalartype($a)}(undef, size($a)))))
+        push!(cuwrapdict, b => (a, :($b = adapt($tensortype, $a))))
     end
     return Expr(:block, pre, ex, post)
 end

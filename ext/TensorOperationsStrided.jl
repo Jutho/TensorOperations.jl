@@ -1,20 +1,24 @@
 module TensorOperationsStrided
 
 using TensorOperations
-isdefined(Base, :get_extension) ? (using Strided) : (using ..Strided)
+using TensorOperations: Index2Tuple, IndexTuple, linearize, IndexError
+@static if isdefined(Base, :get_extension)
+    using Strided
+else
+    using ..Strided
+end
+
 using TupleTools
-using TensorOperationsCore: Index2Tuple, IndexTuple, linearize, IndexError
-import TensorOperationsCore as TOC
+
 using LinearAlgebra
 using VectorInterface
-
 const StridedBackends = Union{StridedBackend,StridedBLASBackend}
 
 # ---------------------------------------------------------------------------------------- #
 # tensoradd!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensoradd!(::StridedBackends, C::AbstractArray, A::AbstractArray,
+function TensorOperations.tensoradd!(::StridedBackends, C::AbstractArray, A::AbstractArray,
                         pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     ndims(C) == length(pA[1]) + length(pA[2]) ||
@@ -36,7 +40,7 @@ end
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensorcontract!(backend::StridedBackends, C::AbstractArray, pC::Index2Tuple,
+function TensorOperations.tensorcontract!(backend::StridedBackends, C::AbstractArray, pC::Index2Tuple,
                              A::AbstractArray, pA::Index2Tuple, conjA,
                              B::AbstractArray, pB::Index2Tuple, conjB,
                              α, β)
@@ -93,12 +97,12 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
         C_ = TensorOperations.tensoralloc_add(TC, C, pC_, :N)
         pC__ = (_trivtuple(pA[1]), length(pA[1]) .+ _trivtuple(pB[2]))
         _blas_contract!(1, A_, conjA, B_, conjB, 0, C_, pA, pB, pC__)
-        TOC.tensoradd!(C, C_, pC, :N, α, β)
+        tensoradd!(C, C_, pC, :N, α, β)
     end
 
-    flagA || TOC.tensorfree!(A_)
-    flagB || TOC.tensorfree!(B_)
-    flagC || TOC.tensorfree!(C_)
+    flagA || tensorfree!(A_)
+    flagB || tensorfree!(B_)
+    flagC || tensorfree!(C_)
 
     return C
 end
@@ -116,7 +120,7 @@ function makeblascontractable(A, pA, conjA, TC)
     flagA = isblascontractable(A, pA[1], pA[2], conjA) && eltype(A) == TC
     if !flagA
         A_ = TensorOperations.tensoralloc_add(TC, A, pA, conjA)
-        A = TOC.tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
+        A = tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
         conjA = :N
         pA = (_trivtuple(pA[1]), _trivtuple(pA[2]) .+ length(pA[1]))
     end
@@ -277,7 +281,7 @@ end
 # tensortrace!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensortrace!(::StridedBackends, C::AbstractArray, pC::Index2Tuple,
+function TensorOperations.tensortrace!(::StridedBackends, C::AbstractArray, pC::Index2Tuple,
                           A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β)
     NA, NC = ndims(A), ndims(C)
     NC == length(linearize(pC)) ||

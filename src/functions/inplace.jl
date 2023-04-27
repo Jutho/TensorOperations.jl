@@ -35,7 +35,7 @@ See also: [`tensorcopy`](@ref)
 """
 function tensoradd!(C, A, IA::Tuple, IC::Tuple, α, β)
     pC = add_indices(IA, IC)
-    return TOC.tensoradd!(C, A, pC, :N, α, β)
+    return tensoradd!(C, A, pC, :N, α, β)
 end
 
 """
@@ -48,7 +48,7 @@ See also: [`tensortrace`](@ref)
 """
 function tensortrace!(C, A, IA::Tuple, IC::Tuple, α, β)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
-    return TOC.tensortrace!(C, pC, A, (cindA1, cindA2), :N, α, β)
+    return tensortrace!(C, pC, A, (cindA1, cindA2), :N, α, β)
 end
 
 """
@@ -72,7 +72,7 @@ function tensorcontract!(C, IC::Tuple, A, IA::Tuple, conjA, B, IB::Tuple, conjB,
     CB = conjB == 'N' ? :N : :C
 
     pA, pB, pC = contract_indices(IA, IB, IC)
-    return TOC.tensorcontract!(C, pC, A, pA, CA, B, pB, CB, α, β)
+    return tensorcontract!(C, pC, A, pA, CA, B, pB, CB, α, β)
 end
 
 """

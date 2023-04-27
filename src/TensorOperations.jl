@@ -1,14 +1,12 @@
 module TensorOperations
 
 using VectorInterface
-using TensorOperationsCore
-import TensorOperationsCore as TOC
-
 using TupleTools
 
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using ConcurrentCollections
+using Adapt
 using LRUCache
 
 if !isdefined(Base, :get_extension)
@@ -24,14 +22,13 @@ using Preferences, Pkg
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
 
-export TensorCache
-
 export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
 
 # export function based API
 export ncon
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalartype
+export tensoralloc, tensorfree!
 
 # export debug functionality
 export checkcontractible, tensorcost
@@ -39,6 +36,7 @@ export checkcontractible, tensorcost
 # Index notation
 #----------------
 @nospecialize
+include("indexnotation/utility.jl")
 include("indexnotation/verifiers.jl")
 include("indexnotation/analyzers.jl")
 include("indexnotation/preprocessors.jl")
@@ -56,12 +54,14 @@ include("indexnotation/indexordertree.jl")
 
 # Implementations
 #-----------------
+include("implementation/interface.jl")
 include("implementation/backends.jl")
 include("implementation/indices.jl")
 include("implementation/tensorcache.jl")
 include("implementation/allocator.jl")
+
 # include("implementation/stridedarray.jl")
-TOC.tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
+tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
 # include("implementation/diagonal.jl")
 
 # Functions
@@ -70,87 +70,6 @@ include("functions/simple.jl")
 include("functions/ncon.jl")
 include("functions/inplace.jl")
 
-
-
-
-# Global package settings
-#-------------------------
-# A switch for enabling/disabling the use of BLAS for tensor contractions
-# const _use_blas = Ref(true)
-# use_blas() = _use_blas[]
-# function disable_blas()
-#     _use_blas[] = false
-#     return
-# end
-# function enable_blas()
-#     _use_blas[] = true
-#     return
-# end
-
-# A cache for temporaries of tensor contractions
-# const _use_cache = Ref(true)
-# use_cache() = _use_cache[]
-
-# function default_cache_size()
-#     return min(1 << 32, Int(Sys.total_memory()) >> 2)
-# end
-
-# methods used for the cache: see implementation/tensorcache.jl for more info
-function memsize end
-function similar_from_indices end
-function similarstructure_from_indices end
-
-# taskid() = convert(UInt, pointer_from_objref(current_task()))
-
-# const cache = LRU{Any,Any}(; by=memsize, maxsize=default_cache_size())
-
-"""
-    disable_cache()
-
-Disable the cache for further use but does not clear its current contents.
-Also see [`clear_cache()`](@ref)
-"""
-# function disable_cache()
-#     _use_cache[] = false
-#     return
-# end
-
-"""
-    enable_cache(; maxsize::Int = ..., maxrelsize::Real = ...)
-
-(Re)-enable the cache for further use; set the maximal size `maxsize` (as number of bytes)
-or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
-`maxsize = floor(Int, maxrelsize * Sys.total_memory())`. Default value is `maxsize = 2^30` bytes, which amounts to 1 gigabyte of memory.
-"""
-# function enable_cache(; maxsize::Int=-1, maxrelsize::Real=0.0)
-#     if maxsize == -1 && maxrelsize == 0.0
-#         maxsize = default_cache_size()
-#     elseif maxrelsize > 0
-#         maxsize = max(maxsize, floor(Int, maxrelsize * Sys.total_memory()))
-#     else
-#         @assert maxsize >= 0
-#     end
-#     _use_cache[] = true
-#     resize!(cache; maxsize=maxsize)
-#     return
-# end
-
-"""
-    clear_cache()
-
-Clear the current contents of the cache.
-"""
-# function clear_cache()
-#     empty!(cache)
-#     return
-# end
-
-"""
-    cachesize()
-
-Return the current memory size (in bytes) of all the objects in the cache.
-"""
-# cachesize() = cache.currentsize
 
 # Initialization
 #-----------------
@@ -223,10 +142,6 @@ function _precompile_()
     @assert precompile(Tuple{typeof(instantiate_scalartype),Expr})
     @assert precompile(Tuple{typeof(instantiate_scalar),Expr})
     @assert precompile(Tuple{typeof(instantiate_scalar),Float64})
-    # @assert precompile(Tuple{typeof(disable_blas)})
-    # @assert precompile(Tuple{typeof(disable_cache)})
-    # @assert precompile(Tuple{typeof(enable_blas)})
-    # @assert precompile(Tuple{typeof(enable_cache)})
     @assert precompile(Tuple{typeof(expandconj),Expr})
     @assert precompile(Tuple{typeof(expandconj),Symbol})
     @assert precompile(Tuple{typeof(getallindices),Expr})
@@ -289,8 +204,6 @@ function _precompile_()
     @assert precompile(Tuple{typeof(defaultparser),Any})
     @assert precompile(Tuple{typeof(unique2),AVector})
     @assert precompile(Tuple{typeof(unique2),Array{Int64,1}})
-    # @assert precompile(Tuple{typeof(use_blas)})
-    # @assert precompile(Tuple{typeof(use_cache)})
 end
 _precompile_()
 

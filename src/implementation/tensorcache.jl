@@ -19,7 +19,6 @@ ObjectPool(maxsize::Int) = ObjectPool{Any,Any}(maxsize)
 
 # generic definition, net very efficient, provide more efficient version if possible
 memsize(a::Any) = Base.summarysize(a)
-
 modify!(f, pool::ObjectPool, key) = ConcurrentCollections.modify!(f, pool.pool, key)
 
 # request an object from a pool, or allocate a new object
@@ -53,7 +52,7 @@ function allocate(objpool::ObjectPool, TType, structure)
         @atomic objpool.currentsize -= memsize(toret)
         return toret
     else
-        return tensor_from_structure(TType, structure)::TType
+        return tensoralloc(NoBackend(), TType, structure)::TType
     end
 end
 
@@ -61,7 +60,7 @@ end
 function deallocate!(objpool::ObjectPool, obj)
     let obj = obj
         TType, structure = typeof(obj), tensorstructure(obj)
-
+        
         cs = @atomic objpool.currentsize += memsize(obj)
         cs > objpool.maxsize && unsafe_process!(objpool)
 
@@ -101,13 +100,12 @@ const GlobalPool = ObjectPool(default_cache_size())
 
 cachesize() = GlobalPool.currentsize
 
-# function TOC.tensoralloc(::CacheBackend, args...)
-#     return tensor_from_structure(tensorstructure(args...)...)
-# end
+function tensoralloc(::CacheBackend, ttype, structure, istemp=false)
+    if istemp
+        return allocate(GlobalPool, ttype, structure)
+    else
+        return tensoralloc(NoBackend(), ttype, structure)
+    end
+end
 
-# function TOC.tensoralloctemp(::CacheBackend, args...)
-#     TType, str = tensorstructure(args...)
-#     return allocate(GlobalPool, TType, str)::TType
-# end
-
-TOC.tensorfree!(::CacheBackend, obj) = deallocate!(GlobalPool, obj)
+tensorfree!(::CacheBackend, obj) = deallocate!(GlobalPool, obj)

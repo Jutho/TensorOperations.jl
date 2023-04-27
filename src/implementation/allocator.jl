@@ -25,8 +25,8 @@ function tensoralloc_contract(backend::AbstractBackend, TC, pC, A, pA, conjA, B,
     return tensoralloc(backend, ttype, structure, istemp)::ttype
 end
 
-TOC.tensorfree!(C) = tensorfree!(allocator(), C)
-TOC.tensorfree!(::AbstractBackend, C) = nothing
+tensorfree!(C) = tensorfree!(allocator(), C)
+tensorfree!(::AbstractBackend, C) = nothing
 
 #===========================================================================================
     AbstractArray implementation

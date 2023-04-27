@@ -1,7 +1,7 @@
 module TensorOperationsCUDA
 
-import TensorOperationsCore as TOC
-using TensorOperationsCore
+using TensorOperations
+using TensorOperations: AbstractBackend, Index2Tuple, IndexTuple, linearize, IndexError
 using TupleTools
 
 if isdefined(Base, :get_extension)
@@ -36,8 +36,6 @@ else
                       cutensorContraction
 end
 
-import TensorOperations: tensorstructure, tensor_from_structure
-
 if isdefined(CUDA, :default_stream)
     const default_stream = CUDA.default_stream
 else
@@ -57,14 +55,17 @@ else
     end
 end
 
-TOC.tensorscalar(C::CuArray) = ndims(C) == 0 ? collect(C)[] : throw(DimensionMismatch())
+function TensorOperations.tensorscalar(C::CuArray)
+    return ndims(C) == 0 ? collect(C)[] : throw(DimensionMismatch())
+end
 
 # ---------------------------------------------------------------------------------------- #
 # tensoradd!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensoradd!(::AbstractBackend, C::CuArray, A::CuArray, pA::Index2Tuple,
-                        conjA::Symbol, α::Number, β::Number)
+function TensorOperations.tensoradd!(::AbstractBackend, C::CuArray, A::CuArray,
+                                     pA::Index2Tuple,
+                                     conjA::Symbol, α::Number, β::Number)
     N = ndims(C)
     N == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     N == length(pA[1]) + length(pA[2]) ||
@@ -99,10 +100,10 @@ end
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensorcontract!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
-                             A::CuArray, pA::Index2Tuple, conjA::Symbol,
-                             B::CuArray, pB::Index2Tuple, conjB::Symbol,
-                             α, β)
+function TensorOperations.tensorcontract!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
+                                          A::CuArray, pA::Index2Tuple, conjA::Symbol,
+                                          B::CuArray, pB::Index2Tuple, conjB::Symbol,
+                                          α, β)
     (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
         throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
     (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
@@ -210,8 +211,8 @@ end
 # tensortrace!
 # ---------------------------------------------------------------------------------------- #
 
-function TOC.tensortrace!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
-                          A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
+function TensorOperations.tensortrace!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
+                                       A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
     T = eltype(C)
     NA, NC = ndims(A), ndims(C)
     NC == length(linearize(pC)) ||
@@ -262,29 +263,14 @@ end
 # JuliaAllocator
 # ---------------------------------------------------------------------------------------- #
 
-tensorstructure(A::CuArray{T,N}) where {T,N} = (typeof(A), size(A))
-function tensorstructure(TC, pC, A::CuArray, _)
-    sz = map(n -> size(A, n), linearize(pC))
-    TType = CuArray{TC,length(sz)}
-    return TType, sz
+function TensorOperations.tensoradd_type(TC, A::CuArray, pA::Index2Tuple, conjA::Symbol)
+
+    return CuArray{TC,sum(length.(pA))}
 end
 
-function tensorstructure(TC, pC, A::CuArray, iA::IndexTuple, _, B::CuArray,
-                         iB::IndexTuple, _)
-    sz = let lA = length(iA)
-        map(linearize(pC)) do n
-            if n <= lA
-                return size(A, iA[n])
-            else
-                return size(B, iB[n - lA])
-            end
-        end
-    end
-
-    TType = CuArray{TC,length(sz)}
-    return TType, sz
+function TensorOperations.tensorcontract_type(TC, pC, A::CuArray, pA, conjA,
+                             B::CuArray, pB, conjB)
+    return CuArray{TC,sum(length.(pC))}
 end
-
-tensor_from_structure(TType::Type{<:CuArray}, structure) = similar(TType, structure)
 
 end

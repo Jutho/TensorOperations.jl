@@ -10,7 +10,7 @@ macro notensor(ex::Expr)
 end
 
 """
-    @tensor(block)
+    @tensor(block; kwargs...)
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
@@ -25,53 +25,60 @@ macro tensor(ex::Expr)
     return esc(defaultparser(ex))
 end
 
-macro tensor(kwargsex::Expr, ex::Expr)
-    if !(kwargsex.head == :tuple || kwargsex.head == :(=))
-        throw(ArgumentError("Unknown first argument in @tensor, should be named tuple or single keyword."))
-    end
-
-    kwargs = kwargsex.head == :tuple ? kwargsex.args : [kwargsex]
-    parser = TensorParser()
-    for kwarg in kwargs
-        if kwarg.head != :(=)
-            throw(ArgumentError("Unknown first argument in @tensor, should be `kwargs` named tuple."))
+function standardize_kwargs(ex)
+    ex.head == :parameters && return ex
+    ex.head == :(=) && return Expr(:parameters, Expr(:kw, ex.args...))
+    if ex.head == :tuple
+        params = map(ex.args) do x
+            return Expr(:kw, x.args...)
         end
+        return Expr(:parameters, params...)
+    end
+    throw(ArgumentError("unknown keyword expression"))
+end
 
-        if kwarg.args[1] == :order
-            if !(kwarg.args[2] isa Expr && kwarg.args[2].head == :tuple)
+macro tensor(kwargsex::Expr, ex::Expr)
+    kwargs = standardize_kwargs(kwargsex)
+    parser = TensorParser()
+    
+    for param in kwargs.args
+        name, val = param.args
+        
+        if name == :order
+            (val isa Expr && val.head == :tuple) ||
                 throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
-            end
-            indexorder = map(normalizeindex, kwarg.args[2].args)
+            indexorder = map(normalizeindex, val.args)
             parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
 
-        elseif kwarg.args[1] == :contractcheck
-            if !(kwarg.args[2] isa Bool)
+        elseif name == :contractcheck
+            val isa Bool ||
                 throw(ArgumentError("Invalid use of `contractcheck`, should be `contractcheck=bool`."))
-            end
-            kwarg.args[2] && push!(parser.preprocessors, ex -> insertcompatiblechecks(ex))
+            val && push!(parser.preprocessors, ex -> insertcompatiblechecks(ex))
 
-        elseif kwarg.args[1] == :costcheck
-            if !(kwarg.args[2] in (:warn, :cache))
+        elseif name == :costcheck
+            val in (:warn, :cache) ||
                 throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
-            end
-            push!(parser.preprocessors,
-                  ex -> costcheck(ex, __source__, parser, kwarg.args[2]))
-        elseif kwarg.args[1] == :opt
-            if kwarg.args[2] isa Bool && kwarg.args[2]
+            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser, val))
+        elseif name == :opt
+            if val isa Bool && val
                 optdict = optdata(ex)
-                parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
-            elseif kwarg.args[2] isa Expr
-                optdict = optdata(kwarg.args[2], ex)
-                parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
+            elseif val isa Expr
+                optdict = optdata(val, ex)
+            else
+                throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
             end
-        elseif kwarg.args[1] == :backend
-            pushfirst!(parser.postprocessors,
-                       ex -> insertoperationbackend(ex, kwarg.args[2]))
-        elseif kwarg.args[1] == :allocator
-            pushfirst!(parser.postprocessors,
-                       ex -> insertallocationbackend(ex, kwarg.args[2]))
+            parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
+        elseif name == :backend
+            pushfirst!(parser.postprocessors, ex -> insertoperationbackend(ex, val))
+        elseif name == :allocator
+            pushfirst!(parser.postprocessors, ex -> insertallocationbackend(ex, val))
+        elseif name == :typewrap
+            wrapdict = Dict{Any,Any}()
+            # this is a terrible hardcoded 4 to replace the extracttensorobjects entry
+            parser.preprocessors[4] = ex -> extracttensorobjects(ex, wrapdict, val)
+            pushfirst!(parser.postprocessors, ex -> addcutensorwraps(ex, wrapdict))
         else
-            throw(ArgumentError("Unknown keyword argument `$(kwarg.args[1])`."))
+            throw(ArgumentError("Unknown keyword argument `name`."))
         end
     end
 

@@ -28,7 +28,7 @@ function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     pA = add_indices(IA, IC)
     TC = scalartype(A)
     C = tensoralloc_add(TC, A, pA, :N)
-    return TOC.tensoradd!(C, A, pA, :N, one(TC), zero(TC))
+    return tensoradd!(C, A, pA, :N, one(TC), zero(TC))
 end
 
 
@@ -49,9 +49,9 @@ function tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA)
     TC = promote_add(scalartype(A), scalartype(B))
     pA = add_indices(IA, IC)
     C = tensoralloc_add(TC, A, pA, :N)
-    TOC.tensoradd!(C, A, pA, :N, one(TC), zero(TC))
+    tensoradd!(C, A, pA, :N, one(TC), zero(TC))
     pB = add_indices(IB, IC)
-    return TOC.tensoradd!(C, B, pB, :N, one(TC), one(TC))
+    return tensoradd!(C, B, pB, :N, one(TC), one(TC))
 end
 
 """
@@ -68,7 +68,7 @@ function tensortrace(A, IA::Tuple, IC::Tuple)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
     TC = promote_contract(scalartype(A))
     C = tensoralloc_add(TC, A, pC, :N)
-    return TOC.tensortrace!(C, pC, A, (cindA1, cindA2), :N, one(TC), zero(TC))
+    return tensortrace!(C, pC, A, (cindA1, cindA2), :N, one(TC), zero(TC))
 end
 
 """
@@ -93,7 +93,7 @@ function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
     pA, pB, pC = contract_indices(IA, IB, IC)
     TC = promote_contract(scalartype(A), scalartype(B))
     C = tensoralloc_contract(TC, pC, A, pA, :N, B, pB, :N)
-    return TOC.tensorcontract!(C, pC, A, pA, :N, B, pB, :N, one(TC), zero(TC))
+    return tensorcontract!(C, pC, A, pA, :N, B, pB, :N, one(TC), zero(TC))
 end
 
 """

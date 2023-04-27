@@ -35,18 +35,12 @@ function removelinenumbernode(ex::Expr)
 end
 removelinenumbernode(ex) = ex
 
-const tensoroperationscorefunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!,
+const tensoroperationsfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!,
                                        :tensoradd!, :tensortrace!, :tensorcontract!,
-                                       :tensorscalar, :IndexError,
-                                       :scalartype, :checkcontractible)
-const tensoroperationsfunctions = (:promote_contract, :promote_add, :tensoralloc_add,
-                                   :tensoralloc_contract)
+                                       :tensorscalar, :IndexError,                                       :scalartype, :checkcontractible, :promote_contract, :promote_add, :tensoralloc_add,                                   :tensoralloc_contract, :adapt)
 
 function addtensoroperations(ex::Expr)
-    if ex.head == :call && ex.args[1] in tensoroperationscorefunctions
-        return Expr(ex.head, GlobalRef(TensorOperationsCore, ex.args[1]),
-                    (addtensoroperations(ex.args[i]) for i in 2:length(ex.args))...)
-    elseif ex.head == :call && ex.args[1] in tensoroperationsfunctions
+    if ex.head == :call && ex.args[1] in tensoroperationsfunctions
         return Expr(ex.head, GlobalRef(TensorOperations, ex.args[1]),
                     (addtensoroperations(ex.args[i]) for i in 2:length(ex.args))...)
     else
@@ -66,7 +60,7 @@ function insertoperationbackend(ex::Expr, backend)
     end
 end
 
-const allocationfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!)
+const allocationfunctions = (:tensoralloc_add, :tensoralloc_contract, :tensorfree!)
 insertallocationbackend(ex, backend) = ex
 function insertallocationbackend(ex::Expr, backend)
     if ex.head == :call && ex.args[1] in allocationfunctions

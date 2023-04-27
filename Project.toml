@@ -4,6 +4,8 @@ authors = ["Jutho Haegeman"]
 version = "4.0.0"
 
 [deps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ConcurrentCollections = "5060bff5-0b44-40c5-b522-fcd3ca5cecdd"
 LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -11,10 +13,9 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
-TensorOperationsCore = "46150444-48fb-4c36-b392-fdd2916ece7e"
+TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [compat]
@@ -22,6 +23,7 @@ CUDA = "4"
 LRUCache = "1"
 Requires = "0.5,1"
 Strided = "2"
+TBLIS = "0.2"
 TupleTools = "1.1"
 cuTENSOR = "1"
 julia = "1.9"
@@ -45,7 +47,7 @@ test = ["Test", "Random", "TBLIS", "CUDA", "cuTENSOR", "DynamicPolynomials", "St
 
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
 TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"

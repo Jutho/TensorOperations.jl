@@ -65,10 +65,10 @@ for T in (Float64, ComplexF64)
             @test C1 ≈ C3
             @test C2 ≈ C3
             @test C1 ≈ ncon(Any[A, B], Any[[-1, 1, 2, -4, -3], [2, -5, 1, -2]])
-            @test_throws IndexError tensorcontract(A, [:a, :b, :c, :d], B,
-                                                   [:c, :f, :b, :g])
-            @test_throws IndexError tensorcontract(A, [:a, :b, :c, :a, :e], B,
-                                                   [:c, :f, :b, :g])
+            @test_throws IndexError tensorcontract(A, [:a, :b, :c, :d],
+                                                   B, [:c, :f, :b, :g])
+            @test_throws IndexError tensorcontract(A, [:a, :b, :c, :a, :e],
+                                                   B, [:c, :f, :b, :g])
         end
 
         @testset "tensorproduct" begin
@@ -79,13 +79,11 @@ for T in (Float64, ComplexF64)
                          (5 * 5 * 5 * 5, 5 * 5 * 5 * 5))
             C2 = kron(reshape(B, (25, 25)), reshape(A, (25, 25)))
             @test C1 ≈ C2
-            @test_throws TensorOperations.IndexError tensorproduct(A, [:a, :b, :c, :d], B,
-                                                                   [:d, :e, :f, :g])
-            @test_throws TensorOperations.IndexError tensorproduct(A, [:a, :b, :c, :d], B,
-                                                                   [:e, :f, :g, :h],
-                                                                   [:a, :b, :c, :d, :e, :f,
-                                                                    :g,
-                                                                    :i])
+            @test_throws IndexError tensorproduct(A, [:a, :b, :c, :d],
+                                                  B, [:d, :e, :f, :g])
+            @test_throws IndexError tensorproduct(A, [:a, :b, :c, :d],
+                                                  B, [:e, :f, :g, :h],
+                                                  [:a, :b, :c, :d, :e, :f, :g, :i])
         end
 
         # test in-place methods
@@ -104,10 +102,10 @@ for T in (Float64, ComplexF64)
             tensorcopy!(C, A, 1:4, p)
             tensorcopy!(Ccopy, Acopy, 1:4, p)
             @test C ≈ Ccopy
-            @test_throws TensorOperations.IndexError tensorcopy!(C, A, 1:3, p)
+            @test_throws IndexError tensorcopy!(C, A, 1:3, p)
             @test_throws DimensionMismatch tensorcopy!(C, A, p, p)
-            @test_throws TensorOperations.IndexError tensorcopy!(C, A, 1:4,
-                                                                 [1, 1, 2, 3])
+            @test_throws IndexError tensorcopy!(C, A, 1:4,
+                                                [1, 1, 2, 3])
         end
 
         @testset "tensoradd!" verbose = true begin
@@ -123,12 +121,12 @@ for T in (Float64, ComplexF64)
             tensoradd!(C, A, 1:4, p, α, β)
             Ccopy = β * Ccopy + α * Acopy
             @test C ≈ Ccopy
-            @test_throws TensorOperations.IndexError tensoradd!(C, A, 1:3, p, 1.2,
-                                                                0.5)
+            @test_throws IndexError tensoradd!(C, A, 1:3, p, 1.2,
+                                               0.5)
             @test_throws DimensionMismatch tensoradd!(C, A, p, p, 1.2, 0.5)
-            @test_throws TensorOperations.IndexError tensoradd!(C, A, 1:4,
-                                                                [1, 1, 2, 3], 1.2,
-                                                                0.5)
+            @test_throws IndexError tensoradd!(C, A, 1:4,
+                                               [1, 1, 2, 3], 1.2,
+                                               0.5)
         end
 
         @testset "tensortrace!" begin
@@ -146,17 +144,13 @@ for T in (Float64, ComplexF64)
                 Bcopy += α * view(A, i, :, :, i)
             end
             @test B ≈ Bcopy
-            @test_throws TensorOperations.IndexError tensortrace!(B, A, [:a, :b, :c],
-                                                                  [:b, :c],
-                                                                  α,
-                                                                  β)
-            @test_throws DimensionMismatch tensortrace!(B, A, [:a, :b, :c, :a], [:c, :b], α,
-                                                        β)
-            @test_throws TensorOperations.IndexError tensortrace!(B, A, [:a, :b, :a, :a],
-                                                                  [:c, :b],
-                                                                  α, β)
-            @test_throws DimensionMismatch tensortrace!(B, A, [:a, :b, :a, :c], [:c, :b], α,
-                                                        β)
+            @test_throws IndexError tensortrace!(B, A, [:a, :b, :c], [:b, :c],
+                                                 α, β)
+            @test_throws DimensionMismatch tensortrace!(B, A, [:a, :b, :c, :a], [:c, :b],
+                                                        α, β)
+            @test_throws IndexError tensortrace!(B, A, [:a, :b, :a, :a], [:c, :b], α, β)
+            @test_throws DimensionMismatch tensortrace!(B, A, [:a, :b, :a, :c], [:c, :b],
+                                                        α, β)
         end
 
         @testset "tensorcontract!" begin
@@ -178,22 +172,20 @@ for T in (Float64, ComplexF64)
                 end
             end
             tensorcontract!(C, [:d, :a, :e], A, [:a, :b, :c, :d], 'N', B, [:c, :e, :b], 'C',
-                            α,
-                            β)
+                            α, β)
             @test C ≈ Ccopy
-            @test_throws IndexError tensorcontract!(C, [:d, :a, :e], A,
-                                                    [:a, :b, :c, :a], 'N', B,
-                                                    [:c, :e, :b], 'N', α, β)
-            @test_throws IndexError tensorcontract!(C, [:d, :a, :e], A, [:a, :b, :c, :d],
-                                                    'N',
-                                                    B,
-                                                    [:c, :b], 'N', α, β)
-            @test_throws IndexError tensorcontract!(C, [:d, :e], A, [:a, :b, :c, :d], 'N',
-                                                    B,
-                                                    [:c, :e, :b], 'N', α, β)
-            @test_throws DimensionMismatch tensorcontract!(C, [:d, :e, :a], A,
-                                                           [:a, :b, :c, :d],
-                                                           'N', B, [:c, :e, :b], 'N', α, β)
+            @test_throws IndexError tensorcontract!(C, [:d, :a, :e],
+                                                    A, [:a, :b, :c, :a], 'N',
+                                                    B, [:c, :e, :b], 'N', α, β)
+            @test_throws IndexError tensorcontract!(C, [:d, :a, :e],
+                                                    A, [:a, :b, :c, :d], 'N',
+                                                    B, [:c, :b], 'N', α, β)
+            @test_throws IndexError tensorcontract!(C, [:d, :e],
+                                                    A, [:a, :b, :c, :d], 'N',
+                                                    B, [:c, :e, :b], 'N', α, β)
+            @test_throws DimensionMismatch tensorcontract!(C, [:d, :e, :a],
+                                                           A, [:a, :b, :c, :d], 'N',
+                                                           B, [:c, :e, :b], 'N', α, β)
         end
     end
 end

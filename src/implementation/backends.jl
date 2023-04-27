@@ -1,4 +1,4 @@
-struct NoBackend <: TOC.AbstractBackend end
+struct NoBackend <: AbstractBackend end
 backend_name(::NoBackend) = :none
 
 const _backendType = Dict{Symbol,Type{<:AbstractBackend}}(:none => NoBackend)
@@ -7,7 +7,7 @@ const _backends = Symbol[]
 const _backend_packages = Dict{Symbol,Tuple{Vararg{Symbol}}}()
 const _initialized_backends = Set{Symbol}()
 
-function _backend_instance(sym::Symbol)::TOC.AbstractBackend
+function _backend_instance(sym::Symbol)::AbstractBackend
     if haskey(_backendType, sym)
         return _backendType[sym]()
     end
@@ -26,7 +26,7 @@ Current Backend
 
 mutable struct CurrentBackend
     sym::Symbol
-    backend::TOC.AbstractBackend
+    backend::AbstractBackend
 end
 CurrentBackend(sym::Symbol) = CurrentBackend(sym, _backend_instance(sym))
 
@@ -47,7 +47,7 @@ function backend(sym::Symbol)
     end
 end
 
-function backend(backend::TOC.AbstractBackend)
+function backend(backend::AbstractBackend)
     sym = backend_name(backend)
     initialized(sym) || _initialize_backend(backend)
 
@@ -71,7 +71,7 @@ function allocator(sym::Symbol)
     end
 end
 
-function allocator(backend::TOC.AbstractBackend)
+function allocator(backend::AbstractBackend)
     sym = backend_name(backend)
     initialized(sym) || _initialize_backend(backend)
 
@@ -136,7 +136,7 @@ macro init_backend(name, deps...)
     T = Symbol(str * "Backend")
     return esc(quote
                    Symbol($str) ∈ _backends && @warn "redefinition of backend `$($str)`"
-                   struct $T <: TensorOperationsCore.AbstractBackend end
+                   struct $T <: AbstractBackend end
                    export $T
                    backend_name(::$T) = Symbol($str)
                    push!(_backends, Symbol($str))
@@ -246,12 +246,12 @@ end
 Backend insertion
 ===========================================================================================#
 
-TOC.tensoradd!(C, A, pA, conjA, α, β) = TOC.tensoradd!(backend(), C, A, pA, conjA, α, β)
+tensoradd!(C, A, pA::Index2Tuple, conjA, α, β) = tensoradd!(backend(), C, A, pA, conjA, α, β)
 
-function TOC.tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-    return TOC.tensorcontract!(backend(), C, pC, A, pA, conjA, B, pB, conjB, α, β)
+function tensorcontract!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α, β)
+    return tensorcontract!(backend(), C, pC, A, pA, conjA, B, pB, conjB, α, β)
 end
 
-function TOC.tensortrace!(C, pC, A, pA, conjA, α, β)
-    return TOC.tensortrace!(backend(), C, pC, A, pA, conjA, α, β)
+function tensortrace!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA, α, β)
+    return tensortrace!(backend(), C, pC, A, pA, conjA, α, β)
 end
