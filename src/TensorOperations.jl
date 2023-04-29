@@ -81,10 +81,6 @@ function __init__()
         @require Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67" begin
             include("../ext/TensorOperationsStrided.jl")
         end
-        
-        @require TBLIS = "48530278-0828-4a49-9772-0f3830dfa1e9" begin
-            include("../ext/TensorOperationsTBLIS.jl")
-        end
 
         @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
             @require cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1" begin

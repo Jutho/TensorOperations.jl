@@ -2,12 +2,14 @@ using TensorOperations
 using DynamicPolynomials
 using Test
 
-# Should probably make Polynomials compatible with the full VectorInterface
+
 using VectorInterface: VectorInterface
-function VectorInterface.scalartype(::Type{T}) where {T<:Union{<:PolyVar,<:Monomial,
-                                                               <:Polynomial,<:Term}}
-    return T
-end
+const PolyTypes = Union{PolyVar, Monomial, Polynomial, Term}
+
+VectorInterface.scalartype(::Type{T}) where {T<:PolyTypes} = T
+VectorInterface.add!!(w::PolyTypes, v::PolyTypes, α::Number, β::Number) = w * β + v * α
+VectorInterface.scale!!(v::PolyTypes, α::Number) = w * α
+
 
 TensorOperations.backend(:Strided)
 @polyvar a[1:2, 1:2] b[1:2, 1:2]

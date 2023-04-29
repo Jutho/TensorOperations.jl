@@ -1,8 +1,5 @@
-struct NoBackend <: AbstractBackend end
-backend_name(::NoBackend) = :none
-
-const _backendType = Dict{Symbol,Type{<:AbstractBackend}}(:none => NoBackend)
-const _backendSymbol = Dict{DataType,Symbol}(NoBackend => :none)
+const _backendType = Dict{Symbol,Type{<:AbstractBackend}}()
+const _backendSymbol = Dict{DataType,Symbol}()
 const _backends = Symbol[]
 const _backend_packages = Dict{Symbol,Tuple{Vararg{Symbol}}}()
 const _initialized_backends = Set{Symbol}()
@@ -21,112 +18,6 @@ backends() = _backends
 backend_name() = CURRENT_BACKEND.sym
 
 #===========================================================================================
-Current Backend
-===========================================================================================#
-
-mutable struct CurrentBackend
-    sym::Symbol
-    backend::AbstractBackend
-end
-CurrentBackend(sym::Symbol) = CurrentBackend(sym, _backend_instance(sym))
-
-const CURRENT_BACKEND = CurrentBackend(:none)
-const CURRENT_ALLOCATOR = CurrentBackend(:none)
-
-function backend()
-    CURRENT_BACKEND.sym === :none && load_default_backend()
-    return CURRENT_BACKEND.backend
-end
-
-function backend(sym::Symbol)
-    if sym in _backends
-        return backend(_backend_instance(sym))
-    else
-        @warn "`:$sym` is not a supported backend."
-        return CURRENT_BACKEND.backend
-    end
-end
-
-function backend(backend::AbstractBackend)
-    sym = backend_name(backend)
-    initialized(sym) || _initialize_backend(backend)
-
-    CURRENT_BACKEND.sym = sym
-    CURRENT_BACKEND.backend = backend
-    @info "default backend set to `$sym`"
-    return backend
-end
-
-function allocator()
-    CURRENT_ALLOCATOR.sym === :none && load_default_allocator()
-    return CURRENT_ALLOCATOR.backend
-end
-
-function allocator(sym::Symbol)
-    if sym in _backends
-        return allocator(_backend_instance(sym))
-    else
-        @warn "`:$sym` is not a supported backend."
-        return CURRENT_ALLOCATOR.backend
-    end
-end
-
-function allocator(backend::AbstractBackend)
-    sym = backend_name(backend)
-    initialized(sym) || _initialize_backend(backend)
-
-    CURRENT_ALLOCATOR.sym = sym
-    CURRENT_ALLOCATOR.backend = backend
-    @info "default allocator set to `$sym`"
-    return backend
-end
-
-#===========================================================================================
-Default Backend
-===========================================================================================#
-
-const TENSOROPERATIONS_DEFAULT_BACKEND = load_preference(TensorOperations,
-                                                         "default_backend", "Strided")
-const TENSOROPERATIONS_DEFAULT_ALLOCATOR = load_preference(TensorOperations,
-                                                           "default_allocator", "Julia")
-
-function load_default_backend()
-    sym = Symbol(get(ENV, "TENSOROPERATIONS_DEFAULT_BACKEND",
-                     TENSOROPERATIONS_DEFAULT_BACKEND))
-    return backend(sym)
-end
-
-function load_default_allocator()
-    sym = Symbol(get(ENV, "TENSOROPERATIONS_DEFAULT_ALLOCATOR",
-                     TENSOROPERATIONS_DEFAULT_ALLOCATOR))
-    return allocator(sym)
-end
-
-function set_default_backend!(backend::Union{Nothing,AbstractString,Symbol}=nothing;
-                              kwargs...)
-    if isnothing(backend)
-        delete_preferences!(TensorOperations, "default_backend", kwargs...)
-    else
-        if _check_installed((value = string(backend))) !== nothing
-            set_preferences!(TensorOperations, "default_backend" => value; kwargs...)
-        end
-    end
-    return nothing
-end
-
-function set_default_allocator!(backend::Union{Nothing,AbstractString,Symbol}=nothing;
-                                kwargs...)
-    if isnothing(backend)
-        delete_preferences!(TensorOperations, "default_allocator", kwargs...)
-    else
-        if _check_installed((value = string(backend))) !== nothing
-            set_preferences!(TensorOperations, "default_allocator" => value; kwargs...)
-        end
-    end
-    return nothing
-end
-
-#===========================================================================================
 Supported Backends
 ===========================================================================================#
 
@@ -135,21 +26,21 @@ macro init_backend(name, deps...)
     str = string(name)
     T = Symbol(str * "Backend")
     return esc(quote
-                   Symbol($str) ∈ _backends && @warn "redefinition of backend `$($str)`"
-                   struct $T <: AbstractBackend end
+                   Symbol($str) ∈ TensorOperations._backends && @warn "redefinition of backend `$($str)`"
+                   struct $T <: TensorOperations.AbstractBackend end
                    export $T
-                   backend_name(::$T) = Symbol($str)
-                   push!(_backends, Symbol($str))
-                   _backendType[Symbol($str)] = $T
-                   _backendSymbol[$T] = Symbol($str)
-                   _backend_packages[Symbol($str)] = Symbol.($package_str)
+                   TensorOperations.backend_name(::$T) = Symbol($str)
+                   push!(TensorOperations._backends, Symbol($str))
+                   TensorOperations._backendType[Symbol($str)] = $T
+                   TensorOperations._backendSymbol[$T] = Symbol($str)
+                   TensorOperations._backend_packages[Symbol($str)] = Symbol.($package_str)
                end)
 end
 
+@init_backend None
 @init_backend Strided Strided
 @init_backend StridedBLAS Strided
 @init_backend CUDA CUDA cuTENSOR
-@init_backend TBLIS TBLIS
 
 @init_backend Julia
 @init_backend Cache
@@ -227,6 +118,112 @@ function _initialize_backend(pkg::AbstractBackend)
 end
 
 #===========================================================================================
+Current Backend
+===========================================================================================#
+
+mutable struct CurrentBackend
+    sym::Symbol
+    backend::AbstractBackend
+end
+CurrentBackend(sym::Symbol) = CurrentBackend(sym, _backend_instance(sym))
+
+const CURRENT_BACKEND = CurrentBackend(:None)
+const CURRENT_ALLOCATOR = CurrentBackend(:None)
+
+function backend()
+    CURRENT_BACKEND.sym === :none && load_default_backend()
+    return CURRENT_BACKEND.backend
+end
+
+function backend(sym::Symbol)
+    if sym in _backends
+        return backend(_backend_instance(sym))
+    else
+        @warn "`:$sym` is not a supported backend."
+        return CURRENT_BACKEND.backend
+    end
+end
+
+function backend(backend::AbstractBackend)
+    sym = backend_name(backend)
+    initialized(sym) || _initialize_backend(backend)
+
+    CURRENT_BACKEND.sym = sym
+    CURRENT_BACKEND.backend = backend
+    @info "default backend set to `$sym`"
+    return backend
+end
+
+function allocator()
+    CURRENT_ALLOCATOR.sym === :none && load_default_allocator()
+    return CURRENT_ALLOCATOR.backend
+end
+
+function allocator(sym::Symbol)
+    if sym in _backends
+        return allocator(_backend_instance(sym))
+    else
+        @warn "`:$sym` is not a supported backend."
+        return CURRENT_ALLOCATOR.backend
+    end
+end
+
+function allocator(backend::AbstractBackend)
+    sym = backend_name(backend)
+    initialized(sym) || _initialize_backend(backend)
+
+    CURRENT_ALLOCATOR.sym = sym
+    CURRENT_ALLOCATOR.backend = backend
+    @info "default allocator set to `$sym`"
+    return backend
+end
+
+#===========================================================================================
+Default Backend
+===========================================================================================#
+
+const TENSOROPERATIONS_DEFAULT_BACKEND = load_preference(TensorOperations,
+                                                         "default_backend", "None")
+const TENSOROPERATIONS_DEFAULT_ALLOCATOR = load_preference(TensorOperations,
+                                                           "default_allocator", "Julia")
+
+function load_default_backend()
+    sym = Symbol(get(ENV, "TENSOROPERATIONS_DEFAULT_BACKEND",
+                     TENSOROPERATIONS_DEFAULT_BACKEND))
+    return backend(sym)
+end
+
+function load_default_allocator()
+    sym = Symbol(get(ENV, "TENSOROPERATIONS_DEFAULT_ALLOCATOR",
+                     TENSOROPERATIONS_DEFAULT_ALLOCATOR))
+    return allocator(sym)
+end
+
+function set_default_backend!(backend::Union{Nothing,AbstractString,Symbol}=nothing;
+                              kwargs...)
+    if isnothing(backend)
+        delete_preferences!(TensorOperations, "default_backend", kwargs...)
+    else
+        if _check_installed((value = string(backend))) !== nothing
+            set_preferences!(TensorOperations, "default_backend" => value; kwargs...)
+        end
+    end
+    return nothing
+end
+
+function set_default_allocator!(backend::Union{Nothing,AbstractString,Symbol}=nothing;
+                                kwargs...)
+    if isnothing(backend)
+        delete_preferences!(TensorOperations, "default_allocator", kwargs...)
+    else
+        if _check_installed((value = string(backend))) !== nothing
+            set_preferences!(TensorOperations, "default_allocator" => value; kwargs...)
+        end
+    end
+    return nothing
+end
+
+#===========================================================================================
 Backend options
 ===========================================================================================#
 
@@ -246,9 +243,12 @@ end
 Backend insertion
 ===========================================================================================#
 
-tensoradd!(C, A, pA::Index2Tuple, conjA, α, β) = tensoradd!(backend(), C, A, pA, conjA, α, β)
+function tensoradd!(C, A, pA::Index2Tuple, conjA, α, β)
+    return tensoradd!(backend(), C, A, pA, conjA, α, β)
+end
 
-function tensorcontract!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α, β)
+function tensorcontract!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple,
+                         conjB, α, β)
     return tensorcontract!(backend(), C, pC, A, pA, conjA, B, pB, conjB, α, β)
 end
 
