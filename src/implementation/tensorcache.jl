@@ -104,7 +104,7 @@ function tensoralloc(::CacheBackend, ttype, structure, istemp=false)
     if istemp
         return allocate(GlobalPool, ttype, structure)
     else
-        return tensoralloc(NoBackend(), ttype, structure)
+        return tensoralloc(JuliaBackend(), ttype, structure)
     end
 end
 

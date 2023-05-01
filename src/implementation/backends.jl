@@ -106,13 +106,13 @@ initialized(sym::Symbol) = sym ∈ _initialized_backends
 
 function _initialize_backend(pkg::AbstractBackend)
     sym = backend_name(pkg)
+    _check_installed(sym)
     for pkg_dep in get(_backend_packages, sym, nothing)
         @info "Initializing $pkg_dep"
         @eval Main begin
             using $pkg_dep: $pkg_dep
         end
     end
-    _check_installed(sym)
     push!(_initialized_backends, sym)
     return nothing
 end

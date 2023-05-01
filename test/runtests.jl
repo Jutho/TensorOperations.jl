@@ -4,14 +4,13 @@ using Random
 
 Random.seed!(1234567)
 
-# @testset "tensoropt" include("tensoropt.jl")
-# @testset "auxiliary" include("auxiliary.jl")
+@testset "tensoropt" include("tensoropt.jl")
+@testset "auxiliary" include("auxiliary.jl")
 
-# include("strided.jl")
-@testset "TBLIS" verbose = true include("tblis.jl")
+include("strided.jl")
 
-# if CUDA.functional()
-#     @testset "CUDA" verbose = true include("cuda.jl")
-# end
+if CUDA.functional()
+    @testset "CUDA" verbose = true include("cuda.jl")
+end
 
-# @testset "Polynomials" include("polynomials.jl")
+@testset "Polynomials" include("polynomials.jl")
