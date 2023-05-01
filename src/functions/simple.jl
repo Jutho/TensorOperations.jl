@@ -31,7 +31,6 @@ function tensorcopy(A, IA::Tuple, IC::Tuple=IA)
     return tensoradd!(C, A, pA, :N, one(TC), zero(TC))
 end
 
-
 """
     tensoradd(A, IA, B, IB, IC = IA)
 

@@ -52,7 +52,7 @@ function allocate(objpool::ObjectPool, TType, structure)
         @atomic objpool.currentsize -= memsize(toret)
         return toret
     else
-        return tensoralloc(NoBackend(), TType, structure)::TType
+        return tensoralloc(JuliaBackend(), TType, structure)::TType
     end
 end
 
@@ -60,7 +60,7 @@ end
 function deallocate!(objpool::ObjectPool, obj)
     let obj = obj
         TType, structure = typeof(obj), tensorstructure(obj)
-        
+
         cs = @atomic objpool.currentsize += memsize(obj)
         cs > objpool.maxsize && unsafe_process!(objpool)
 

@@ -36,8 +36,10 @@ end
 removelinenumbernode(ex) = ex
 
 const tensoroperationsfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!,
-                                       :tensoradd!, :tensortrace!, :tensorcontract!,
-                                       :tensorscalar, :IndexError,                                       :scalartype, :checkcontractible, :promote_contract, :promote_add, :tensoralloc_add,                                   :tensoralloc_contract, :adapt)
+                                   :tensoradd!, :tensortrace!, :tensorcontract!,
+                                   :tensorscalar, :IndexError, :scalartype,
+                                   :checkcontractible, :promote_contract, :promote_add,
+                                   :tensoralloc_add, :tensoralloc_contract, :adapt)
 
 function addtensoroperations(ex::Expr)
     if ex.head == :call && ex.args[1] in tensoroperationsfunctions

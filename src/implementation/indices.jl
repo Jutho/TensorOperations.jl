@@ -100,7 +100,7 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
     pB = (cindB, oindB)
     pC = (indCinoAB, ())
 
-    if !isperm((oindA..., cindA...)) || !isperm((oindB..., cindB...)) || !isperm(indCinoAB)
+    if !isperm(linearize(pA)) || !isperm(linearize(pB)) || !isperm(indCinoAB)
         throw(IndexError("invalid contraction pattern: $IA and $IB to $IC"))
     end
 
@@ -137,10 +137,10 @@ function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
     einA = Vector{Char}(undef, sum(length.(pA)))
     setindex!.(Ref(einA), (1:length(pA[1])) .+ OFFSET_OPEN, pA[1])
     setindex!.(Ref(einA), (1:length(pA[2])) .+ OFFSET_CLOSED, pA[2])
-    
+
     einB = Vector{Char}(undef, sum(length.(pB)))
     setindex!.(Ref(einB), (1:length(pB[2])) .+ (OFFSET_OPEN + length(pA[1])), pB[2])
     setindex!.(Ref(einB), (1:length(pB[1])) .+ OFFSET_CLOSED, pB[1])
-    
+
     return tuple(einA...), tuple(einB...), tuple((linearize(pC) .+ OFFSET_OPEN)...)
 end

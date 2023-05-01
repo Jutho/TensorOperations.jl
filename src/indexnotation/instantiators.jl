@@ -61,7 +61,8 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
             αnew = (ex.args[1] == :+) ? α : Expr(:call, :*, -1, α)
             return instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
         else
-            return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
+            return instantiate_linearcombination(dst, β, ex, α, leftind, rightind,
+                                                 istemporary)
         end
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
         if isscalarexpr(ex.args[2])

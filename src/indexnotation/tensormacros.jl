@@ -40,10 +40,10 @@ end
 macro tensor(kwargsex::Expr, ex::Expr)
     kwargs = standardize_kwargs(kwargsex)
     parser = TensorParser()
-    
+
     for param in kwargs.args
         name, val = param.args
-        
+
         if name == :order
             (val isa Expr && val.head == :tuple) ||
                 throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))

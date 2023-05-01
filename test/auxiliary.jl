@@ -183,6 +183,5 @@ end
         @test x * p == p * x
     end
 
-    @testset "cost methods" begin
-    end
+    @testset "cost methods" begin end
 end

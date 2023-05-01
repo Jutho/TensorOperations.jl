@@ -102,7 +102,7 @@ end
     end
     @test collect(D1) ≈ D2
     @test norm(vec(D1)) ≈
-          sqrt(abs((@tensor typewrap=CuArray tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
+          sqrt(abs((@tensor typewrap = CuArray tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
     println("tensorcontract 3: $(time()-t0) seconds")
     t0 = time()
 

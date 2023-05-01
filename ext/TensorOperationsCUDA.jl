@@ -264,12 +264,11 @@ end
 # ---------------------------------------------------------------------------------------- #
 
 function TensorOperations.tensoradd_type(TC, A::CuArray, pA::Index2Tuple, conjA::Symbol)
-
     return CuArray{TC,sum(length.(pA))}
 end
 
 function TensorOperations.tensorcontract_type(TC, pC, A::CuArray, pA, conjA,
-                             B::CuArray, pB, conjB)
+                                              B::CuArray, pB, conjB)
     return CuArray{TC,sum(length.(pC))}
 end
 

@@ -7,7 +7,6 @@ struct IndexError{S<:AbstractString} <: Exception
     msg::S
 end
 
-
 const IndexTuple{N} = NTuple{N,Int}
 const Index2Tuple{N₁,N₂} = Tuple{IndexTuple{N₁},IndexTuple{N₂}}
 

@@ -19,7 +19,7 @@ const StridedBackends = Union{StridedBackend,StridedBLASBackend}
 # ---------------------------------------------------------------------------------------- #
 
 function TensorOperations.tensoradd!(::StridedBackends, C::AbstractArray, A::AbstractArray,
-                        pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
+                                     pA::Index2Tuple, conjA::Symbol, α, β)
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     ndims(C) == length(pA[1]) + length(pA[2]) ||
         throw(IndexError("Invalid permutation of length $(ndims(C)): $pA"))
@@ -40,10 +40,11 @@ end
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TensorOperations.tensorcontract!(backend::StridedBackends, C::AbstractArray, pC::Index2Tuple,
-                             A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                             B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                             α::Number, β::Number)
+function TensorOperations.tensorcontract!(backend::StridedBackends, C::AbstractArray,
+                                          pC::Index2Tuple,
+                                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                                          α, β)
     (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
         throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
     (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
@@ -282,7 +283,8 @@ end
 # ---------------------------------------------------------------------------------------- #
 
 function TensorOperations.tensortrace!(::StridedBackend, C::AbstractArray, pC::Index2Tuple,
-                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α::Number, β::Number)
+                                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α,
+                                       β)
     NA, NC = ndims(A), ndims(C)
     NC == length(linearize(pC)) ||
         throw(IndexError("invalid selection of $NC out of $NA: $pC"))
@@ -303,9 +305,10 @@ function TensorOperations.tensortrace!(::StridedBackend, C::AbstractArray, pC::I
     return C
 end
 
-function TensorOperations.tensortrace!(::StridedBLASBackend, C::AbstractArray, pC::Index2Tuple,
+function TensorOperations.tensortrace!(::StridedBLASBackend, C::AbstractArray,
+                                       pC::Index2Tuple,
                                        A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                                       α::Number, β::Number)
+                                       α, β)
     NA, NC = ndims(A), ndims(C)
     NC == length(linearize(pC)) ||
         throw(IndexError("invalid selection of $NC out of $NA: $pC"))

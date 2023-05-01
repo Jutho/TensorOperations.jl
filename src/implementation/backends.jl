@@ -26,7 +26,8 @@ macro init_backend(name, deps...)
     str = string(name)
     T = Symbol(str * "Backend")
     return esc(quote
-                   Symbol($str) ∈ TensorOperations._backends && @warn "redefinition of backend `$($str)`"
+                   Symbol($str) ∈ TensorOperations._backends &&
+                       @warn "redefinition of backend `$($str)`"
                    struct $T <: TensorOperations.AbstractBackend end
                    export $T
                    TensorOperations.backend_name(::$T) = Symbol($str)

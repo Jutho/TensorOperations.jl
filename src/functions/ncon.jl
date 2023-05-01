@@ -50,7 +50,7 @@ function ncon(tensors, network,
                 throw(ArgumentError("invalid NCON network: $network -> $output"))
         end
     end
-    
+
     if length(tensors) == 1
         if length(output) == length(network[1])
             return tensorcopy(tensors[1], network[1], output)
@@ -58,14 +58,14 @@ function ncon(tensors, network,
             return tensortrace(tensors[1], network[1], output)
         end
     end
-    
+
     (tensors, network) = resolve_traces(tensors, network)
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
     A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(output...)
-    
+
     return tensorcontract(A, IA, B, IB, IC)
     return C
 end
@@ -78,7 +78,7 @@ function contracttree(tensors, network, conjlist, tree)
     A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(symdiff(IA, IB)...)
-    
+
     C = tensorcontract(A, IA, B, IB, IC)
     return C, IC, :N
 end

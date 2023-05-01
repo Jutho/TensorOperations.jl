@@ -13,7 +13,6 @@ if !isdefined(Base, :get_extension)
     using Requires
 end
 
-
 using Preferences, Pkg
 
 # Exports
@@ -29,6 +28,8 @@ export ncon
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalartype
 export tensoralloc, tensorfree!
+
+export IndexTuple, Index2Tuple, linearize
 
 # export debug functionality
 export checkcontractible, tensorcost
@@ -70,13 +71,12 @@ include("functions/simple.jl")
 include("functions/ncon.jl")
 include("functions/inplace.jl")
 
-
 # Initialization
 #-----------------
 function __init__()
     allocator()
     backend()
-    
+
     @static if !isdefined(Base, :get_extension)
         @require Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67" begin
             include("../ext/TensorOperationsStrided.jl")
