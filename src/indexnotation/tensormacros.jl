@@ -68,10 +68,6 @@ macro tensor(kwargsex::Expr, ex::Expr)
                 throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
             end
             parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
-        elseif name == :backend
-            pushfirst!(parser.postprocessors, ex -> insertoperationbackend(ex, val))
-        elseif name == :allocator
-            pushfirst!(parser.postprocessors, ex -> insertallocationbackend(ex, val))
         elseif name == :typewrap
             wrapdict = Dict{Any,Any}()
             # this is a terrible hardcoded 4 to replace the extracttensorobjects entry

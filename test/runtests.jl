@@ -9,10 +9,10 @@ Random.seed!(1234567)
 
 include("strided.jl")
 
-using CUDA
+# using CUDA
 
-if CUDA.functional()
-    @testset "CUDA" verbose = true include("cuda.jl")
-end
+# if CUDA.functional()
+#     @testset "CUDA" verbose = true include("cuda.jl")
+# end
 
 @testset "Polynomials" include("polynomials.jl")

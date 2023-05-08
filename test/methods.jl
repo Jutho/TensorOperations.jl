@@ -2,10 +2,9 @@ using TensorOperations: IndexError
 
 # test simple methods
 #---------------------
-withblas = TensorOperations.backend() == StridedBLASBackend() ? "with" : "without"
-withcache = TensorOperations.allocator() == CacheBackend() ? "with" : "without"
+withblas = TensorOperations.use_blas() ? "with" : "without"
 
-@testset "Method syntax $withblas BLAS and $withcache cache" verbose = true begin
+@testset "Method syntax $withblas BLAS" verbose = true begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (3, 1, 4, 2)

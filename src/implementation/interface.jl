@@ -1,16 +1,9 @@
-"""
-    AbstractBackend
-
-Supertype for selecting different implementation backends for this interface.
-"""
-abstract type AbstractBackend end
-
 #===========================================================================================
     Operations
 ===========================================================================================#
 
 """
-    tensoradd!(backend, C, A, pA, conjA, α, β)
+    tensoradd!(C, A, pA, conjA, α, β)
 
 Implements `C = β * C + α * permutedims(opA(A), pA)` without creating the intermediate
 temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
@@ -19,7 +12,7 @@ temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the 
 function tensoradd! end
 
 """
-    tensorcontract!(backend, C, pC, A, pA, conjA, B, pB, conjB, α, β)
+    tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
 
 Implements `C = β * C + α * permutedims(contract(opA(A), opB(B)), pC)` without creating the
 intermediate temporary, where `A` and `B` are contracted such that the indices `pA[2]` of
@@ -30,7 +23,7 @@ are then permuted according to `pC`. The operation `opA` (`opB`) acts as `conj` 
 function tensorcontract! end
 
 """
-    tensortrace!(backend, C, pC, A, pA, conjA, α, β)
+    tensortrace!(C, pC, A, pA, conjA, α, β)
 
 Implements `C = β * C + α * permutedims(partialtrace(opA(A)), pC)` without creating the
 intermediate temporary, where `A` is partially traced, such that indices in `pA[1]` are
@@ -92,7 +85,7 @@ Obtain `typeof(C)`, where `C` is the result of
 function tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB) end
 
 """
-    tensoralloc(backend, ttype, structure, istemp=false)
+    tensoralloc(ttype, structure, istemp=false)
 
 Allocate memory for a tensor of type `ttype` and structure `structure`, optionally
 distinguishing between temporary intermediate tensors.
@@ -100,7 +93,7 @@ distinguishing between temporary intermediate tensors.
 function tensoralloc end
 
 """
-    tensorfree!(backend, C)
+    tensorfree!(C)
 
 Release the allocated memory of `C`.
 """

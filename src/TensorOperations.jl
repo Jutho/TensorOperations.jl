@@ -5,15 +5,9 @@ using TupleTools
 
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
-using ConcurrentCollections
-using Adapt
+using Strided
 using LRUCache
 
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-using Preferences, Pkg
 
 # Exports
 #---------
@@ -21,7 +15,7 @@ using Preferences, Pkg
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
 
-export enable_blas, disable_blas, enable_cache, disable_cache, clear_cache, cachesize
+export enable_blas, disable_blas
 
 # export function based API
 export ncon
@@ -56,14 +50,11 @@ include("indexnotation/indexordertree.jl")
 # Implementations
 #-----------------
 include("implementation/interface.jl")
-include("implementation/backends.jl")
+include("implementation/strided.jl")
+# include("implementation/backends.jl")
 include("implementation/indices.jl")
-include("implementation/tensorcache.jl")
+# include("implementation/tensorcache.jl")
 include("implementation/allocator.jl")
-
-# include("implementation/stridedarray.jl")
-tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
-# include("implementation/diagonal.jl")
 
 # Functions
 #-----------
@@ -71,26 +62,37 @@ include("functions/simple.jl")
 include("functions/ncon.jl")
 include("functions/inplace.jl")
 
+# Global package settings
+#-------------------------
+# A switch for enabling/disabling the use of BLAS for tensor contractions
+const _use_blas = Ref(true)
+use_blas() = _use_blas[]
+function disable_blas()
+    _use_blas[] = false
+    return
+end
+function enable_blas()
+    _use_blas[] = true
+    return
+end
+
 # Initialization
 #-----------------
-function __init__()
-    allocator()
-    backend()
+# function __init__()
+#     @static if !isdefined(Base, :get_extension)
+#         # @require Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67" begin
+#         #     include("../ext/TensorOperationsStrided.jl")
+#         # end
 
-    @static if !isdefined(Base, :get_extension)
-        @require Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67" begin
-            include("../ext/TensorOperationsStrided.jl")
-        end
-
-        @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
-            @require cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1" begin
-                if CUDA.functional() && cuTENSOR.has_cutensor()
-                    include("../ext/TensorOperationsCUDA.jl")
-                end
-            end
-        end
-    end
-end
+#         @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
+#             @require cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1" begin
+#                 if CUDA.functional() && cuTENSOR.has_cutensor()
+#                     include("../ext/TensorOperationsCUDA.jl")
+#                 end
+#             end
+#         end
+#     end
+# end
 
 # Some precompile statements
 #----------------------------

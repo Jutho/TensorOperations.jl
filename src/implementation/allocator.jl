@@ -7,26 +7,19 @@ promote_contract(args...) = Base.promote_op(tensorop, args...)
 promote_add(args...) = Base.promote_op(+, args...)
 
 function tensoralloc_add(TC, A, pA, conjA, istemp=false)
-    return tensoralloc_add(allocator(), TC, A, pA, conjA, istemp)
-end
-function tensoralloc_add(backend::AbstractBackend, TC, A, pA, conjA, istemp=false)
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
-    return tensoralloc(backend, ttype, structure, istemp)::ttype
+    return tensoralloc(ttype, structure, istemp)::ttype
 end
 
-function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB, istemp=false)
-    return tensoralloc_contract(allocator(), TC, pC, A, pA, conjA, B, pB, conjB, istemp)
-end
-function tensoralloc_contract(backend::AbstractBackend, TC, pC, A, pA, conjA, B, pB, conjB,
+function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB,
                               istemp=false)
     ttype = tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
     structure = tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
-    return tensoralloc(backend, ttype, structure, istemp)::ttype
+    return tensoralloc(ttype, structure, istemp)::ttype
 end
 
-tensorfree!(C) = tensorfree!(allocator(), C)
-tensorfree!(::AbstractBackend, C) = nothing
+tensorfree!(C) = nothing
 
 #===========================================================================================
     AbstractArray implementation
@@ -56,7 +49,7 @@ function tensorcontract_structure(pC::Index2Tuple,
     end
 end
 
-function tensoralloc(::AbstractBackend, ttype, structure, istemp=false)
+function tensoralloc(ttype, structure, istemp=false)
     C = ttype(undef, structure)
     isbitstype(scalartype(ttype)) || fill!(C, zero(scalartype(ttype)))
     return C

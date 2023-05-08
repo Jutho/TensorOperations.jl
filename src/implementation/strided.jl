@@ -1,25 +1,8 @@
-module TensorOperationsStrided
+tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
 
-using TensorOperations
-using TensorOperations: Index2Tuple, IndexTuple, linearize, IndexError
-@static if isdefined(Base, :get_extension)
-    using Strided
-else
-    using ..Strided
-end
-
-using TupleTools
-
-using LinearAlgebra
-using VectorInterface
-const StridedBackends = Union{StridedBackend,StridedBLASBackend}
-
-# ---------------------------------------------------------------------------------------- #
-# tensoradd!
-# ---------------------------------------------------------------------------------------- #
-
-function TensorOperations.tensoradd!(::StridedBackends, C::AbstractArray, A::AbstractArray,
-                                     pA::Index2Tuple, conjA::Symbol, α, β)
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                    α, β)
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     ndims(C) == length(pA[1]) + length(pA[2]) ||
         throw(IndexError("Invalid permutation of length $(ndims(C)): $pA"))
@@ -36,15 +19,10 @@ function TensorOperations.tensoradd!(::StridedBackends, C::AbstractArray, A::Abs
     return C
 end
 
-# ---------------------------------------------------------------------------------------- #
-# tensorcontract!
-# ---------------------------------------------------------------------------------------- #
-
-function TensorOperations.tensorcontract!(backend::StridedBackends, C::AbstractArray,
-                                          pC::Index2Tuple,
-                                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                                          α, β)
+function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         α, β)
     (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
         throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
     (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
@@ -69,7 +47,7 @@ function TensorOperations.tensorcontract!(backend::StridedBackends, C::AbstractA
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions:" *
                                 "($szoA, $szoB)[$(linearize(pC))] -> $szC"))
 
-    if isa(backend, StridedBLASBackend) && eltype(C) <: LinearAlgebra.BlasFloat &&
+    if use_blas() && eltype(C) <: LinearAlgebra.BlasFloat &&
        !isa(B, Diagonal) && !isa(A, Diagonal)
         if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) >
            reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
@@ -80,6 +58,29 @@ function TensorOperations.tensorcontract!(backend::StridedBackends, C::AbstractA
     else
         return native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
     end
+end
+
+function tensortrace!(C::AbstractArray, pC::Index2Tuple,
+                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α,
+                      β)
+    NA, NC = ndims(A), ndims(C)
+    NC == length(linearize(pC)) ||
+        throw(IndexError("invalid selection of $NC out of $NA: $pC"))
+    NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
+        throw(IndexError("invalid number of trace dimensions"))
+
+    inds = ((linearize(pC)...,), pA[1], pA[2])
+    if conjA == :N
+        _trace!(α, StridedView(A), β, StridedView(C), inds...)
+    elseif conjA == :C
+        _trace!(α, conj(StridedView(A)), β, StridedView(C), inds...)
+    elseif conjA == :A
+        _trace!(α, map(adjoint, StridedView(A)), β, StridedView(C), inds...)
+    else
+        throw(ArgumentError("Unknown conjugation flag: $conjA"))
+    end
+
+    return C
 end
 
 function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
@@ -278,57 +279,6 @@ function flag2op(flag::Symbol)
     return op
 end
 
-# ---------------------------------------------------------------------------------------- #
-# tensortrace!
-# ---------------------------------------------------------------------------------------- #
-
-function TensorOperations.tensortrace!(::StridedBackend, C::AbstractArray, pC::Index2Tuple,
-                                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α,
-                                       β)
-    NA, NC = ndims(A), ndims(C)
-    NC == length(linearize(pC)) ||
-        throw(IndexError("invalid selection of $NC out of $NA: $pC"))
-    NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
-        throw(IndexError("invalid number of trace dimensions"))
-
-    inds = ((linearize(pC)...,), pA[1], pA[2])
-    if conjA == :N
-        _trace!(α, StridedView(A), β, StridedView(C), inds...)
-    elseif conjA == :C
-        _trace!(α, conj(StridedView(A)), β, StridedView(C), inds...)
-    elseif conjA == :A
-        _trace!(α, map(adjoint, StridedView(A)), β, StridedView(C), inds...)
-    else
-        throw(ArgumentError("Unknown conjugation flag: $conjA"))
-    end
-
-    return C
-end
-
-function TensorOperations.tensortrace!(::StridedBLASBackend, C::AbstractArray,
-                                       pC::Index2Tuple,
-                                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                                       α, β)
-    NA, NC = ndims(A), ndims(C)
-    NC == length(linearize(pC)) ||
-        throw(IndexError("invalid selection of $NC out of $NA: $pC"))
-    NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
-        throw(IndexError("invalid number of trace dimensions"))
-
-    inds = ((linearize(pC)...,), pA[1], pA[2])
-    if conjA == :N
-        _trace!(α, StridedView(A), β, StridedView(C), inds...)
-    elseif conjA == :C
-        _trace!(α, conj(StridedView(A)), β, StridedView(C), inds...)
-    elseif conjA == :A
-        _trace!(α, map(adjoint, StridedView(A)), β, StridedView(C), inds...)
-    else
-        throw(ArgumentError("Unknown conjugation flag: $conjA"))
-    end
-
-    return C
-end
-
 function _trace!(α, A::StridedView,
                  β, C::StridedView, indCinA::IndexTuple{NC},
                  cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
@@ -361,10 +311,6 @@ function _trace!(α, A::StridedView,
     end
     return C
 end
-
-# ---------------------------------------------------------------------------------------- #
-# Utility
-# ---------------------------------------------------------------------------------------- #
 
 function isblascontractable(A::AbstractArray, p1::IndexTuple, p2::IndexTuple,
                             C::Symbol)
@@ -431,6 +377,4 @@ end
 
 function reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
     return contract_memcost(C, reverse(pC), B, reverse(pB), conjB, A, reverse(pA), conjA)
-end
-
 end
