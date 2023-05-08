@@ -4,8 +4,8 @@ using Random
 
 Random.seed!(1234567)
 
-@testset "tensoropt" include("tensoropt.jl")
-@testset "auxiliary" include("auxiliary.jl")
+@testset "tensoropt" begin include("tensoropt.jl") end
+@testset "auxiliary" begin include("auxiliary.jl") end
 
 include("strided.jl")
 
@@ -15,4 +15,4 @@ include("strided.jl")
 #     @testset "CUDA" verbose = true include("cuda.jl")
 # end
 
-@testset "Polynomials" include("polynomials.jl")
+@testset "Polynomials" begin include("polynomials.jl") end
