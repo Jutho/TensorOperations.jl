@@ -8,7 +8,6 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 using Strided
 using LRUCache
 
-
 # Exports
 #---------
 # export macro API
