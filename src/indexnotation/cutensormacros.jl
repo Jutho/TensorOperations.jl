@@ -36,12 +36,12 @@ function extracttensorobjects(ex, cuwrapdict, tensortype)
     for k in inputtensors
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b => (a, :($b = adapt($tensortype, $a))))
+        push!(cuwrapdict, b => (a, :($b = $tensortype($a))))
     end
     for k in setdiff(outputtensors, inputtensors)
         a = tensordict[k]
         b = cutensordict[k]
-        push!(cuwrapdict, b => (a, :($b = adapt($tensortype, $a))))
+        push!(cuwrapdict, b => (a, :($b = $tensortype($a))))
     end
     return Expr(:block, pre, ex, post)
 end
