@@ -411,5 +411,11 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @test_throws ArgumentError begin
             @tensor A[a, b] := A[b, a]
         end
+        @test_throws ArgumentError begin
+            @tensor A[a, b] := A[a, b] + B[a, c] * A[c, b]
+        end
+        @test_throws ArgumentError begin
+            @tensor A[a, b] := B[a, c] * A[c, b] + A[a, b]
+        end
     end
 end
