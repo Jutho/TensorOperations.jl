@@ -8,7 +8,7 @@
 Implements `C = β * C + α * permutedims(opA(A), pA)` without creating the intermediate
 temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
 `conjA` equals `:N`.
-Note that `C` must not be aliased with `A`.
+Note that the permutation needs to be trivial or `C` must not be aliased with `A`.
 """
 function tensoradd! end
 
