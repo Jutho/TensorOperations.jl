@@ -404,4 +404,18 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @tensor res[mu] := -(mat1[mu, alpha] * vec[alpha] + mat2[mu, alpha] * vec[alpha])
         @test res ≈ -(mat1 * vec + mat2 * vec)
     end
+
+    @testset "Issue 136" begin
+        A = rand(2, 2)
+        B = rand(2, 2)
+        @test_throws ArgumentError begin
+            @tensor A[a, b] := A[b, a]
+        end
+        @test_throws ArgumentError begin
+            @tensor A[a, b] := A[a, b] + B[a, c] * A[c, b]
+        end
+        @test_throws ArgumentError begin
+            @tensor A[a, b] := B[a, c] * A[c, b] + A[a, b]
+        end
+    end
 end

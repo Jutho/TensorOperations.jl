@@ -8,6 +8,7 @@
 Implements `C = β * C + α * permutedims(opA(A), pA)` without creating the intermediate
 temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
 `conjA` equals `:N`.
+Note that `C` must not be aliased with `A`.
 """
 function tensoradd! end
 
@@ -19,6 +20,7 @@ intermediate temporary, where `A` and `B` are contracted such that the indices `
 `A` are contracted with indices `pB[1]` of `B`. The remaining indices `(pA[1]..., pB[2]...)`
 are then permuted according to `pC`. The operation `opA` (`opB`) acts as `conj` if `conjA`
 (`conjB`) equals `:C` or as the identity if `conjA` (`conjB`) equals `:N`.
+Note that `C` must not be aliased with `A` or `B`.
 """
 function tensorcontract! end
 
@@ -30,6 +32,7 @@ intermediate temporary, where `A` is partially traced, such that indices in `pA[
 contracted with indices in `pA[2]`, and the remaining indices are permuted according
 to `pC`. The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
 `conjA` equals `:N`.
+Note that `C` must not be aliased with `A`.
 """
 function tensortrace! end
 

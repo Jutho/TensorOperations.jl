@@ -6,6 +6,8 @@ function tensoradd!(C::AbstractArray,
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     ndims(C) == length(pA[1]) + length(pA[2]) ||
         throw(IndexError("Invalid permutation of length $(ndims(C)): $pA"))
+    
+    C === A && throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
     if conjA == :N
         add!(StridedView(C), permutedims(StridedView(A), linearize(pA)), α, β)
@@ -31,7 +33,9 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         throw(IndexError("non-matching output indices in contraction"))
     (length(pC[1]) + length(pC[2]) == ndims(C) && TupleTools.isperm(linearize(pC))) ||
         throw(IndexError("invalid permutation of C of length $(ndims(C)): $pC"))
-
+    
+    (C === A || C === B) && throw(ArgumentError("output tensor must not be aliased with input tensor"))
+        
     szA = size(A)
     szB = size(B)
     szC = size(C)
@@ -68,6 +72,8 @@ function tensortrace!(C::AbstractArray, pC::Index2Tuple,
         throw(IndexError("invalid selection of $NC out of $NA: $pC"))
     NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
         throw(IndexError("invalid number of trace dimensions"))
+
+    C === A && throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
     inds = ((linearize(pC)...,), pA[1], pA[2])
     if conjA == :N
