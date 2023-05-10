@@ -98,7 +98,7 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
 
     pC_ = oindABinC(pC, pA, pB)
 
-    flagC = isblascontractable(C, pC_[1], pC_[2], :D)
+    flagC = isblascontractable(C, pC_, :D)
     if flagC
         C_ = C
         _blas_contract!(α, A_, conjA, B_, conjB, β, C_, pA, pB, pC_)
@@ -126,7 +126,7 @@ function blas_reversecontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
 end
 
 function makeblascontractable(A, pA, conjA, TC)
-    flagA = isblascontractable(A, pA[1], pA[2], conjA) && eltype(A) == TC
+    flagA = isblascontractable(A, pA, conjA) && eltype(A) == TC
     if !flagA
         A_ = TensorOperations.tensoralloc_add(TC, A, pA, conjA)
         A = tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
@@ -319,21 +319,19 @@ function _trace!(α, A::StridedView,
     return C
 end
 
-function isblascontractable(A::AbstractArray, p1::IndexTuple, p2::IndexTuple,
-                            C::Symbol)
+function isblascontractable(A::AbstractArray, p::Index2Tuple, C::Symbol)
     eltype(A) <: LinearAlgebra.BlasFloat || return false
-    @strided isblascontractable(A, p1, p2, C)
+    @strided isblascontractable(A, p, C)
 end
 
-function isblascontractable(A::StridedView, p1::IndexTuple, p2::IndexTuple,
-                            C::Symbol)
+function isblascontractable(A::StridedView, p::Index2Tuple, C::Symbol)
     eltype(A) <: LinearAlgebra.BlasFloat || return false
     sizeA = size(A)
     stridesA = strides(A)
-    sizeA1 = TupleTools.getindices(sizeA, p1)
-    sizeA2 = TupleTools.getindices(sizeA, p2)
-    stridesA1 = TupleTools.getindices(stridesA, p1)
-    stridesA2 = TupleTools.getindices(stridesA, p2)
+    sizeA1 = TupleTools.getindices(sizeA, p[1])
+    sizeA2 = TupleTools.getindices(sizeA, p[2])
+    stridesA1 = TupleTools.getindices(stridesA, p[1])
+    stridesA2 = TupleTools.getindices(stridesA, p[2])
 
     canfuse1, d1, s1 = _canfuse(sizeA1, stridesA1)
     canfuse2, d2, s2 = _canfuse(sizeA2, stridesA2)
@@ -376,10 +374,10 @@ end
 function contract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
     ipC = oindABinC(pC, pA, pB)
     return length(A) *
-           (!isblascontractable(A, pA[1], pA[2], conjA) || eltype(A) !== eltype(C)) +
+           (!isblascontractable(A, pA, conjA) || eltype(A) !== eltype(C)) +
            length(B) *
-           (!isblascontractable(B, pB[1], pB[2], conjB) || eltype(B) !== eltype(C)) +
-           length(C) * !isblascontractable(C, ipC[1], ipC[2], :D)
+           (!isblascontractable(B, pB, conjB) || eltype(B) !== eltype(C)) +
+           length(C) * !isblascontractable(C, ipC, :D)
 end
 
 function reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
