@@ -144,8 +144,7 @@ function _blas_contract!(Î±, A::AbstractArray, conjA, B::AbstractArray, conjB, Î
     osizeA = TupleTools.getindices(sizeA, pA[1])
     osizeB = TupleTools.getindices(sizeB, pB[2])
 
-    pABinC = oindABinC(pC, pA, pB)
-    mul!(sreshape(permutedims(StridedView(C), linearize(pABinC)),
+    mul!(sreshape(permutedims(StridedView(C), linearize(pC)),
                   (prod(osizeA), prod(osizeB))),
          flag2op(conjA)(sreshape(permutedims(StridedView(A), linearize(pA)),
                                  (prod(osizeA), prod(csizeA)))),

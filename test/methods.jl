@@ -81,6 +81,15 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @test_throws IndexError tensorproduct(A, [:a, :b, :c, :d],
                                               B, [:e, :f, :g, :h],
                                               [:a, :b, :c, :d, :e, :f, :g, :i])
+
+        A = rand(1, 2)
+        B = rand(4, 5)
+        C1 = tensorcontract(A, (-3, -1), :N, B, (-2, -4), :N, (-1, -2, -3, -4))
+        C2 = zeros(2, 4, 1, 5)
+        for i in axes(C2, 1), j in axes(C2, 2), k in axes(C2, 3), l in axes(C2, 4)
+            C2[i, j, k, l] = A[k, i] * B[j, l]
+        end
+        @test C1 ≈ C2
     end
 
     # test in-place methods
