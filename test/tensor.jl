@@ -418,4 +418,24 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
     #         @tensor A[a, b] = B[a, c] * A[c, b] + A[a, b]
     #     end
     # end
+
+    @testset "ncon with conj" begin
+        A = rand(ComplexF64, 2, 2, 2, 2)
+        B = zeros(ComplexF64, 2, 2)
+        for i in axes(A, 2), j in axes(A, 4)
+            for k in axes(A, 1)
+                B[i, j] += A[k, i, k, j]
+            end
+        end
+        B2 = ncon([A], [[1, -1, 1, -2]], [false])
+        @test B2 ≈ B
+        B3 = ncon([A], [[1, -1, 1, -2]], [true])
+        @test B3 ≈ conj(B)
+
+        C = permutedims(A, (1, 4, 2, 3))
+        C2 = ncon([A], [[-1, -3, -4, -2]], [false])
+        @test C2 ≈ C
+        C3 = ncon([A], [[-1, -3, -4, -2]], [true])
+        @test C3 ≈ conj(C)
+    end
 end
