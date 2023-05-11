@@ -8,8 +8,8 @@ function tensoradd!(C::AbstractArray,
     N == sum(length.(pA)) ||
         throw(IndexError("Invalid permutation of length $N: $pA"))
     
-    Base.mightalias(C, A) &&
-        throw(ArgumentError("output tensor must not be aliased with input tensor"))
+    # Base.mightalias(C, A) &&
+    #     throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
     if conjA == :N
         add!(StridedView(C), permutedims(StridedView(A), linearize(pA)), α, β)
