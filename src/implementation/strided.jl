@@ -7,7 +7,7 @@ function tensoradd!(C::AbstractArray,
     N == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
     N == sum(length.(pA)) ||
         throw(IndexError("Invalid permutation of length $N: $pA"))
-    
+
     # Base.mightalias(C, A) &&
     #     throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
@@ -35,9 +35,10 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         throw(IndexError("non-matching output indices in contraction"))
     (length(pC[1]) + length(pC[2]) == ndims(C) && TupleTools.isperm(linearize(pC))) ||
         throw(IndexError("invalid permutation of C of length $(ndims(C)): $pC"))
-    
-    (Base.mightalias(C, A) || Base.mightalias(C, B)) && throw(ArgumentError("output tensor must not be aliased with input tensor"))
-        
+
+    (Base.mightalias(C, A) || Base.mightalias(C, B)) &&
+        throw(ArgumentError("output tensor must not be aliased with input tensor"))
+
     szA = size(A)
     szB = size(B)
     szC = size(C)

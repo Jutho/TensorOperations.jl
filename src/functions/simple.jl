@@ -6,9 +6,13 @@
 tensorcopy(A, IA, IC=IA) = tensorcopy(A, tuple(IA...), tuple(IC...))
 tensorcopy(A, IA, CA::Symbol, IC=IA) = tensorcopy(A, tuple(IA...), CA, tuple(IC...))
 tensoradd(A, IA, B, IB, IC=IA) = tensoradd(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
-tensoradd(A, IA, CA::Symbol, B, IB, CB::Symbol; IC=IA) = tensoradd(A, tuple(IA...), CA, B, tuple(IB...), CB, tuple(IC...))
+function tensoradd(A, IA, CA::Symbol, B, IB, CB::Symbol; IC=IA)
+    return tensoradd(A, tuple(IA...), CA, B, tuple(IB...), CB, tuple(IC...))
+end
 tensortrace(A, IA, IC=unique2(IA)) = tensortrace(A, tuple(IA...), tuple(IC...))
-tensortrace(A, IA, CA::Symbol, IC=unique2(IA)) = tensortrace(A, tuple(IA...), CA, tuple(IC...))
+function tensortrace(A, IA, CA::Symbol, IC=unique2(IA))
+    return tensortrace(A, tuple(IA...), CA, tuple(IC...))
+end
 function tensorcontract(A, IA, B, IB, IC=symdiff(IA, IB))
     return tensorcontract(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
 end

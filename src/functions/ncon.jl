@@ -77,8 +77,6 @@ function contracttree(tensors, network, conjlist, tree)
     A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(symdiff(IA, IB)...)
-    
-    
     C = tensorcontract(A, IA, CA, B, IB, CB, IC)
     return C, IC, :N
 end
