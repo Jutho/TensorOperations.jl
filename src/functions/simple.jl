@@ -40,10 +40,10 @@ average, especially if `Threads.nthreads() > 1`.
 Optionally, the symbol `CA` can be used to specify that the input array should be conjugated.
 """
 function tensorcopy(A, IA::Tuple, CA::Symbol, IC::Tuple=IA)
-    pA = add_indices(IA, IC)
+    pC = add_indices(IA, IC)
     TC = scalartype(A)
-    C = tensoralloc_add(TC, A, pA, CA)
-    return tensoradd!(C, A, pA, CA, one(TC), zero(TC))
+    C = tensoralloc_add(TC, pC, A, CA)
+    return tensoradd!(C, pC, A, CA, one(TC), zero(TC))
 end
 tensorcopy(A, IA::Tuple, IC::Tuple=IA) = tensorcopy(A, IA, :N, IC)
 
@@ -64,11 +64,11 @@ Optionally, the symbols `CA` and `CB` can be used to specify that the input arra
 """
 function tensoradd(A, IA::Tuple, CA::Symbol, B, IB::Tuple, CB::Symbol, IC::Tuple=IA)
     TC = promote_add(scalartype(A), scalartype(B))
-    pA = add_indices(IA, IC)
-    C = tensoralloc_add(TC, A, pA, CA)
-    tensoradd!(C, A, pA, CA, one(TC), zero(TC))
-    pB = add_indices(IB, IC)
-    return tensoradd!(C, B, pB, CB, one(TC), one(TC))
+    pC₁ = add_indices(IA, IC)
+    C = tensoralloc_add(TC, pC₁, A, CA)
+    tensoradd!(C, pC₁, A, CA, one(TC), zero(TC))
+    pC₂ = add_indices(IB, IC)
+    return tensoradd!(C, pC₂, B, CB, one(TC), one(TC))
 end
 tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA) = tensoradd(A, IA, :N, B, IB, :N, IC)
 
@@ -87,7 +87,7 @@ Optionally, the symbol `CA` can be used to specify that the input array should b
 function tensortrace(A, IA::Tuple, CA::Symbol, IC::Tuple)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
     TC = promote_contract(scalartype(A))
-    C = tensoralloc_add(TC, A, pC, CA)
+    C = tensoralloc_add(TC, pC, A, CA)
     return tensortrace!(C, pC, A, (cindA1, cindA2), CA, one(TC), zero(TC))
 end
 tensortrace(A, IA::Tuple, IC::Tuple) = tensortrace(A, IA, :N, IC)

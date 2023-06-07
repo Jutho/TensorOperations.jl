@@ -35,7 +35,7 @@ See also: [`tensorcopy`](@ref)
 """
 function tensoradd!(C, A, IA::Tuple, IC::Tuple, α, β)
     pC = add_indices(IA, IC)
-    return tensoradd!(C, A, pC, :N, α, β)
+    return tensoradd!(C, pC, A, :N, α, β)
 end
 
 """

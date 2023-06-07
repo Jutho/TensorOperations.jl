@@ -106,7 +106,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         initex = quote
             $αsym = $α * $α2
             $TC = promote_type(promote_type(scalartype($src), typeof($αsym)))
-            $dst = tensoralloc_add($TC, $src, $pC, $conjarg, $istemporary)
+            $dst = tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary)
         end
     else
         initex = :($αsym = $α * $α2)
@@ -135,7 +135,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         return quote
             $initex
-            tensoradd!($dst, $src, ($p1, $p2), $conjarg, $α * $α2, $β)
+            tensoradd!($dst, ($p1, $p2), $src, $conjarg, $α * $α2, $β)
             # $dst
         end
     end

@@ -3,17 +3,17 @@
 ===========================================================================================#
 
 """
-    tensoradd!(C, A, pA, conjA, α, β)
+    tensoradd!(C, pC, A, conjA, α=true, β=false)
 
-Implements `C = β * C + α * permutedims(opA(A), pA)` without creating the intermediate
+Implements `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
 temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
 `conjA` equals `:N`.
 Note that the permutation needs to be trivial or `C` must not be aliased with `A`.
 """
-function tensoradd! end
+function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol, α=true, β=false) end
 
 """
-    tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
+    tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α=true, β=false)
 
 Implements `C = β * C + α * permutedims(contract(opA(A), opB(B)), pC)` without creating the
 intermediate temporary, where `A` and `B` are contracted such that the indices `pA[2]` of
@@ -22,10 +22,13 @@ are then permuted according to `pC`. The operation `opA` (`opB`) acts as `conj` 
 (`conjB`) equals `:C` or as the identity if `conjA` (`conjB`) equals `:N`.
 Note that `C` must not be aliased with `A` or `B`.
 """
-function tensorcontract! end
+function tensorcontract!(C, pC::Index2Tuple,
+                         A, pA::Index2Tuple, conjA::Symbol,
+                         B, pB::Index2Tuple, conjB::Symbol,
+                         α=true, β=false) end
 
 """
-    tensortrace!(C, pC, A, pA, conjA, α, β)
+    tensortrace!(C, pC, A, pA, conjA, α=true, β=false)
 
 Implements `C = β * C + α * permutedims(partialtrace(opA(A)), pC)` without creating the
 intermediate temporary, where `A` is partially traced, such that indices in `pA[1]` are
@@ -56,12 +59,12 @@ Obtain the information associated to indices `iA` of tensor `op(A)`, where `op` 
 function tensorstructure end
 
 """
-    tensoradd_structure(A, pA, conjA)
+    tensoradd_structure(pC, A, conjA)
 
 Obtain the structure information of `C`, where `C` would be the output of
-`tensoradd!(C, A, pA, conjA)`.
+`tensoradd!(C, pC, A, conjA)`.
 """
-function tensoradd_structure(A, pA, conjA) end
+function tensoradd_structure(pC, A, conjA) end
 
 """
     tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
@@ -72,12 +75,12 @@ Obtain the structure information of `C`, where `C` would be the output of
 function tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB) end
 
 """
-    tensoradd_type(TC, A, pA, conjA)
+    tensoradd_type(TC, pC, A, conjA)
 
-Obtain `typeof(C)`, where `C` is the result of `tensoradd!(C, A, pA, conjA)` with scalartype
+Obtain `typeof(C)`, where `C` is the result of `tensoradd!(C, pC, A, conjA)` with scalartype
 `TC`.
 """
-function tensoradd_type(TC, A, pA, conjA) end
+function tensoradd_type(TC, pC, A, conjA) end
 
 """
     tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)

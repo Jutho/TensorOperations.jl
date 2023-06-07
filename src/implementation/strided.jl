@@ -1,22 +1,21 @@
 tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
 
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+function tensoradd!(C::AbstractArray, pC::Index2Tuple,
+                    A::AbstractArray, conjA::Symbol,
                     α, β)
-    N = ndims(C)
-    N == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    N == sum(length.(pA)) ||
-        throw(IndexError("Invalid permutation of length $N: $pA"))
+    ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
+    ndims(C) == sum(length.(pC)) ||
+        throw(IndexError("Invalid permutation of length $ndims(C): $pC"))
 
     # Base.mightalias(C, A) &&
     #     throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
     if conjA == :N
-        add!(StridedView(C), permutedims(StridedView(A), linearize(pA)), α, β)
+        add!(StridedView(C), permutedims(StridedView(A), linearize(pC)), α, β)
     elseif conjA == :C
-        add!(StridedView(C), permutedims(conj(StridedView(A)), linearize(pA)), α, β)
+        add!(StridedView(C), permutedims(conj(StridedView(A)), linearize(pC)), α, β)
     elseif conjA == :A
-        add!(StridedView(C), permutedims(adjoint(StridedView(A)), linearize(pA)), α, β)
+        add!(StridedView(C), permutedims(adjoint(StridedView(A)), linearize(pC)), α, β)
     else
         throw(ArgumentError("unknown conjugation flag: $conjA"))
     end
@@ -103,10 +102,10 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
         C_ = C
         _blas_contract!(α, A_, conjA, B_, conjB, β, C_, pA, pB, pC_)
     else
-        C_ = TensorOperations.tensoralloc_add(TC, C, pC_, :N)
+        C_ = TensorOperations.tensoralloc_add(TC, pC_, C, :N)
         pC__ = (_trivtuple(pA[1]), length(pA[1]) .+ _trivtuple(pB[2]))
         _blas_contract!(1, A_, conjA, B_, conjB, 0, C_, pA, pB, pC__)
-        tensoradd!(C, C_, pC, :N, α, β)
+        tensoradd!(C, pC, C_, :N, α, β)
     end
 
     flagA || tensorfree!(A_)
@@ -128,8 +127,8 @@ end
 function makeblascontractable(A, pA, conjA, TC)
     flagA = isblascontractable(A, pA, conjA) && eltype(A) == TC
     if !flagA
-        A_ = TensorOperations.tensoralloc_add(TC, A, pA, conjA)
-        A = tensoradd!(A_, A, pA, conjA, one(TC), zero(TC))
+        A_ = TensorOperations.tensoralloc_add(TC, pA, A, conjA)
+        A = tensoradd!(A_, pA, A, conjA, one(TC), zero(TC))
         conjA = :N
         pA = (_trivtuple(pA[1]), _trivtuple(pA[2]) .+ length(pA[1]))
     end

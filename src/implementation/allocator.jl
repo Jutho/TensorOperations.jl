@@ -6,9 +6,9 @@ tensorop(args...) = +(*(args...), *(args...))
 promote_contract(args...) = Base.promote_op(tensorop, args...)
 promote_add(args...) = Base.promote_op(+, args...)
 
-function tensoralloc_add(TC, A, pA, conjA, istemp=false)
-    ttype = tensoradd_type(TC, A, pA, conjA)
-    structure = tensoradd_structure(A, pA, conjA)
+function tensoralloc_add(TC, pC, A, conjA, istemp=false)
+    ttype = tensoradd_type(TC, pC, A, conjA)
+    structure = tensoradd_structure(pC, A, conjA)
     return tensoralloc(ttype, structure, istemp)::ttype
 end
 
@@ -28,12 +28,12 @@ tensorfree!(C) = nothing
 tensorstructure(A::AbstractArray) = size(A)
 tensorstructure(A::AbstractArray, iA::Int, conjA::Symbol) = size(A, iA)
 
-function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
-    return Array{TC,sum(length.(pA))}
+function tensoradd_type(TC, pC::Index2Tuple, A::AbstractArray, conjA::Symbol)
+    return Array{TC,sum(length.(pC))}
 end
 
-function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
-    return size.(Ref(A), linearize(pA))
+function tensoradd_structure(pC::Index2Tuple, A::AbstractArray, conjA::Symbol)
+    return size.(Ref(A), linearize(pC))
 end
 
 function tensorcontract_type(TC, pC, A::AbstractArray, pA, conjA,
@@ -51,6 +51,8 @@ end
 
 function tensoralloc(ttype, structure, istemp=false)
     C = ttype(undef, structure)
-    isbitstype(scalartype(ttype)) || fill!(C, zero(scalartype(ttype)))
+    if !isbitstype(scalartype(ttype))
+        C = fill!(C, zero(scalartype(ttype)))
+    end
     return C
 end
