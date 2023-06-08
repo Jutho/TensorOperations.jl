@@ -1,3 +1,4 @@
+# verify that every conraction index appears exactly twice, and any other index exactly once
 function _verify_indexorder(network, indexorder)
     allindices = Vector{Any}()
     for ind in network

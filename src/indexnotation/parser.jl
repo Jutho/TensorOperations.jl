@@ -7,6 +7,7 @@ mutable struct TensorParser
     function TensorParser()
         preprocessors = [normalizeindices,
                          expandconj,
+                         groupscalarfactors,
                          nconindexcompletion,
                          extracttensorobjects]
         contractiontreebuilder = defaulttreebuilder
@@ -36,25 +37,26 @@ function (parser::TensorParser)(ex::Expr)
     return ex
 end
 
-function processcontractions(ex::Expr, treebuilder, treesorter)
-    if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
+function processcontractions(ex, treebuilder, treesorter)
+    if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     end
-    ex = Expr(ex.head,
-              map(e -> processcontractions(e, treebuilder, treesorter), ex.args)...)
+    if isa(ex, Expr)
+        args = map(e -> processcontractions(e, treebuilder, treesorter), ex.args)
+        ex = Expr(ex.head, args...)
+    end
     if istensorcontraction(ex) && length(ex.args) > 3
         args = ex.args[2:end]
         network = map(getindices, args)
         for a in getallindices(ex)
             count(a in n for n in network) <= 2 ||
-                throw(ArgumentError("invalid tensor contraction: $ex"))
+                throw(ArgumentError("index $a appears more than twice in tensor contraction: $ex"))
         end
         tree = treebuilder(network)
         ex = treesorter(args, tree)
     end
     return ex
 end
-processcontractions(ex, treebuilder, treesorter) = ex
 
 function defaulttreesorter(args, tree)
     if isa(tree, Int)
@@ -80,13 +82,14 @@ end
 
 # functions for parsing and processing tensor expressions
 function tensorify(ex::Expr)
-    if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
+    if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex.args[3]
     end
     # assignment case
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
-        if isa(rhs, Expr) && rhs.head == :call && rhs.args[1] == :throw
+        # exception handling
+        if isexpr(rhs, :call) && rhs.args[1] == :throw
             return rhs
         end
 
@@ -104,26 +107,21 @@ function tensorify(ex::Expr)
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return Expr(:(=), dst,
-                                instantiate(dst, false, rhs, true, leftind, rightind))
+                    return instantiate(dst, false, rhs, true, leftind, rightind, ExistingTensor)
                 elseif ex.head == :(+=)
-                    return Expr(:(=), dst,
-                                instantiate(dst, true, rhs, 1, leftind, rightind))
+                    return instantiate(dst, true, rhs, 1, leftind, rightind, ExistingTensor)
                 else
-                    return Expr(:(=), dst,
-                                instantiate(dst, true, rhs, -1, leftind, rightind))
+                    return instantiate(dst, true, rhs, -1, leftind, rightind, ExistingTensor)
                 end
             else
-                return Expr(:(=), dst,
-                            instantiate(nothing, false, rhs, true, leftind, rightind,
-                                        false))
+                return instantiate(dst, false, rhs, true, leftind, rightind, NewTensor)
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
                 tempvar = gensym()
                 returnvar = gensym()
                 scalar_expr = quote
-                    $tempvar = $(instantiate(nothing, false, rhs, true, [], [], true))
+                    $(instantiate(tempvar, false, rhs, true, [], [], TemporaryTensor))
                     $returnvar = tensorscalar($tempvar)
                     tensorfree!($tempvar)
                     $returnvar
