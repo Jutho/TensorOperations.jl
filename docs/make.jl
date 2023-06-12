@@ -8,7 +8,7 @@ makedocs(; modules=[TensorOperations],
          pages=["Home" => ["index.md",
                            "indexnotation.md",
                            "functions.md",
-                           "cache.md",
+                           "interface.md",
                            "implementation.md"]])
 
 # Documenter can also automatically deploy documentation to gh-pages.

@@ -37,7 +37,9 @@ to `pC`. The operation `opA` acts as `conj` if `conjA` equals `:C` or as the ide
 `conjA` equals `:N`.
 Note that `C` must not be aliased with `A`.
 """
-function tensortrace! end
+function tensortrace!(C, pC::Index2Tuple,
+                      A, pA::Index2Tuple, conjA::Symbol,
+                      α=true, β=false) end
 
 """
     tensorscalar(C)
@@ -103,7 +105,7 @@ function tensoralloc end
 
 Release the allocated memory of `C`.
 """
-function tensorfree! end
+tensorfree!(C) = nothing
 
 #===========================================================================================
     Utility

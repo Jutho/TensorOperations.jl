@@ -11,14 +11,14 @@ Einstein's summation convention).
 
 ```julia
 using TensorOperations
-α=randn()
-A=randn(5,5,5,5,5,5)
-B=randn(5,5,5)
-C=randn(5,5,5)
-D=zeros(5,5,5)
+α = randn()
+A = randn(5, 5, 5, 5, 5, 5)
+B = randn(5, 5, 5)
+C = randn(5, 5, 5)
+D = zeros(5, 5, 5)
 @tensor begin
-    D[a,b,c] = A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
-    E[a,b,c] := A[a,e,f,c,f,g]*B[g,b,e] + α*C[c,a,b]
+    D[a, b, c] = A[a, e, f, c, f, g] * B[g, b, e] + α * C[c, a, b]
+    E[a, b, c] := A[a, e, f, c, f, g] * B[g, b, e] + α * C[c, a, b]
 end
 ```
 
@@ -32,8 +32,8 @@ with array `B` by contracting its 2nd index with the last index of `B` and its l
 with the first index of `B`. The resulting array has three remaining indices, which
 correspond to the indices `a` and `c` of array `A` and index `b` of array `B` (in that
 order). To this, the array `C` (scaled with `α`) is added, where its first two indices will
-be permuted to fit with the order `a,c,b`. The result will then be stored in array `D`,
-which requires a second permutation to bring the indices in the requested order `a,b,c`.
+be permuted to fit with the order `a, c, b`. The result will then be stored in array `D`,
+which requires a second permutation to bring the indices in the requested order `a, b, c`.
 
 In this example, the labels were specified by arbitrary letters or even longer names. Any
 valid variable name is valid as a label. Note though that these labels are never
@@ -46,19 +46,14 @@ also allowed to use primes (i.e. Julia's `adjoint` operator) to denote different
 including using multiple subsequent primes.
 
 ```julia
-@tensor D[å'',ß,c'] = A[å'',1,-3,c',-3,2]*B[2,ß,1] + α*C[c',å'',ß]
+@tensor D[å'', ß, c'] = A[å'', 1, -3, c', -3, 2] * B[2, ß, 1] + α * C[c', å'', ß]
 ```
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
-tensor operations, i.e. [`TensorOperations.add!`](@ref), [`TensorOperations.trace!`](@ref)
-and [`TensorOperations.contract!`](@ref). Temporaries are created where necessary, but will
-by default be saved to a global cache, so that they can be reused upon a next iteration or
-next call to the function in which the `@tensor` call is used. When experimenting in the
-REPL where every tensor expression is only used a single time, it might be better to use
-[`TensorOperations.disable_cache`](@ref), though no real harm comes from using the cache (except higher
-memory usage). By default, the cache is allowed to take up to the minimum of either one
-gigabyte or 25% of the total machine memory, though this is fully configurable. We refer to
-the section on [Cache for temporaries](@ref) for further details.
+tensor operations, i.e. [`TensorOperations.tensoradd!`](@ref),
+[`TensorOperations.tensortrace!`](@ref) and [`TensorOperations.tensorcontract!`](@ref).
+Temporaries are created where necessary, as these building blocks operate pairwise on the
+input tensors.
 
 Note that the `@tensor` specifier can be put in front of a full block of code, or even in
 front of a function definition, if index expressions are prevalent throughout this block.
@@ -79,25 +74,28 @@ interpreted literally.
 
 ## Contraction order and `@tensoropt` macro
 
-A contraction of several tensors `A[a,b,c,d,e]*B[b,e,f,g]*C[c,f,i,j]*...` is generically
-evaluted as a sequence of pairwise contractions, using Julia's default left to right order,
-i.e. as `( (A[a,b,c,d,e] * B[b,e,f,g]) * C[c,f,i,j]) * ...)`. Explicit parenthesis can be
-used to modify this order. Alternatively, if one respects the so-called
-[NCON](https://arxiv.org/abs/1402.0939) style of specifying indices, i.e. positive integers
-for the contracted indices and negative indices for the open indices, the different factors
-will be reordered and so that the pairwise tensor contractions contract over indices with
-smaller integer label first. For example,
+A contraction of several tensors `A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j] * ...`
+is generically evaluted as a sequence of pairwise contractions, using Julia's default left
+to right order, i.e. as `( (A[a, b, c, d, e] * B[b, e, f, g]) * C[c, f, i, j]) * ...)`.
+Explicit parenthesis can be used to modify this order. Alternatively, if one respects the
+so-called [NCON](https://arxiv.org/abs/1402.0939) style of specifying indices, i.e.
+positive integers for the contracted indices and negative indices for the open indices, the
+different factors will be reordered and so that the pairwise tensor contractions contract
+over indices with smaller integer label first. For example,
 ```julia
-@tensor D[:] := A[-1,3,1,-2,2]*B[3,2,4,-5]*C[1,4,-4,-3]
+@tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
 ```
-will be evaluated as `(A[-1,3,1,-2,2]*C[1,4,-4,-3])*B[3,2,4,-5]`. Furthermore, in that case
-the indices of the output tensor (`D` in this case) do not need to be specified (using `[:]`
-instead), and will be chosen as `(-1,-2,-3,-4,-5)`. Any other index order for the output
-tensor is of course still possible by just explicitly specifying it.
+will be evaluated as `(A[-1, 3, 1, -2, 2] * C[1, 4, -4, -3]) * B[3, 2, 4, -5]`.
+Furthermore, in that case the indices of the output tensor (`D` in this case) do not need
+to be specified (using `[:]` instead), and will be chosen as `(-1, -2, -3, -4, -5)`. Any
+other index order for the output tensor is of course still possible by just explicitly
+specifying it.
 
-A final way to enforce a specific order is by giving the `@tensor` macro a second argument of the form `order=(list of indices)`, e.g.
+A final way to enforce a specific order is by giving the `@tensor` macro a keyword argument of the form `order=(list of indices)`, e.g.
 ```julia
-@tensor D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b] order=(f,e,g)
+@tensor order=(f, e, g) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+# alternative macro syntax:
+@tensor(D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]; order=(f, e, g))
 ```
 This will now first perform the contraction corresponding to the index labeled `f`, i.e.
 the contraction between `A` and `C`. Then, the contraction corresponding to index labeled
@@ -111,16 +109,17 @@ in the future). The optimal contraction order will be determined at compile time
 be hard coded in the expression resulting from the macro expansion. The cost/size of the
 different indices can be specified in various ways, and can be integers or some arbitrary
 polynomial of an abstract variable, e.g. `χ`. In the latter case, the optimization assumes
-the assymptotic limit of large `χ`.
+the asymptotic limit of large `χ`.
 
 ```julia
-@tensoropt D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
-# cost χ for all indices (a,b,c,d,e,f)
-@tensoropt (a,b,c,e) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
-# cost χ for indices a,b,c,e, other indices (d,f) have cost 1
-@tensoropt !(a,b,c,e) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
-# cost 1 for indices a,b,c,e, other indices (d,f) have cost χ
-@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@tensoropt D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+# cost χ for all indices (a, b, c, d, e, f)
+@tensoropt (a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+# cost χ for indices (a, b, c, e), other indices (d, f) have cost 1
+@tensoropt !(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+# cost 1 for indices (a, b, c, e), other indices (d, f) have cost χ
+@tensoropt (a=>χ, b=>χ^2, c=>2*χ, e=>5) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * 
+                                                         C[g, f, b]
 # cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
 ```
 Because of the compile time optimization process, the optimization cannot use run-time
@@ -136,11 +135,15 @@ during compilation by using the alternative macro `@tensoropt_verbose`.
 
 The optimal contraction tree as well as the associated cost can be obtained by
 ```julia
-@optimalcontractiontree D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
+@optimalcontractiontree D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 ```
 where the cost of the indices can be specified in the same various ways as for
 `@tensoropt`. In this case, no contraction is performed and the tensors involved do not
 need to exist.
+
+Finally, this feature is also exposed within the `@tensor` macro through the `opt` keyword
+argument, which can be set to either `true` or any of the cost-specifying expressions
+previously mentioned.
 
 ## Dynamical tensor network contractions with `ncon` and `@ncon`
 
@@ -155,8 +158,8 @@ ncon(list_of_tensor_objects, list_of_index_lists)
 ```
 e.g. the example of above is equivalent to
 ```julia
-@tensor D[:] := A[-1,3,1,-2,2]*B[3,2,4,-5]*C[1,4,-4,-3]
-D ≈ ncon((A,B,C),([-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]))
+@tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
+D ≈ ncon((A, B, C), ([-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]))
 ```
 where the lists of tensor objects and of index lists can be given as a vector or a tuple.
 The `ncon` function necessarily needs to analyze the contraction pattern at runtime, but
@@ -168,25 +171,23 @@ inferred by the Julia compiler.
 
 The full call syntax of the `ncon` method exposed by TensorOperations.jl is
 ```julia
-ncon(tensorlist, indexlist, [conjlist, sym]; order = ..., output = ...)
+ncon(tensorlist, indexlist, [conjlist]; order = ..., output = ...)
 ```
 where the first two arguments are those of above. Let us first discuss the keyword
 arguments. The keyword argument `order` can be used to change the contraction order, i.e.
 by specifying which contraction indices need to be processed first, rather than the
-strictly increasing order `[1,2,...]`. The keyword argument `output` can be used to specify
-the order of the output indices, when it is different from the default `[-1, -2, ...]`.
+strictly increasing order `[1, 2, ...]`. The keyword argument `output` can be used to
+specify the order of the output indices, when it is different from the default
+`[-1, -2, ...]`.
 
 The optional positional argument `conjlist` is a list of `Bool` variables that indicate
 whether the corresponding tensor needs to be conjugated in the contraction. So while
 ```julia
-ncon([A,conj(B),C], [[-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]]) ≈
-    ncon([A,B,C], [[-1,3,1,-2,2], [3,2,4,-5], [1,4,-4,-3]], [false, true, false])
+ncon([A, conj(B), C], [[-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]]) ≈
+    ncon([A, B, C], [[-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]], [false, true, false])
 ```
 the latter has the advantage that conjugating `B` is not an extra step (which creates an
-additional temporary), but is performed at the same time when it is contracted. The fourth
-positional argument `sym`, also optional, can be a constant unique symbol that enables
-`ncon` to hook into the global cache structure for storing and recycling temporaries. When
-it is not specified, the cache cannot be used in any deterministically meaningful way.
+additional temporary), but is performed at the same time when it is contracted.
 
 As an alternative solution to the optional positional arguments, there is also an `@ncon`
 macro. It is just a simple wrapper over an `ncon` call and thus does not analyze the
@@ -196,48 +197,59 @@ indices at compile time, so that they can be fully dynamical. However, it will t
 ```
 into
 ```julia
-ncon(Any[A, B, C], indexlist, [false, true, false], some_unique_sym, order = ..., output = ...)
+ncon(Any[A, B, C], indexlist, [false, true, false]; order = ..., output = ...)
 ```
-so as to get the advantages of cache for temporaries and just-in-time conjugation (pun
-intended) using the familiar looking `ncon` syntax.
+so as to get the advantages of just-in-time conjugation (pun intended) using the familiar
+looking `ncon` syntax.
 
 As a proof of principle, let us study the following method for computing the environment to
 the `W` isometry in a MERA, as taken from [Tensors.net](https://www.tensors.net/mera),
 implemented in three different ways:
 
 ```julia
-function IsoEnvW1(hamAB,hamBA,rhoBA,rhoAB,w,v,u)
-    indList1 = Any[[7,8,-1,9],[4,3,-3,2],[7,5,4],[9,10,-2,11],[8,10,5,6],[1,11,2],[1,6,3]]
-    indList2 = Any[[1,2,3,4],[10,7,-3,6],[-1,11,10],[3,4,-2,8],[1,2,11,9],[5,8,6],[5,9,7]]
-    indList3 = Any[[5,7,3,1],[10,9,-3,8],[-1,11,10],[4,3,-2,2],[4,5,11,6],[1,2,8],[7,6,9]]
-    indList4 = Any[[3,7,2,-1],[5,6,4,-3],[2,1,4],[3,1,5],[7,-2,6]]
-    wEnv = ncon(Any[hamAB,rhoBA,conj(w),u,conj(u),v,conj(v)],indList1) +
-   			ncon(Any[hamBA,rhoBA,conj(w),u,conj(u),v,conj(v)],indList2) +
-   			ncon(Any[hamAB,rhoBA,conj(w),u,conj(u),v,conj(v)],indList3) +
-   			ncon(Any[hamBA,rhoAB,v,conj(v),conj(w)],indList4);
+function IsoEnvW1(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
+    indList1 = Any[[7, 8, -1, 9], [4, 3, -3, 2], [7, 5, 4], [9, 10, -2, 11], [8, 10, 5, 6],
+                   [1, 11, 2], [1, 6, 3]]
+    indList2 = Any[[1, 2, 3, 4], [10, 7, -3, 6], [-1, 11, 10], [3, 4, -2, 8], [1, 2, 11, 9],
+                   [5, 8, 6], [5, 9, 7]]
+    indList3 = Any[[5, 7, 3, 1], [10, 9, -3, 8], [-1, 11, 10], [4, 3, -2, 2], [4, 5, 11, 6],
+                   [1, 2, 8], [7, 6, 9]]
+    indList4 = Any[[3, 7, 2, -1], [5, 6, 4, -3], [2, 1, 4], [3, 1, 5], [7, -2, 6]]
+    wEnv = ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList1) +
+   	       ncon(Any[hamBA, rhoBA, conj(w), u,conj(u), v, conj(v)], indList2) +
+   	       ncon(Any[hamAB, rhoBA, conj(w), u,conj(u), v, conj(v)], indList3) +
+   	       ncon(Any[hamBA, rhoAB, v, conj(v), conj(w)], indList4);
     return wEnv
 end
 
-function IsoEnvW2(hamAB,hamBA,rhoBA,rhoAB,w,v,u)
-    indList1 = Any[[7,8,-1,9],[4,3,-3,2],[7,5,4],[9,10,-2,11],[8,10,5,6],[1,11,2],[1,6,3]]
-    indList2 = Any[[1,2,3,4],[10,7,-3,6],[-1,11,10],[3,4,-2,8],[1,2,11,9],[5,8,6],[5,9,7]]
-    indList3 = Any[[5,7,3,1],[10,9,-3,8],[-1,11,10],[4,3,-2,2],[4,5,11,6],[1,2,8],[7,6,9]]
-    indList4 = Any[[3,7,2,-1],[5,6,4,-3],[2,1,4],[3,1,5],[7,-2,6]]
-    wEnv = @ncon(Any[hamAB,rhoBA,conj(w),u,conj(u),v,conj(v)],indList1) +
-   			@ncon(Any[hamBA,rhoBA,conj(w),u,conj(u),v,conj(v)],indList2) +
-   			@ncon(Any[hamAB,rhoBA,conj(w),u,conj(u),v,conj(v)],indList3) +
-   			@ncon(Any[hamBA,rhoAB,v,conj(v),conj(w)],indList4);
+function IsoEnvW2(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
+    indList1 = Any[[7, 8, -1, 9], [4, 3, -3, 2], [7, 5, 4], [9, 10, -2, 11], [8, 10, 5, 6],
+                   [1, 11, 2], [1, 6, 3]]
+    indList2 = Any[[1, 2, 3, 4], [10, 7, -3, 6], [-1, 11, 10], [3, 4, -2, 8], [1, 2, 11, 9],
+                   [5, 8, 6], [5, 9, 7]]
+    indList3 = Any[[5, 7, 3, 1], [10, 9, -3, 8], [-1, 11, 10], [4, 3, -2, 2], [4, 5, 11, 6],
+                   [1, 2, 8], [7, 6, 9]]
+    indList4 = Any[[3, 7, 2, -1], [5, 6, 4, -3], [2, 1, 4], [3, 1, 5], [7, -2, 6]]
+    wEnv = @ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList1) +
+   	       @ncon(Any[hamBA, rhoBA, conj(w), u, conj(u), v, conj(v)], indList2) +
+   	       @ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList3) +
+   	       @ncon(Any[hamBA, rhoAB, v, conj(v), conj(w)], indList4);
     return wEnv
 end
 
-@tensor function IsoEnvW3(hamAB,hamBA,rhoBA,rhoAB,w,v,u)
-    wEnv[-1,-2,-3] :=
-    	hamAB[7,8,-1,9]*rhoBA[4,3,-3,2]*conj(w[7,5,4])*u[9,10,-2,11]*conj(u[8,10,5,6])*v[1,11,2]*conj(v[1,6,3]) +
-    	hamBA[1,2,3,4]*rhoBA[10,7,-3,6]*conj(w[-1,11,10])*u[3,4,-2,8]*conj(u[1,2,11,9])*v[5,8,6]*conj(v[5,9,7]) +
-    	hamAB[5,7,3,1]*rhoBA[10,9,-3,8]*conj(w[-1,11,10])*u[4,3,-2,2]*conj(u[4,5,11,6])*v[1,2,8]*conj(v[7,6,9]) +
-    	hamBA[3,7,2,-1]*rhoAB[5,6,4,-3]*v[2,1,4]*conj(v[3,1,5])*conj(w[7,-2,6])
+@tensor function IsoEnvW3(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
+    wEnv[-1, -2, -3] := hamAB[7, 8, -1, 9] * rhoBA[4, 3, -3, 2] * conj(w[7, 5, 4]) * 
+                        u[9, 10, -2, 11] * conj(u[8, 10, 5, 6]) * v[1, 11, 2] *
+                        conj(v[1, 6, 3]) +
+                        hamBA[1, 2, 3, 4] * rhoBA[10, 7, -3, 6] * conj(w[-1, 11, 10]) *
+                        u[3, 4, -2, 8] * conj(u[1, 2, 11, 9]) * v[5, 8, 6] *
+                        conj(v[5, 9,7]) +
+    	                hamAB[5, 7, 3, 1] * rhoBA[10, 9, -3, 8] * conj(w[-1, 11, 10]) *
+                        u[4, 3, -2, 2] * conj(u[4, 5, 11, 6]) * v[1, 2, 8] * 
+                        conj(v[7, 6, 9]) +
+    	                hamBA[3, 7, 2, -1] * rhoAB[5, 6, 4, -3] * v[2, 1, 4] * 
+                        conj(v[3, 1, 5]) * conj(w[7, -2, 6])
     return wEnv
-    end
 end
 ```
 All indices appearing in this problem are of size `χ`. For tensors with `ComplexF64` eltype
@@ -275,6 +287,7 @@ also plagued by the runtime analysis of the contraction, but is even worse then
 make the interaction with the cache hurtful rather than advantageous.
 
 ## Multithreading and GPU evaluation of tensor contractions with `@cutensor`
+
 Every index expression will be evaluated as a sequence of elementary tensor operations,
 i.e. permuted additions, partial traces and contractions, which are implemented for strided
 arrays as discussed in [Package features](@ref). In particular, these implementations rely

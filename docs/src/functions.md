@@ -5,7 +5,7 @@ compatibility with older versions of this toolbox. The function-based syntax is 
 required when the contraction pattern is not known at compile time but is rather determined
 dynamically.
 
-These functions come in a mutating and non-mutating version. The mutating versions mimick
+These functions come in a mutating and non-mutating version. The mutating versions mimic
 the argument order of some of the BLAS functions, such as `blascopy!`, `axpy!` and `gemm!`.
 Symbols `A` and `B` always refer to input arrays, whereas `C` is used to denote the array
 where the result will be stored. They also return `C` and are therefore type stable. The

@@ -5,9 +5,10 @@
 ## Table of contents
 
 ```@contents
-Pages = ["index.md", "indexnotation.md", "functions.md", "cache.md", "implementation.md"]
+Pages = ["index.md", "indexnotation.md", "functions.md", "interface.md", "implementation.md"]
 Depth = 4
 ```
+
 ## Installation
 
 Install with the package manager, `pkg> add TensorOperations`.
@@ -31,7 +32,7 @@ Install with the package manager, `pkg> add TensorOperations`.
     vector are supported. This facilitates tensor contractions where one of the operands is
     e.g. a diagonal matrix of singular values or eigenvalues, which are returned as a
     `Vector` by Julia's `eigen` or `svd` method.
-*   Support for `CuArray` objects if used together with CUDA.jl, by relying
+*   Support for `CuArray` objects if used together with [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl), by relying
     on (and thus providing a high level interface into) NVidia's
     [cuTENSOR](https://developer.nvidia.com/cutensor) library.
 *   Implementation can easily be extended to other types, by overloading a small set of
@@ -42,10 +43,6 @@ Install with the package manager, `pkg> add TensorOperations`.
     package wide setting via `enable_blas()` and `disable_blas()`. If BLAS is disabled or
     cannot be applied (e.g. non-matching or non-standard numerical types), Strided.jl is
     also used for the contraction.
-*   A package wide cache for storing temporary arrays that are generated when evaluating
-    complex tensor expressions within the `@tensor` macro (based on the implementation of
-    [LRUCache](https://github.com/JuliaCollections/LRUCache.jl)). By default, the cache is
-    allowed to use up to the minimum of either 1GB or 25% of the total memory.
 
 ## Tensor operations
 
@@ -65,7 +62,7 @@ every more complicated tensor expression is deconstructed.
     array, where the result is a lower-dimensional array. As before, the actual
     implementation is provided by [Strided.jl](https://github.com/Jutho/Strided.jl).
 
-3.  **contraction:** Performs a general contraction of two tensors, where some indices of
+3.  **contraction:** Perform a general contraction of two tensors, where some indices of
     one array are paired with corresponding indices in a second array. This is typically
     handled by first permuting (a.k.a. transposing) and reshaping the two input arrays such
     that the contraction becomes equivalent to a matrix multiplication, which is then

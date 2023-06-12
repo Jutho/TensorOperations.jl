@@ -19,8 +19,6 @@ function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB,
     return tensoralloc(ttype, structure, istemp)::ttype
 end
 
-tensorfree!(C) = nothing
-
 #===========================================================================================
     AbstractArray implementation
 ===========================================================================================#
