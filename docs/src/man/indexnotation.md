@@ -50,8 +50,8 @@ including using multiple subsequent primes.
 ```
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
-tensor operations, i.e. [`TensorOperations.tensoradd!`](@ref),
-[`TensorOperations.tensortrace!`](@ref) and [`TensorOperations.tensorcontract!`](@ref).
+tensor operations, i.e. [`tensoradd!`](@ref),
+[`tensortrace!`](@ref) and [`tensorcontract!`](@ref).
 Temporaries are created where necessary, as these building blocks operate pairwise on the
 input tensors.
 

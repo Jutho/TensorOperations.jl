@@ -3,7 +3,7 @@
 The `@tensor` macro rewrites tensor operations in terms of basic building blocks, such that any tensor type that implements the following interface can be supported.
 In these methods, `C` will indicate an output tensor which is changed in-place, while `A` and `B` denote input tensors that are left unaltered.
 `pC`, `pA` and `pB` denote an `Index2Tuple`, a tuple of two tuples that represents a permutation and partition of the original tensor indices.
-Finally, `conjA` and `conjB` are symbols that are used to indicate if the input tensor should be conjugated (`:C`) or used as-is (`:N`)
+Finally, `conjA` and `conjB` are symbols that are used to indicate if the input tensor should be conjugated (`:C`) or used as-is (`:N`).
 
 ## Operations
 
