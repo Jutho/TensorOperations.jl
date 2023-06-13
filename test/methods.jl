@@ -9,11 +9,11 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         A = randn(Float64, (3, 5, 4, 6))
         p = (3, 1, 4, 2)
         C1 = permutedims(A, p)
-        C2 = @inferred tensorcopy(A, (1:4...,), (p...,))
+        C2 = @inferred tensorcopy((p...,), A, (1:4...,))
         @test C1 ≈ C2
         @test C1 ≈ ncon(Any[A], Any[[-2, -4, -1, -3]])
-        @test_throws IndexError tensorcopy(A, 1:3, 1:4)
-        @test_throws IndexError tensorcopy(A, [1, 2, 2, 4], 1:4)
+        @test_throws IndexError tensorcopy(1:4, A, 1:3)
+        @test_throws IndexError tensorcopy(1:4, A, [1, 2, 2, 4])
     end
 
     @testset "tensoradd" begin
@@ -39,7 +39,7 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @test C1 ≈ C2
         @test C1 ≈ ncon(Any[A], Any[[-1, 1, 1]])
         A = randn(Float64, (3, 20, 5, 3, 20, 4, 5))
-        C1 = @inferred tensortrace(A, (:a, :b, :c, :d, :b, :e, :c), (:e, :a, :d))
+        C1 = @inferred tensortrace((:e, :a, :d), A, (:a, :b, :c, :d, :b, :e, :c))
         C2 = zeros(4, 3, 3)
         for i1 in 1:4, i2 in 1:3, i3 in 1:3
             for j1 in 1:20, j2 in 1:5
@@ -53,10 +53,10 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
     @testset "tensorcontract" begin
         A = randn(Float64, (3, 20, 5, 3, 4))
         B = randn(Float64, (5, 6, 20, 3))
-        C1 = @inferred tensorcontract(A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g),
-                                      (:a, :g, :e, :d, :f))
-        C2 = @inferred tensorcontract(A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g),
-                                      (:a, :g, :e, :d, :f))
+        C1 = @inferred tensorcontract((:a, :g, :e, :d, :f),
+                                      A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g))
+        C2 = @inferred tensorcontract((:a, :g, :e, :d, :f),
+                                      A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g))
         C3 = zeros(3, 3, 4, 3, 6)
         for a in 1:3, b in 1:20, c in 1:5, d in 1:3, e in 1:4, f in 1:6, g in 1:3
             C3[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
@@ -71,20 +71,19 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
     @testset "tensorproduct" begin
         A = randn(Float64, (5, 5, 5, 5))
         B = rand(ComplexF64, (5, 5, 5, 5))
-        C1 = reshape((@inferred tensorproduct(A, (1, 2, 3, 4), B, (5, 6, 7, 8),
-                                              (1, 2, 5, 6, 3, 4, 7, 8))),
+        C1 = reshape((@inferred tensorproduct((1, 2, 5, 6, 3, 4, 7, 8),
+                                              A, (1, 2, 3, 4), B, (5, 6, 7, 8))),
                      (5 * 5 * 5 * 5, 5 * 5 * 5 * 5))
         C2 = kron(reshape(B, (25, 25)), reshape(A, (25, 25)))
         @test C1 ≈ C2
         @test_throws IndexError tensorproduct(A, [:a, :b, :c, :d],
                                               B, [:d, :e, :f, :g])
-        @test_throws IndexError tensorproduct(A, [:a, :b, :c, :d],
-                                              B, [:e, :f, :g, :h],
-                                              [:a, :b, :c, :d, :e, :f, :g, :i])
+        @test_throws IndexError tensorproduct([:a, :b, :c, :d, :e, :f, :g, :i],
+                                              A, [:a, :b, :c, :d], B, [:e, :f, :g, :h])
 
         A = rand(1, 2)
         B = rand(4, 5)
-        C1 = tensorcontract(A, (-3, -1), :N, B, (-2, -4), :N, (-1, -2, -3, -4))
+        C1 = tensorcontract((-1, -2, -3, -4), A, (-3, -1), :N, B, (-2, -4), :N)
         C2 = zeros(2, 4, 1, 5)
         for i in axes(C2, 1), j in axes(C2, 2), k in axes(C2, 3), l in axes(C2, 4)
             C2[i, j, k, l] = A[k, i] * B[j, l]
@@ -103,8 +102,8 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         p = (3, 1, 4, 2)
         Cbig = zeros(ComplexF64, (50, 50, 50, 50))
         C = view(Cbig, 13 .+ (0:6), 11 .+ 4 * (0:9), 15 .+ 4 * (0:8), 4 .+ 3 * (0:6))
-        Acopy = tensorcopy(A, 1:4, 1:4)
-        Ccopy = tensorcopy(C, 1:4, 1:4)
+        Acopy = tensorcopy(A, 1:4)
+        Ccopy = tensorcopy(C, 1:4)
         tensorcopy!(C, A, 1:4, p)
         tensorcopy!(Ccopy, Acopy, 1:4, p)
         @test C ≈ Ccopy
@@ -119,8 +118,8 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         p = (3, 1, 4, 2)
         Cbig = zeros(ComplexF64, (50, 50, 50, 50))
         C = view(Cbig, 13 .+ (0:6), 11 .+ 4 * (0:9), 15 .+ 4 * (0:8), 4 .+ 3 * (0:6))
-        Acopy = tensorcopy(A, 1:4, p)
-        Ccopy = tensorcopy(C, 1:4, 1:4)
+        Acopy = tensorcopy(p, A, 1:4)
+        Ccopy = tensorcopy(1:4, C, 1:4)
         α = randn(Float64)
         β = randn(Float64)
         tensoradd!(C, A, 1:4, p, α, β)

@@ -2,143 +2,200 @@
 #
 # Method-based access to tensor operations using simple definitions.
 
-# type unstable; better use tuples instead
-tensorcopy(A, IA, IC=IA) = tensorcopy(A, tuple(IA...), tuple(IC...))
-tensorcopy(A, IA, CA::Symbol, IC=IA) = tensorcopy(A, tuple(IA...), CA, tuple(IC...))
-tensoradd(A, IA, B, IB, IC=IA) = tensoradd(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
-function tensoradd(A, IA, CA::Symbol, B, IB, CB::Symbol; IC=IA)
-    return tensoradd(A, tuple(IA...), CA, B, tuple(IB...), CB, tuple(IC...))
-end
-tensortrace(A, IA, IC=unique2(IA)) = tensortrace(A, tuple(IA...), tuple(IC...))
-function tensortrace(A, IA, CA::Symbol, IC=unique2(IA))
-    return tensortrace(A, tuple(IA...), CA, tuple(IC...))
-end
-function tensorcontract(A, IA, B, IB, IC=symdiff(IA, IB))
-    return tensorcontract(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
-end
-function tensorcontract(A, IA, CA::Symbol, B, IB, CB::Symbol, IC=symdiff(IA, IB))
-    return tensorcontract(A, tuple(IA...), CA, B, tuple(IB...), CB, tuple(IC...))
-end
-function tensorproduct(A, IA, B, IB, IC=vcat(IA, IB))
-    return tensorproduct(A, tuple(IA...), B, tuple(IB...), tuple(IC...))
-end
-function tensorproduct(A, IA, CA::Symbol, B, IB, CB::Symbol, IC=vcat(IA, IB))
-    return tensorproduct(A, tuple(IA...), CA, B, tuple(IB...), CB, tuple(IC...))
-end
-
 """
-    tensorcopy(A, IA, [CA], IC = IA)
+    tensorcopy([IC=IA], A, IA, [conjA::Symbol=:N, [α::Number=true]])
 
 Creates a copy of `A`, where the dimensions of `A` are assigned indices from the
 iterable `IA` and the indices of the copy are contained in `IC`. Both iterables
-should contain the same elements in a different order.
+should contain the same elements, optionally in a different order.
 
-The result of this method is equivalent to `permutedims(A, p)` where p is the permutation
-such that `IC = IA[p]`. The implementation of `tensorcopy` is however more efficient on
-average, especially if `Threads.nthreads() > 1`.
+The result of this method is equivalent to `α * permutedims(A, p)` where `p` is the
+permutation such that `IC = IA[p]`. The implementation of `tensorcopy` is however more
+efficient on average, especially if `Threads.nthreads() > 1`.
 
-Optionally, the symbol `CA` can be used to specify that the input array should be conjugated.
+Optionally, the symbol `conjA` can be used to specify whether the input tensor should be
+conjugated (`:C`) or not (`:N`).
+
+See also [`tensorcopy!`](@ref).
 """
-function tensorcopy(A, IA::Tuple, CA::Symbol, IC::Tuple=IA)
+function tensorcopy(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=true)
     pC = add_indices(IA, IC)
-    TC = scalartype(A)
-    C = tensoralloc_add(TC, pC, A, CA)
-    return tensoradd!(C, pC, A, CA, one(TC), zero(TC))
+    TC = promote_add(scalartype(A), scalartype(α))
+    C = tensoralloc_add(TC, pC, A, conjA)
+    return tensoradd!(C, pC, A, conjA, α, zero(TC))
 end
-tensorcopy(A, IA::Tuple, IC::Tuple=IA) = tensorcopy(A, IA, :N, IC)
+# default `IC`
+function tensorcopy(A, IA, conjA::Symbol=:N, α::Number=true)
+    return tensorcopy(tuple(IA...), A, tuple(IA...), conjA, α)
+end
+# implement for iterables
+function tensorcopy(IC, A, IA, conjA::Symbol=:N, α::Number=true)
+    return tensorcopy(tuple(IC...), A, tuple(IA...), conjA, α)
+end
 
 """
-    tensoradd(A, IA, [CA], B, IB, [CB], IC = IA)
+    tensoradd([IC=IA], A, IA, [conjA::Symbol], B, IB, [conjB::Symbol], [α::Number=true, [β::Number=true]])
 
 Returns the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
 the result of this method is equivalent to
+`α * permutedims(A, pA) + β * permutedimes(B, pB)` where `pA` (`pB`) is the permutation such
+that `IC = IA[pA]` (`IB[pB]`). The implementation of `tensoradd` is however more efficient
+on average, as the temporary permuted arrays are not created.
 
-```julia
-tensorcopy(A, IA, IC) + tensorcopy(B, IB, IC)
-```
+Optionally, the symbols `conjA` and `conjB` can be used to specify whether the input tensors
+should be conjugated (`:C`) or not (`:N`).
 
-but without creating the temporary permuted arrays.
-
-Optionally, the symbols `CA` and `CB` can be used to specify that the input arrays should be conjugated.
+See also [`tensoradd!`](@ref).
 """
-function tensoradd(A, IA::Tuple, CA::Symbol, B, IB::Tuple, CB::Symbol, IC::Tuple=IA)
-    TC = promote_add(scalartype(A), scalartype(B))
+function tensoradd(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple, conjB::Symbol,
+                   α::Number=true, β::Number=true)
+    TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
     pC₁ = add_indices(IA, IC)
-    C = tensoralloc_add(TC, pC₁, A, CA)
-    tensoradd!(C, pC₁, A, CA, one(TC), zero(TC))
+    C = tensoralloc_add(TC, pC₁, A, conjA)
+    tensoradd!(C, pC₁, A, conjA, α, false)
     pC₂ = add_indices(IB, IC)
-    return tensoradd!(C, pC₂, B, CB, one(TC), one(TC))
+    return tensoradd!(C, pC₂, B, conjB, β, true)
 end
-tensoradd(A, IA::Tuple, B, IB::Tuple, IC::Tuple=IA) = tensoradd(A, IA, :N, B, IB, :N, IC)
+# default `IC`
+function tensoradd(A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true,
+                   β::Number=true)
+    return tensoradd(tuple(IA...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β)
+end
+# default `conjA` and `conjB`
+function tensoradd(IC, A, IA, B, IB, α::Number=true, β::Number=true)
+    return tensoradd(IC, A, tuple(IA...), :N, B, tuple(IB...), :N, α, β)
+end
+# default `IC`, `conjA` and `conjB`
+function tensoradd(A, IA, B, IB, α::Number=true, β::Number=true)
+    return tensoradd(tuple(IA...), A, tuple(IA...), B, tuple(IB...), α, β)
+end
+# iterables
+function tensoradd(IC, A, IA, conjA, B, IB, conjB, α::Number=true, β::Number=true)
+    return tensoradd(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β)
+end
 
 """
-    tensortrace(A, IA, [CA], [IC])
+    tensortrace([IC], A, IA, [conjA::Symbol], [α::Number=true])
 
-Trace or contract pairs of indices of array `A`, by assigning them an identical
-indices in the iterable `IA`. The untraced indices, which are assigned a unique index,
-can be reordered according to the optional argument `IC`. The default value corresponds
-to the order in which they appear. Note that only pairs of indices can be contracted,
-so that every index in `IA` can appear only once (for an untraced index) or twice
-(for an index in a contracted pair).
+Trace or contract pairs of indices of tensor `A`, by assigning them identical indices in the
+iterable `IA`. The untraced indices, which are assigned a unique index, can be reordered
+according to the optional argument `IC`. The default value corresponds to the order in which
+they appear. Note that only pairs of indices can be contracted, so that every index in `IA`
+can appear only once (for an untraced index) or twice (for an index in a contracted pair).
 
-Optionally, the symbol `CA` can be used to specify that the input array should be conjugated.
+Optionally, the symbol `conjA` can be used to specify that the input tensor should be
+conjugated.
+
+See also [`tensortrace!`](@ref).
 """
-function tensortrace(A, IA::Tuple, CA::Symbol, IC::Tuple)
+function tensortrace(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=true)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
-    TC = promote_contract(scalartype(A))
-    C = tensoralloc_add(TC, pC, A, CA)
-    return tensortrace!(C, pC, A, (cindA1, cindA2), CA, one(TC), zero(TC))
+    TC = promote_contract(scalartype(A), scalartype(α))
+    C = tensoralloc_add(TC, pC, A, conjA)
+    return tensortrace!(C, pC, A, (cindA1, cindA2), conjA, α, zero(TC))
 end
-tensortrace(A, IA::Tuple, IC::Tuple) = tensortrace(A, IA, :N, IC)
+# default `IC`
+function tensortrace(A, IA, conjA::Symbol, α::Number=true)
+    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), conjA, α)
+end
+# default `conjA`
+tensortrace(IC, A, IA, α::Number=true) = tensortrace(tuple(IC...), A, tuple(IA...), :N, α)
+# default `IC` and `conjA`
+function tensortrace(A, IA, α::Number=true)
+    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), :N, α)
+end
+# iterables
+function tensortrace(IC, A, IA, conjA::Symbol, α::Number=true)
+    return tensortrace(tuple(IC...), A, tuple(IA...), conjA, α)
+end
 
 """
-    tensorcontract(A, IA, [CA], B, IB, [CB], IC)
+    tensorcontract([IC], A, IA, [conjA::Symbol], B, IB, [conjB::Symbol], [α::Number=true])
 
-Contract indices of array `A` with corresponding indices in array `B` by assigning
+Contract indices of tensor `A` with corresponding indices in tensor `B` by assigning
 them identical labels in the iterables `IA` and `IB`. The indices of the resulting
-array correspond to the indices that only appear in either `IA` or `IB` and can be
+tensor correspond to the indices that only appear in either `IA` or `IB` and can be
 ordered by specifying the optional argument `IC`. The default is to have all open
-indices of array `A` followed by all open indices of array `B`. Note that inner
-contractions of an array should be handled first with `tensortrace`, so that every
-label can appear only once in `IA` or `IB` seperately, and once (for open
-index) or twice (for contracted index) in the union of `IA` and `IB`.
+indices of `A` followed by all open indices of `B`. Note that inner contractions of an array
+should be handled first with `tensortrace`, so that every label can appear only once in `IA`
+or `IB` seperately, and once (for an open index) or twice (for a contracted index) in the
+union of `IA` and `IB`.
 
 The contraction can be performed by a native Julia algorithm without creating any
-temporaries, or by first permuting the arrays such that the contraction becomes equivalent
+temporaries, or by first permuting the tensors such that the contraction becomes equivalent
 to a matrix product, which is then performed by BLAS. The latter is typically faster for
-large arrays. The choice of method is globally controlled by the methods
-[`enable_blas()`](@ref) and [`disable_blas()`](@ref).
+large arrays with `BlasFloat` elements, while the former offers more flexibility when these
+conditions are not met. The choice of method is globally controlled by the methods
+[`enable_blas()`](@ref) and [`disable_blas()`](@ref), but the native algorithm is always
+used when BLAS is not available.
 
-Optionally, the symbols `CA` and `CB` can be used to specify that the input arrays should be conjugated.
+Optionally, the symbols `conjA` and `conjB` can be used to specify that the input tensors
+should be conjugated.
+
+See also [`tensorcontract!`](@ref).
 """
-function tensorcontract(A, IA::Tuple, CA::Symbol, B, IB::Tuple, CB::Symbol, IC::Tuple)
+function tensorcontract(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple, conjB::Symbol,
+                        α::Number=true)
     pA, pB, pC = contract_indices(IA, IB, IC)
-    TC = promote_contract(scalartype(A), scalartype(B))
-    C = tensoralloc_contract(TC, pC, A, pA, CA, B, pB, CB)
-    return tensorcontract!(C, pC, A, pA, CA, B, pB, CB, one(TC), zero(TC))
+    TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
+    C = tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB)
+    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, zero(TC))
 end
-function tensorcontract(A, IA::Tuple, B, IB::Tuple, IC::Tuple)
-    return tensorcontract(A, IA, :N, B, IB, :N, IC)
+# default `IC`
+function tensorcontract(A, IA, conjA, B, IB, conjB, α::Number=true)
+    return tensorcontract(symdiff(tuple(IA...), tuple(IB...)), A, tuple(IA...), conjA, B,
+                          tuple(IB...), conjB, α)
+end
+# default `conjA` and `conjB`
+function tensorcontract(IC, A, IA, B, IB, α::Number=true)
+    return tensorcontract(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α)
+end
+# default `IC`, `conjA` and `conjB`
+function tensorcontract(A, IA, B, IB, α::Number=true)
+    return tensorcontract(symdiff(tuple(IA...), tuple(IB...)), A, tuple(IA...), :N, B,
+                          tuple(IB...), :N, α)
+end
+# iterables
+function tensorcontract(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true)
+    return tensorcontract(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α)
 end
 
 """
-    tensorproduct(A, IA, [CA], B, IB, [CB], IC = (IA..., IB...))
+    tensorproduct([IC], A, IA, [conjA], B, IB, [conjB], [α::Number=true])
 
-Computes the tensor product of two arrays `A` and `B`, i.e. returns a new array `C`
-with `ndims(C) = ndims(A)+ndims(B)`. The indices of the output tensor are related to
-those of the input tensors by the pattern specified by the indices. Essentially,
-this is a special case of `tensorcontract` with no indices being contracted over.
-This method checks whether the indices indeed specify a tensor product instead of
-a genuine contraction.
+Computes the tensor product (outer product) of two tensors `A` and `B`, i.e. returns a new
+tensor `C` with `ndims(C) = ndims(A) + ndims(B)`. The indices of the output tensor are
+related to those of the input tensors by the pattern specified by the indices. Essentially,
+this is a special case of [`tensorcontract`](@ref) with no indices being contracted over.
+This method checks whether the indices indeed specify a tensor product instead of a genuine
+contraction.
 
-Optionally, the symbols `CA` and `CB` can be used to specify that the input arrays should be conjugated.
+Optionally, the symbols `conjA` and `conjB` can be used to specify that the input tensors
+should be conjugated.
+
+See also [`tensorproduct!`](@ref) and [`tensorcontract`](@ref).
 """
-function tensorproduct(A, IA::Tuple, CA::Symbol, B, IB::Tuple, CB::Symbol,
-                       IC::Tuple=(IA..., IB...))
+function tensorproduct(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple, conjB::Symbol,
+                       α::Number=true)
     isempty(intersect(IA, IB)) || throw(IndexError("not a valid tensor product"))
-    return tensorcontract(A, IA, CA, B, IB, CB, IC)
+    return tensorcontract(IC, A, IA, conjA, B, IB, conjB, α)
 end
-function tensorproduct(A, IA::Tuple, B, IB::Tuple, IC::Tuple=(IA..., IB...))
-    return tensorproduct(A, IA, :N, B, IB, :N, IC)
+# default `IC`
+function tensorproduct(A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true)
+    return tensorproduct(vcat(tuple(IA...), tuple(IB...)), A, tuple(IA...), conjA, B,
+                         tuple(IB...), conjB, α)
+end
+# default `conjA` and `conjB`
+function tensorproduct(IC, A, IA, B, IB, α::Number=true)
+    return tensorproduct(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α)
+end
+# default `IC`, `conjA` and `conjB`
+function tensorproduct(A, IA, B, IB, α::Number=true)
+    return tensorproduct(vcat(tuple(IA...), tuple(IB...)), A, tuple(IA...), :N, B,
+                         tuple(IB...), :N, α)
+end
+# iterables
+function tensorproduct(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true)
+    return tensorproduct(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α)
 end

@@ -53,9 +53,9 @@ function ncon(tensors, network,
 
     if length(tensors) == 1
         if length(output) == length(network[1])
-            return tensorcopy(tensors[1], network[1], conjlist[1] ? :C : :N, output)
+            return tensorcopy(output, tensors[1], network[1], conjlist[1] ? :C : :N)
         else
-            return tensortrace(tensors[1], network[1], conjlist[1] ? :C : :N, output)
+            return tensortrace(output, tensors[1], network[1], conjlist[1] ? :C : :N)
         end
     end
 
@@ -66,7 +66,7 @@ function ncon(tensors, network,
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(output...)
 
-    return tensorcontract(A, IA, CA, B, IB, CB, IC)
+    return tensorcontract(IC, A, IA, CA, B, IB, CB)
 end
 
 function contracttree(tensors, network, conjlist, tree)
@@ -77,6 +77,6 @@ function contracttree(tensors, network, conjlist, tree)
     A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(symdiff(IA, IB)...)
-    C = tensorcontract(A, IA, CA, B, IB, CB, IC)
+    C = tensorcontract(IC, A, IA, CA, B, IB, CB)
     return C, IC, :N
 end
