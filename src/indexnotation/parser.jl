@@ -107,11 +107,13 @@ function tensorify(ex::Expr)
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return instantiate(dst, false, rhs, true, leftind, rightind, ExistingTensor)
+                    return instantiate(dst, false, rhs, true, leftind, rightind,
+                                       ExistingTensor)
                 elseif ex.head == :(+=)
                     return instantiate(dst, true, rhs, 1, leftind, rightind, ExistingTensor)
                 else
-                    return instantiate(dst, true, rhs, -1, leftind, rightind, ExistingTensor)
+                    return instantiate(dst, true, rhs, -1, leftind, rightind,
+                                       ExistingTensor)
                 end
             else
                 return instantiate(dst, false, rhs, true, leftind, rightind, NewTensor)

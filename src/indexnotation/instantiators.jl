@@ -12,14 +12,11 @@ function instantiate_scalartype(ex::Expr)
         else
             return instantiate_scalartype(ex.args[2])
         end
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
+    elseif isexpr(ex, :call, 3) && ex.args[1] == :* &&
            istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
-        return Expr(:call, :promote_contract, 
+        return Expr(:call, :promote_contract,
                     map(instantiate_scalartype, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :*
-        return Expr(:call, :(Base.promote_op), :*,
-                    map(instantiate_scalartype, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] ∈ (:/, :\)
+    elseif ex.head == :call && ex.args[1] ∈ (:/, :\, :*)
         return Expr(:call, :(Base.promote_op), ex.args[1],
                     map(instantiate_scalartype, ex.args[2:end])...)
     elseif ex.head == :call && ex.args[1] == :conj
@@ -60,7 +57,7 @@ function simplify_scalarmul(exa, exb)
         return exa
     end
     if exa isa Number && exb isa Number
-        return exa*exb
+        return exa * exb
     end
     if exa isa Number && isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
         return Expr(:call, :*, exa * exb.args[2], exb.args[3:end]...)
@@ -74,12 +71,14 @@ function simplify_scalarmul(exa, exb)
     if exb isa Number
         return Expr(:call, :*, exb, exa)
     end
-    if isexpr(exa, :call) && exa.args[1] == :* && exa.args[2] isa Number && isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
-        return Expr(:call, :*, exa.args[2]*exb.args[2], exa.args[3:end]..., exb.args[3:end]...)
+    if isexpr(exa, :call) && exa.args[1] == :* && exa.args[2] isa Number &&
+       isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
+        return Expr(:call, :*, exa.args[2] * exb.args[2], exa.args[3:end]...,
+                    exb.args[3:end]...)
     end
     return Expr(:call, :*, exa, exb)
 end
-    
+
 @enum AllocationStrategy ExistingTensor NewTensor TemporaryTensor
 function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
                      alloc::AllocationStrategy)
@@ -101,8 +100,8 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
         return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc)
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
            istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
-           α′ = simplify_scalarmul(α, ex.args[3])
-           return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
+        α′ = simplify_scalarmul(α, ex.args[3])
+        return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
     end
     throw(ArgumentError("problem with parsing $ex"))
 end
@@ -123,7 +122,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         Tval = (α === true) ? instantiate_scalartype(ex) :
                instantiate_scalartype(Expr(:call, :*, α, ex))
         out = Expr(:block, Expr(:(=), TC, Tval),
-                   :($dst = tensoralloc_add($TC, $src, $pC, $conjarg, $istemporary)))
+                   :($dst = tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary)))
     else
         out = Expr(:block)
     end
@@ -148,7 +147,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
-        push!(out.args, :($dst = tensoradd!($dst, $src, $pC, $conjarg,  $α′, $β)))
+        push!(out.args, :($dst = tensoradd!($dst, $pC, $src, $conjarg, $α′, $β)))
         return out
     end
 end
@@ -241,8 +240,8 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     end
     if alloc ∈ (NewTensor, TemporaryTensor)
         TCsym = gensym("T_" * string(dst))
-        TCval = Expr(:call, :(Base.promote_op), :(TensorOperations.contract_op),
-                     Expr(:call, :scalartype, A), Expr(:call, :scalartype, B))
+        TCval = Expr(:call, :promote_contract, Expr(:call, :scalartype, A),
+                     Expr(:call, :scalartype, B))
         if α !== true
             TCval = Expr(:call, :(Base.promote_op), :*, instantiate_scalartype(α), TCval)
         end

@@ -1,26 +1,26 @@
 abstract type TensorExpr end
 
 struct LinearCombination <: TensorExpr
-    terms
-    stype
+    terms::Any
+    stype::Any
 end
 struct GeneralTensor <: TensorExpr
-    object
-    leftind
-    rightind
-    scalar
-    conj
-    stype
+    object::Any
+    leftind::Any
+    rightind::Any
+    scalar::Any
+    conj::Any
+    stype::Any
 end
 struct TensorContraction <: TensorExpr
-    factor1
-    factor2
-    scalar
-    scalartype
+    factor1::Any
+    factor2::Any
+    scalar::Any
+    scalartype::Any
 end
 struct ScalarExpr
-    expr
-    scalartype
+    expr::Any
+    scalartype::Any
 end
 
 function Base.:*(s₁::ScalarExpr, s₂::ScalarExpr)
@@ -50,36 +50,37 @@ function Base.:*(t::LinearCombination, s::ScalarExpr)
 end
 function Base.:*(s::ScalarExpr, t::TensorContraction)
     scalar = (t.scalar === true) ? s : s * t.scalar
-    scalartype = (t.scalar === true) ? s.scalartype : Expr(:call, :(Base.promote_op), :*, s.scalartype, t.scalartype)
+    return scalartype = (t.scalar === true) ? s.scalartype :
+                        Expr(:call, :(Base.promote_op), :*, s.scalartype, t.scalartype)
 end
 function Base.:*(t::TensorContraction, s::ScalarExpr)
     scalar = (t.scalar === true) ? s : t.scalar * s
-    scalartype = (t.scalar === true) ? s.scalartype : Expr(:call, :(Base.promote_op), :*, t.scalartype, s.scalartype)
+    return scalartype = (t.scalar === true) ? s.scalartype :
+                        Expr(:call, :(Base.promote_op), :*, t.scalartype, s.scalartype)
 end
 function Base.:*(t₁::GeneralTensor, t₂::GeneralTensor)
-    
     scalar = (t.scalar === true) ? s : s * t.scalar
-    scalartype = (t.scalar === true) ? s.scalartype : Expr(:call, :(Base.promote_op), :*, s.scalartype, t.scalartype)
+    return scalartype = (t.scalar === true) ? s.scalartype :
+                        Expr(:call, :(Base.promote_op), :*, s.scalartype, t.scalartype)
 end
 function Base.:*(t::TensorContraction, s::ScalarExpr)
     scalar = (t.scalar === true) ? s : t.scalar * s
-    scalartype = (t.scalar === true) ? s.scalartype : Expr(:call, :(Base.promote_op), :*, t.scalartype, s.scalartype)
+    return scalartype = (t.scalar === true) ? s.scalartype :
+                        Expr(:call, :(Base.promote_op), :*, t.scalartype, s.scalartype)
 end
-
-
 
 ScalarExpr(s::Number) = ScalarExpr(s, scalartype(s))
 ScalarExpr(ex::Expr) = ScalarExpr(ex, Expr(:call, :scalartype, ex))
 
-
-
-
 function GeneralTensor(ex::Expr)
     object, leftind, rightind, scalar, conj = decomposegeneraltensor(ex)
     if scalar === true
-        return GeneralTensor(object, leftind, rightind, scalar, conj, :(scalartype($object)))
+        return GeneralTensor(object, leftind, rightind, scalar, conj,
+                             :(scalartype($object)))
     else
-        return GeneralTensor(object, leftind, rightind, scalar, conj, :(Base.promote_op(:*, scalartype($scalar), scalartype($object))))
+        return GeneralTensor(object, leftind, rightind, scalar, conj,
+                             :(Base.promote_op(:*, scalartype($scalar),
+                                               scalartype($object))))
     end
 end
 function LinearCombination(ex::Expr)
@@ -97,11 +98,9 @@ function LinearCombination(ex::Expr)
     end
 end
 function TensorContraction(ex:Expr)
-
-
+end
 
 function buildgraph(ex::Expr)
     if isgeneraltensor(ex)
-
     end
 end
