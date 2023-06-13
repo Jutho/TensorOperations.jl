@@ -8,14 +8,13 @@ function instantiate_scalartype(ex::Expr)
                     Expr(:call, :scalartype, α))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         if length(ex.args) > 2
-            return Expr(:call, :(Base.promote_op), :+,
-                        map(instantiate_scalartype, ex.args[2:end])...)
+            return Expr(:call, :promote_add, map(instantiate_scalartype, ex.args[2:end])...)
         else
             return instantiate_scalartype(ex.args[2])
         end
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
            istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
-        return Expr(:call, :(Base.promote_op), :(TensorOperations.contract_op),
+        return Expr(:call, :promote_contract, 
                     map(instantiate_scalartype, ex.args[2:end])...)
     elseif ex.head == :call && ex.args[1] == :*
         return Expr(:call, :(Base.promote_op), :*,
