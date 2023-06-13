@@ -55,22 +55,8 @@ end
 
 # Process index cost specification for @tensoropt and friends
 function parsecost(ex::Expr)
-    if ex.head == :call && ex.args[1] == :*
-        return *(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :+
-        return +(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :-
-        return -(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :^
-        return ^(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :/
-        return /(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :big
-        return big(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :float
-        return float(map(parsecost, ex.args[2:end])...)
-    elseif ex.head == :call && ex.args[1] == :Int128
-        return Int128(map(parsecost, ex.args[2:end])...)
+    if ex.head == :call && ex.args[1] ∈ (:*, :+, :-, :^, :/, :big, :float, :Int128)
+        return getproperty(Base, ex.args[1])(map(parsecost, ex.args[2:end])...)
     else
         error("invalid index cost specification: $ex")
     end

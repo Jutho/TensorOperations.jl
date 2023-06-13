@@ -17,10 +17,9 @@ function _flatten(ex)
         newargs = ex.args[2].args
         newargs[end] = Expr(:(=), ex.args[1], newargs[end])
         return Expr(:block, newargs...)
-    elseif head == :call && args[1] == :tensorscalar && args[2] isa Expr &&
-           args[2].head == :block
-        newargs = args[2].args
-        newargs[end] = Expr(:call, args[1], newargs[end])
+    elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar && isexpr(ex.args[2], :block)
+        newargs = ex.args[2].args
+        newargs[end] = Expr(:call, ex.args[1], newargs[end])
         return Expr(:block, newargs...)
     else
         return ex

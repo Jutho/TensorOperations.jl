@@ -35,7 +35,7 @@ end
 function normalizeindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
         return ex
-    elseif isa(ex, Expr) && ex.head == prime && length(ex.args) == 1
+    elseif isexpr(ex, prime) && length(ex.args) == 1
         return Symbol(normalizeindex(ex.args[1]), "′")
     else
         error("not a valid index: $ex")
@@ -139,87 +139,54 @@ function extracttensorobjects(ex)
     return Expr(:block, pre2, ex, post2)
 end
 
-# insertcompatiblechecks: insert runtime checks for contraction
-function insertcompatiblechecks(ex::Expr)
+# insertcontractionchecks: insert runtime checks for contraction
+function insertcontractionchecks(ex)
+    ex isa Expr || return ex
     if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     end
     if isassignment(ex) || isdefinition(ex) || istensorexpr(ex)
         rhs = (isassignment(ex) || isdefinition(ex)) ? getrhs(ex) : ex
-        #=
-        at this point we can have either tensor contractions, or a sum of tensor contractions
-        we should split up these sum of tensor contractions in groups which can be simply contracted
-        =#
-
-        if first(rhs.args) in (:-, :+)
-            tensorgroups = rhs.args[2:end]
-        else
-            tensorgroups = [rhs]
-        end
-
-        lhs_indmaps = Dict{Any,Any}()
+        indexmap = Dict{Any,Any}()
         if isassignment(ex)
-            (symbol, leftinds, rightinds) = decomposegeneraltensor(getlhs(ex))
-            inds = [leftinds[:]; rightinds]
-            for (ii, li) in enumerate(inds)
-                lhs_indmaps[li] = vcat(get(lhs_indmaps, li, []), (symbol, false, ii))
+            (object, indl, indr) = decomposegeneraltensor(getlhs(ex))
+            inds = vcat(indl, indr)
+            for (pos, label) in enumerate(inds)
+                push!(get!(indexmap, label, Vector{Any}()), (object, pos, true)) # treat lhs as conjugated tensor
             end
         end
-
-        for rhs in tensorgroups
-            tindermap = Dict{Any,Any}()
-
-            # if rhs is not a call, it is a tensor expression. I want to iterate over all tensors, hence this quick'n dirty line
-            # essentially what I want here is gettensors; without stripping out conj()
-            rhs = rhs.head == :call ? rhs.args[2:end] : [rhs]
-            for symbol in rhs
-                isscalarexpr(symbol) && continue
-
-                (symbol, leftinds, rightinds, _, isc) = decomposegeneraltensor(symbol)
-                inds = [leftinds[:]; rightinds]
-                for (ii, li) in enumerate(inds)
-                    tindermap[li] = vcat(get(tindermap, li, []), (symbol, ii, isc))
-                end
-            end
-
-            for (k, v) in tindermap
-                if length(v) == 1
-                    lhs_indmaps[k] = vcat(get(lhs_indmaps, k, []), v)
-                else
-                    reference = v[1]
-                    for b in v[2:end]
-                        ex = quote
-                            @notensor checkcontractible($(reference[1]), $(reference[2]),
-                                                        $(reference[3]),
-                                                        $(b[1]), $(b[2]), $(b[3]), $(k))
-                            $ex
-                        end
-                    end
-                end
+        _fillindexmap!(indexmap, rhs)
+        out = Expr(:block)
+        for (label, v) in indexmap
+            l = (label isa Symbol) ? QuoteNode(label) : label
+            obj1, pos1, conj1 = v[1]
+            for k in 2:length(v)
+                obj2, pos2, conj2 = v[k]
+                push!(out.args,
+                      :(@notensor checkcontractible($obj1, $pos1, $conj1, $obj2, $pos2,
+                                                    $conj2, $l)))
             end
         end
-        for (k, v) in lhs_indmaps
-            reference = first(v)
-            for b in v[2:end]
-                ex = quote
-                    @notensor checkcontractible($(reference[1]), $(!reference[2]),
-                                                $(reference[3]),
-                                                $(b[1]), $(b[2]), $(b[3]), $(k))
-                    $ex
-                end
-            end
-        end
-
-        return ex
-    else
-        return Expr(ex.head, map(x -> insertcompatiblechecks(x), ex.args)...)
+        return Expr(:block, out, ex)
     end
+    return Expr(ex.head, map(insertcontractionchecks, ex.args)...)
+end
+function _fillindexmap!(indexmap, ex)
+    if isgeneraltensor(ex)
+        (object, indl, indr, _, conj) = decomposegeneraltensor(ex)
+        inds = vcat(indl, indr)
+        for (pos, label) in enumerate(inds)
+            push!(get!(indexmap, label, Vector{Any}()), (object, pos, conj))
+        end
+    elseif ex isa Expr
+        for exa in ex.args
+            _fillindexmap!(indexmap, exa)
+        end
+    end
+    return indexmap
 end
 
-insertcompatiblechecks(ex) = ex
-
 const costcache = LRU{Any,Any}(; maxsize=10^5)
-
 function costcheck(ex::Expr, source, parser, method=:warn)
     method in (:cache, :warn) || throw(ArgumentError("Invalid costcheck method."))
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")

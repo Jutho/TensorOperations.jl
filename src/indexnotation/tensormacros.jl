@@ -53,7 +53,7 @@ macro tensor(kwargsex::Expr, ex::Expr)
         elseif name == :contractcheck
             val isa Bool ||
                 throw(ArgumentError("Invalid use of `contractcheck`, should be `contractcheck=bool`."))
-            val && push!(parser.preprocessors, ex -> insertcompatiblechecks(ex))
+            val && push!(parser.preprocessors, ex -> insertcontractionchecks(ex))
 
         elseif name == :costcheck
             val in (:warn, :cache) ||
