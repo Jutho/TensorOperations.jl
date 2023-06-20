@@ -100,7 +100,12 @@ tensor expression. It detects assignments or definitions (the most common case) 
 validates the left hand side thereof (i.e. it should satisfy `istensor` and have no
 duplicate indices). Then, it generates the corresponding function calls corresponding to the
 index expression by passing onto the `deindexify` function, which takes the signature
-```julia deindexify(dst, β, ex, α, leftind, rightind, istemporary = false) ``` Here, `dst`
+
+```julia
+deindexify(dst, β, ex, α, leftind, rightind; istemporary=false)
+```
+
+Here, `dst`
 is the symbol or expression corresponding to the destination object; it's `nothing` in case
 of a definition (`:=`), i.e. if the object corresponding to the result needs to be
 created/allocated. `β` and `α` are `isscalar` expressions, and `deindexify` will create the

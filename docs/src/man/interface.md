@@ -21,8 +21,6 @@ This process is split into the following hierarchy of functions, where custom te
 
 By default, the process is split into three steps.
 
-
-
 First, the scalar type `TC` of the resulting tensor is determined.
 This is done by leveraging [VectorInterface.jl](https://github.com/Jutho/VectorInterface.jl)'s `scalartype`, and promoting the results along with the types of any scalars that are present.
 
@@ -30,8 +28,6 @@ This is done by leveraging [VectorInterface.jl](https://github.com/Jutho/VectorI
 TensorOperations.promote_add
 TensorOperations.promote_contract
 ```
-
-
 
 Then, the type and structure of the resulting tensor is determined.
 The former represents all the information that is contained within the type, while the latter adds the required runtime information (e.g. array sizes, ...).
@@ -43,8 +39,6 @@ TensorOperations.tensorcontract_type
 TensorOperations.tensorcontract_structure
 ```
 
-
-
 Finally, the tensor is allocated, where a flag indicates if this is a temporary object, or one that will persist outside of the scope of the macro.
 If the resulting tensor is a temporary object and its memory will not be freed by Julia's garbage collector, it can be explicitly freed by implementing `tensorfree!`, which by default does nothing.
 
@@ -52,8 +46,6 @@ If the resulting tensor is a temporary object and its memory will not be freed b
 tensoralloc
 tensorfree!
 ```
-
-
 
 The `@tensor` macro will however only insert the calls to the following functions, which have a default implementation in terms of the functions above.
 
