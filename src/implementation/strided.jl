@@ -4,7 +4,7 @@ function tensoradd!(C::AbstractArray, pC::Index2Tuple,
                     A::AbstractArray, conjA::Symbol,
                     α, β)
     ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    ndims(C) == sum(length.(pC)) ||
+    ndims(C) == sum(length.(pC)) && TupleTools.isperm(linearize(pC)) ||
         throw(IndexError("Invalid permutation of length $ndims(C): $pC"))
 
     # Base.mightalias(C, A) &&

@@ -51,17 +51,11 @@ include("indexnotation/indexordertree.jl")
 # Implementations
 #-----------------
 include("implementation/interface.jl")
+include("implementation/functions.jl")
+include("implementation/ncon.jl")
 include("implementation/strided.jl")
-# include("implementation/backends.jl")
 include("implementation/indices.jl")
-# include("implementation/tensorcache.jl")
 include("implementation/allocator.jl")
-
-# Functions
-#-----------
-include("functions/simple.jl")
-include("functions/ncon.jl")
-include("functions/inplace.jl")
 
 # Global package settings
 #-------------------------
