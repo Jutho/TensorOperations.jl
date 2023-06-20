@@ -20,9 +20,11 @@ tensorproduct
 ```
 
 ```@docs
+tensorcopy!
 tensoradd!
 tensortrace!
 tensorcontract!
+tensorproduct!
 ```
 
 <!-- tensorcopy! and tensorproduct!? -->

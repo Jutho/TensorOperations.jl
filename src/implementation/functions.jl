@@ -44,22 +44,22 @@ function tensorcopy(pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true)
     return tensorcopy!(C, pC, A, conjA, α)
 end
 
-# """
-#     tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true)
+"""
+    tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true)
 
-# Copy the contents of tensor `A` into `C`, where the dimensions `A` are permuted according to
-# the permutation and repartition `pC`.
+Copy the contents of tensor `A` into `C`, where the dimensions `A` are permuted according to
+the permutation and repartition `pC`.
 
-# The result of this method is equivalent to `α * permutedims!(C, A, pC)`.
+The result of this method is equivalent to `α * permutedims!(C, A, pC)`.
 
-# Optionally, the symbol `conjA` can be used to specify whether the input tensor should be
-# conjugated (`:C`) or not (`:N`).
+Optionally, the symbol `conjA` can be used to specify whether the input tensor should be
+conjugated (`:C`) or not (`:N`).
 
-# See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
-# """
-# function tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true)
-#     return tensoradd!(C, pC, A, conjA, α, false)
-# end
+See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
+"""
+function tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true)
+    return tensoradd!(C, pC, A, conjA, α, false)
+end
 
 #===========================================================================================
     tensoradd
@@ -281,17 +281,17 @@ function tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
     return tensorcontract(pC, A, pA, conjA, B, pB, conjB, α)
 end
 
-# """
-#     tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true, β::Number=false)
+"""
+    tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true, β::Number=false)
 
-# Computes the tensor product (outer product) of two tensors `A` and `B`, i.e. a wrapper of
-# [`tensorcontract!`](@ref) with no indices being contracted over. This method checks whether
-# the indices indeed specify a tensor product instead of a genuine contraction.
+Computes the tensor product (outer product) of two tensors `A` and `B`, i.e. a wrapper of
+[`tensorcontract!`](@ref) with no indices being contracted over. This method checks whether
+the indices indeed specify a tensor product instead of a genuine contraction.
 
-# See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
-# """
-# function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, α::Number=true, β::Number=false)
-#     length(pA[2]) == 0 && length(pB[1]) == 0 ||
-#         throw(LabelError("not a valid tensor product"))
-#     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-# end
+See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
+"""
+function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, α::Number=true, β::Number=false)
+    length(pA[2]) == 0 && length(pB[1]) == 0 ||
+        throw(LabelError("not a valid tensor product"))
+    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
+end
