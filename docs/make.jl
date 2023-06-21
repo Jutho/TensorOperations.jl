@@ -9,7 +9,8 @@ makedocs(; modules=[TensorOperations],
                 "Manual" => ["man/indexnotation.md",
                              "man/functions.md",
                              "man/interface.md",
-                             "man/implementation.md"],
+                             "man/implementation.md",
+                             "man/autodiff.md"],
                 "Index" => "index/index.md"])
 
 # Documenter can also automatically deploy documentation to gh-pages.
