@@ -3,14 +3,14 @@
 ===========================================================================================#
 
 """
-    tensoradd!(C, pC, A, conjA, α=true, β=false)
+    tensoradd!(C, pC, A, conjA, α=true, β=true)
 
 Implements `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
 temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
 `conjA` equals `:N`.
 Note that the permutation needs to be trivial or `C` must not be aliased with `A`.
 """
-function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol, α=true, β=false) end
+function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol, α=true, β=true) end
 
 """
     tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α=true, β=false)

@@ -13,6 +13,8 @@ end
 
 include("strided.jl")
 
+include("ad.jl")
+
 # using CUDA
 
 # if CUDA.functional()

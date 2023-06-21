@@ -71,4 +71,16 @@ function enable_blas()
     return
 end
 
+# Package extensions
+#-------------------------
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+@static if !isdefined(Base, :get_extension)
+    function __init__()
+        @require ChainRulesCore = "" include("../ext/TensorOperationsChainRulesCoreExt.jl")
+    end
+end
+
 end # module
