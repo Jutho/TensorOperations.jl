@@ -80,7 +80,7 @@ end
         A = rand(T, 2, 4, 3, 2)
         B = rand(T, 1, 3, 2)
         C = rand(T, 1, 4, 2)
-        
+
         α = rand(T)
         β = rand(T)
 

@@ -290,7 +290,8 @@ the indices indeed specify a tensor product instead of a genuine contraction.
 
 See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 """
-function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, α::Number=true, β::Number=false)
+function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
+                        pB::Index2Tuple, α::Number=true, β::Number=false)
     length(pA[2]) == 0 && length(pB[1]) == 0 ||
         throw(LabelError("not a valid tensor product"))
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
