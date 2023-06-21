@@ -4,24 +4,24 @@ authors = ["Jutho Haegeman"]
 version = "4.0.0"
 
 [deps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
-[weakdeps]
-ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-
-[extensions]
-TensorOperationsChainRulesCoreExt = "ChainRulesCore"
-
 [compat]
 ChainRulesCore = "1"
 LRUCache = "1"
+Requires = "1"
 Strided = "2"
 TupleTools = "1.1"
 julia = "1.9"
+
+[extensions]
+TensorOperationsChainRulesCoreExt = "ChainRulesCore"
 
 [extras]
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
@@ -31,3 +31,6 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [targets]
 test = ["Test", "Random", "DynamicPolynomials", "Zygote"]
+
+[weakdeps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
