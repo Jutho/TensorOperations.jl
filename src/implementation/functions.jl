@@ -72,7 +72,7 @@ end
 Returns the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
 the result of this method is equivalent to
-`α * permutedims(A, pA) + β * permutedimes(B, pB)` where `pA` (`pB`) is the permutation such
+`α * permutedims(A, pA) + β * permutedims(B, pB)` where `pA` (`pB`) is the permutation such
 that `IC = IA[pA]` (`IB[pB]`). The implementation of `tensoradd` is however more efficient
 on average, as the temporary permuted arrays are not created.
 
