@@ -85,12 +85,7 @@ end
 function resolve_traces(tensors, network)
     transformed = map(zip(tensors, network)) do (A, IA)
         IC = unique2(IA)
-        if length(IC) == length(IA)
-            (A, IA)
-        else
-            (tensortrace(copy(A), IA, IC), IC)
-        end
+        return length(IC) == length(IA) ? (A, IA) : (tensortrace(IC, A, IA), IC)
     end
-
     return first.(transformed), last.(transformed)
 end
