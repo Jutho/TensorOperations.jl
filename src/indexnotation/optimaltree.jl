@@ -3,7 +3,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool=false)
     allindices = unique(vcat(network...))
     numindices = length(allindices)
     costtype = valtype(optdata)
-    allcosts = [get(optdata, i, one(costtype)) for i in allindices]
+    allcosts = costtype[get(optdata, i, one(costtype)) for i in allindices]
     maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)),
                               maximum(allcosts)), zero(costtype)) # add zero for type stability: Power -> Poly
     tensorcosts = Vector{costtype}(undef, numtensors)

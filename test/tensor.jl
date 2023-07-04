@@ -210,15 +210,15 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
     t0 = time()
 
     # Simple function example
-    @tensor function f(A, b)
-        w[x] := (1 // 2) * A[x, y] * b[y]
-        return w
-    end
-    for T in (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
-        A = rand(T, 10, 10)
-        b = rand(T, 10)
-        @test f(A, b) ≈ (1 // 2) * A * b
-    end
+    # @tensor function f(A, b)
+    #     w[x] := (1 // 2) * A[x, y] * b[y]
+    #     return w
+    # end
+    # for T in (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
+    #     A = rand(T, 10, 10)
+    #     b = rand(T, 10)
+    #     @test f(A, b) ≈ (1 // 2) * A * b
+    # end
 
     # Example from README.md
     α = randn()

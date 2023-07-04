@@ -91,18 +91,19 @@ function hastraceindices(ex)
 end
 
 # test for a scalar expression, i.e. no indices
-function isscalarexpr(ex::Expr)
-    if ex.head == :call && ex.args[1] == :tensorscalar
+function isscalarexpr(ex)
+    if ex isa Symbol || ex isa Number
+        return true
+    elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
         return istensorexpr(ex.args[2])
-    elseif ex.head in (:ref, :typed_vcat, :typed_hcat)
+    elseif isexpr(ex, (:ref, :typed_vcat, :typed_hcat))
         return false
+    elseif isexpr(ex, :call)
+        return all(isscalarexpr, ex.args[2:end])
     else
-        return all(isscalarexpr, ex.args)
+        return false
     end
 end
-isscalarexpr(ex::Symbol) = true
-isscalarexpr(ex::Number) = true
-isscalarexpr(ex) = true
 
 # test for a tensor contraction expression
 function istensorcontraction(ex)

@@ -1,5 +1,7 @@
 tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
 
+tensorcost(C::AbstractArray, i) = size(C, i)
+
 function tensoradd!(C::AbstractArray, pC::Index2Tuple,
                     A::AbstractArray, conjA::Symbol,
                     α, β)

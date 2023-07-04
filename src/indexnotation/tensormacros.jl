@@ -58,7 +58,7 @@ macro tensor(kwargsex::Expr, ex::Expr)
         elseif name == :costcheck
             val in (:warn, :cache) ||
                 throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
-            push!(parser.preprocessors, ex -> costcheck(ex, __source__, parser, val))
+            parser.contractioncostcheck = val
         elseif name == :opt
             if val isa Bool && val
                 optdict = optdata(ex)
@@ -68,11 +68,11 @@ macro tensor(kwargsex::Expr, ex::Expr)
                 throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
             end
             parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
-        elseif name == :typewrap
-            wrapdict = Dict{Any,Any}()
-            # this is a terrible hardcoded 4 to replace the extracttensorobjects entry
-            parser.preprocessors[4] = ex -> extracttensorobjects(ex, wrapdict, val)
-            pushfirst!(parser.postprocessors, ex -> addcutensorwraps(ex, wrapdict))
+        elseif name == :backend
+            val isa Symbol ||
+                throw(ArgumentError("Backend should be a symbol."))
+            backend = val
+            push!(parser.postprocessors, ex -> insertbackend(ex, backend))
         else
             throw(ArgumentError("Unknown keyword argument `name`."))
         end

@@ -39,7 +39,7 @@ end
 # fix referene to TensorOperation functions
 const tensoroperationsfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!,
                                    :tensoradd!, :tensortrace!, :tensorcontract!,
-                                   :tensorscalar, :IndexError, :scalartype,
+                                   :tensorscalar, :tensorcost, :IndexError, :scalartype,
                                    :checkcontractible, :promote_contract, :promote_add,
                                    :tensoralloc_add, :tensoralloc_contract)
 function addtensoroperations(ex)

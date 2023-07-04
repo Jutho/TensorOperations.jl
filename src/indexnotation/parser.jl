@@ -2,6 +2,7 @@ mutable struct TensorParser
     preprocessors::Vector{Any} # any preprocessing steps
     contractiontreebuilder::Any # determine a contraction tree for a contraction involving multiple tensors
     contractiontreesorter::Any # transforms the contraction expression into an expression of nested binary contractions using the tree output from the contractiontreebuilder
+    contractioncostcheck::Any
 
     postprocessors::Vector{Any}
     function TensorParser()
@@ -12,24 +13,25 @@ mutable struct TensorParser
                          extracttensorobjects]
         contractiontreebuilder = defaulttreebuilder
         contractiontreesorter = defaulttreesorter
+        contractioncostcheck = nothing
         postprocessors = [_flatten, removelinenumbernode, addtensoroperations]
         return new(preprocessors,
                    contractiontreebuilder,
                    contractiontreesorter,
+                   contractioncostcheck,
                    postprocessors)
     end
 end
 
 function (parser::TensorParser)(ex::Expr)
-    if ex.head == :function
-        return Expr(:function, ex.args[1], parser(ex.args[2]))
-    end
+    verifytensorexpr(ex)
     for p in parser.preprocessors
         ex = p(ex)::Expr
     end
     treebuilder = parser.contractiontreebuilder
     treesorter = parser.contractiontreesorter
-    ex = processcontractions(ex, treebuilder, treesorter)::Expr
+    costcheck = parser.contractioncostcheck
+    ex = processcontractions(ex, treebuilder, treesorter, costcheck)::Expr
     ex = tensorify(ex)::Expr
     for p in parser.postprocessors
         ex = p(ex)::Expr
@@ -37,47 +39,26 @@ function (parser::TensorParser)(ex::Expr)
     return ex
 end
 
-function processcontractions(ex, treebuilder, treesorter)
-    if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
-        return ex
-    end
-    if isa(ex, Expr)
-        args = map(e -> processcontractions(e, treebuilder, treesorter), ex.args)
-        ex = Expr(ex.head, args...)
-    end
-    if istensorcontraction(ex) && length(ex.args) > 3
-        args = ex.args[2:end]
-        network = map(getindices, args)
-        for a in getallindices(ex)
-            count(a in n for n in network) <= 2 ||
-                throw(ArgumentError("index $a appears more than twice in tensor contraction: $ex"))
+function verifytensorexpr(ex)
+    if isexpr(ex, :block)
+        foreach(verifytensorexpr, ex.args)
+    elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
+        return
+    elseif isassignment(ex) || isdefinition(ex)
+        lhs, rhs = getlhs(ex), getrhs(ex)
+        if istensor(lhs)
+            istensorexpr(rhs) ||
+                throw(ArgumentError("@tensor: the following right hand side is not (no longer) recognized as a tensor expression:\n $rhs"))
+            return
+        else
+            (istensorexpr(rhs) && isempty(getindices(rhs))) || isscalarexpr(rhs) ||
+                throw(ArgumentError("@tensor: the following right hand side is not (no longer) recognized as a scalar expression:\n $rhs"))
         end
-        tree = treebuilder(network)
-        ex = treesorter(args, tree)
+    elseif isa(ex, Expr)
+        (istensorexpr(ex)) || # do not test for empty indices; this will throw IndexError later
+            isscalarexpr(ex) ||
+            throw(ArgumentError("@tensor: the following expression is not (no longer) recognized:\n$ex"))
     end
-    return ex
-end
-
-function defaulttreesorter(args, tree)
-    if isa(tree, Int)
-        return args[tree]
-    else
-        return Expr(:call, :*,
-                    defaulttreesorter(args, tree[1]),
-                    defaulttreesorter(args, tree[2]))
-    end
-end
-
-function defaulttreebuilder(network)
-    if isnconstyle(network)
-        tree = ncontree(network)
-    else
-        tree = Any[1, 2]
-        for k in 3:length(network)
-            tree = Any[tree, k]
-        end
-    end
-    return tree
 end
 
 # functions for parsing and processing tensor expressions
@@ -136,13 +117,13 @@ function tensorify(ex::Expr)
             return ex # likely an error
         end
     end
-    if ex.head == :block
+    if ex.head == :block # @tensor begin ... end
         return Expr(ex.head, map(tensorify, ex.args)...)
     end
-    if ex.head == :for
+    if ex.head == :for # @tensor for ... end
         return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
     end
-    if ex.head == :function
+    if ex.head == :function # @tensor function ... end
         return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
     end
     # constructions of the form: a = @tensor ...

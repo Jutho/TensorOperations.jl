@@ -36,16 +36,17 @@ include("indexnotation/utility.jl")
 include("indexnotation/verifiers.jl")
 include("indexnotation/analyzers.jl")
 include("indexnotation/preprocessors.jl")
-include("indexnotation/ncon.jl")
-include("indexnotation/instantiators.jl")
 include("indexnotation/postprocessors.jl")
-include("indexnotation/parser.jl")
+include("indexnotation/contractiontrees.jl")
+include("indexnotation/ncontree.jl")
+include("indexnotation/indexordertree.jl")
 include("indexnotation/poly.jl")
 include("indexnotation/optdata.jl")
 include("indexnotation/optimaltree.jl")
+include("indexnotation/instantiators.jl")
+include("indexnotation/parser.jl")
 include("indexnotation/tensormacros.jl")
 include("indexnotation/cutensormacros.jl")
-include("indexnotation/indexordertree.jl")
 @specialize
 
 # Implementations
@@ -57,9 +58,15 @@ include("implementation/strided.jl")
 include("implementation/indices.jl")
 include("implementation/allocator.jl")
 
-# Global package settings
-#-------------------------
-# A switch for enabling/disabling the use of BLAS for tensor contractions
+# Global variables
+#------------------
+const costcache = LRU{Any,Any}(; maxsize=10^5)
+
+# Backends for tensor operations
+#--------------------------------
+struct Backend{B} end # generic empty parametric struct for dispatching on different backends
+
+# A switch for enabling/disabling the use of BLAS for tensor contractions # TODO: replace with backend mechanism
 const _use_blas = Ref(true)
 use_blas() = _use_blas[]
 function disable_blas()
