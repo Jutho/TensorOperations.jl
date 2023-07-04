@@ -277,7 +277,7 @@ end
 function tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
                        pB::Index2Tuple, conjB::Symbol, α::Number=true)
     length(pA[2]) == 0 && length(pB[1]) == 0 ||
-        throw(LabelError("not a valid tensor product"))
+        throw(IndexError("not a valid tensor product"))
     return tensorcontract(pC, A, pA, conjA, B, pB, conjB, α)
 end
 
@@ -293,6 +293,6 @@ See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
                         pB::Index2Tuple, α::Number=true, β::Number=false)
     length(pA[2]) == 0 && length(pB[1]) == 0 ||
-        throw(LabelError("not a valid tensor product"))
+        throw(IndexError("not a valid tensor product"))
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
 end
