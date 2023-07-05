@@ -11,26 +11,34 @@ Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [compat]
+CUDA = "4"
+cuTENSOR = "1"
 ChainRulesCore = "1"
 LRUCache = "1"
 Requires = "1"
 Strided = "2"
 TupleTools = "1.1"
-julia = "1.9"
+julia = "1.6"
+DynamicPolynomials = "0.5"
 
 [extensions]
 TensorOperationsChainRulesCoreExt = "ChainRulesCore"
+TensorOperationscuTENSORExt = "cuTENSOR"
 
 [extras]
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
-test = ["Test", "Random", "DynamicPolynomials", "Zygote"]
+test = ["Test", "Random", "DynamicPolynomials", "Zygote", "CUDA", "cuTENSOR"]
 
 [weakdeps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"

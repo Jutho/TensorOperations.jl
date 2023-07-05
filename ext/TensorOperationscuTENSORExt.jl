@@ -1,75 +1,47 @@
-module TensorOperationsCUDA
+module TensorOperationscuTENSORExt
+
+if !isdefined(Base, :get_extension)
+    using ..TensorOperations
+    import ..cuTENSOR
+    # import ..cuTENSOR.CUDA as CUDA
+else
+    using TensorOperations
+    import cuTENSOR
+    # import cuTENSOR.CUDA as CUDA
+end
 
 using TensorOperations
-using TensorOperations: AbstractBackend, Index2Tuple, IndexTuple, linearize, IndexError
 using TupleTools
-
-if isdefined(Base, :get_extension)
-    using CUDA: CUDA, CuArray
-    using CUDA.CUBLAS: CublasFloat, CublasReal
-    using cuTENSOR: handle, CuTensorDescriptor, cudaDataType_t,
-                    cutensorContractionDescriptor_t,
-                    cutensorContractionFind_t, cutensorContractionPlan_t,
-                    CUTENSOR_OP_IDENTITY,
-                    CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD, CUTENSOR_ALGO_DEFAULT,
-                    CUTENSOR_WORKSPACE_RECOMMENDED, cutensorPermutation,
-                    cutensorElementwiseBinary, cutensorReduction,
-                    cutensorReductionGetWorkspace,
-                    cutensorComputeType, cutensorGetAlignmentRequirement,
-                    cutensorInitContractionDescriptor, cutensorInitContractionFind,
-                    cutensorContractionGetWorkspace, cutensorInitContractionPlan,
-                    cutensorContraction
-else
-    using ..CUDA: CUDA, CuArray
-    using ..CUDA.CUBLAS: CublasFloat, CublasReal
-    using ..cuTENSOR: handle, CuTensorDescriptor, cudaDataType_t,
-                      cutensorContractionDescriptor_t,
-                      cutensorContractionFind_t, cutensorContractionPlan_t,
-                      CUTENSOR_OP_IDENTITY,
-                      CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD, CUTENSOR_ALGO_DEFAULT,
-                      CUTENSOR_WORKSPACE_RECOMMENDED, cutensorPermutation,
-                      cutensorElementwiseBinary, cutensorReduction,
-                      cutensorReductionGetWorkspace,
-                      cutensorComputeType, cutensorGetAlignmentRequirement,
-                      cutensorInitContractionDescriptor, cutensorInitContractionFind,
-                      cutensorContractionGetWorkspace, cutensorInitContractionPlan,
-                      cutensorContraction
-end
-
-if isdefined(CUDA, :default_stream)
-    const default_stream = CUDA.default_stream
-else
-    const default_stream = CUDA.CuDefaultStream
-end
-
-if isdefined(CUDA, :with_workspace)
-    # for CUDA 3.3 and later
-    using CUDA: with_workspace
-else
-    # for CUDA 3.2 and earlier
-    # this is a minimum wrapper for @workspace that supports the interface of
-    # with_workspace used below. It is "hidden" behind @eval so the fact that
-    # @workspace is not defined on CUDA 3.3+ does not throw an error
-    @eval @inline function with_workspace(f, size, fallback)
-        CUDA.@workspace size = size() fallback = fallback workspace -> f(workspace)
-    end
-end
+using cuTENSOR: CUDA, handle, CuTensorDescriptor, cudaDataType_t,
+                cutensorContractionDescriptor_t,
+                cutensorContractionFind_t, cutensorContractionPlan_t,
+                CUTENSOR_OP_IDENTITY,
+                CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD, CUTENSOR_ALGO_DEFAULT,
+                CUTENSOR_WORKSPACE_RECOMMENDED, cutensorPermutation,
+                cutensorElementwiseBinary, cutensorReduction,
+                cutensorReductionGetWorkspace,
+                cutensorComputeType, cutensorGetAlignmentRequirement,
+                cutensorInitContractionDescriptor, cutensorInitContractionFind,
+                cutensorContractionGetWorkspace, cutensorInitContractionPlan,
+                cutensorContraction
+using cuTENSOR.CUDA: CUDA, CuArray
+using cuTENSOR.CUDA.CUBLAS: CublasFloat, CublasReal
+using cuTENSOR.CUDA: with_workspace, default_stream
 
 function TensorOperations.tensorscalar(C::CuArray)
-    return ndims(C) == 0 ? collect(C)[] : throw(DimensionMismatch())
+    return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
 end
 
 # ---------------------------------------------------------------------------------------- #
 # tensoradd!
 # ---------------------------------------------------------------------------------------- #
 
-function TensorOperations.tensoradd!(::AbstractBackend, C::CuArray, A::CuArray,
-                                     pA::Index2Tuple,
-                                     conjA::Symbol, α::Number, β::Number)
+function TensorOperations.tensoradd!(C::CuArray, pC::Index2Tuple,
+                                     A::CuArray, conjA::Symbol, α::Number, β::Number)
     N = ndims(C)
     N == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    N == length(pA[1]) + length(pA[2]) ||
-        throw(IndexError("Invalid permutation of length $N: $pA"))
+    N == sum(length.(pC)) ||
+        throw(IndexError("Invalid permutation of length $N: $pC"))
 
     T = eltype(C)
 
@@ -83,7 +55,7 @@ function TensorOperations.tensoradd!(::AbstractBackend, C::CuArray, A::CuArray,
     # descD = descC
     typeCompute = convert(cudaDataType_t, T)
     modeA = collect(Cint, 1:N)
-    modeC = collect(Cint, linearize(pA))
+    modeC = collect(Cint, linearize(pC))
     stream = default_stream()
     if β == zero(β)
         cutensorPermutation(handle(), T[α], A, descA, modeA, C, descC, modeC,
@@ -100,7 +72,7 @@ end
 # tensorcontract!
 # ---------------------------------------------------------------------------------------- #
 
-function TensorOperations.tensorcontract!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
+function TensorOperations.tensorcontract!(C::CuArray, pC::Index2Tuple,
                                           A::CuArray, pA::Index2Tuple, conjA::Symbol,
                                           B::CuArray, pB::Index2Tuple, conjB::Symbol,
                                           α, β)
@@ -211,7 +183,7 @@ end
 # tensortrace!
 # ---------------------------------------------------------------------------------------- #
 
-function TensorOperations.tensortrace!(::AbstractBackend, C::CuArray, pC::Index2Tuple,
+function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
                                        A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
     T = eltype(C)
     NA, NC = ndims(A), ndims(C)
@@ -263,12 +235,12 @@ end
 # JuliaAllocator
 # ---------------------------------------------------------------------------------------- #
 
-function TensorOperations.tensoradd_type(TC, A::CuArray, pA::Index2Tuple, conjA::Symbol)
-    return CuArray{TC,sum(length.(pA))}
+function TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol)
+    return CuArray{TC,sum(length.(pC))}
 end
 
-function TensorOperations.tensorcontract_type(TC, pC, A::CuArray, pA, conjA,
-                                              B::CuArray, pB, conjB)
+function TensorOperations.tensorcontract_type(TC, pC, ::CuArray, pA, conjA,
+                                              ::CuArray, pB, conjB)
     return CuArray{TC,sum(length.(pC))}
 end
 

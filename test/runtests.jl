@@ -15,11 +15,10 @@ include("strided.jl")
 
 include("ad.jl")
 
-# using CUDA
-
-# if CUDA.functional()
-#     @testset "CUDA" verbose = true include("cuda.jl")
-# end
+using CUDA
+CUDA.functional() && @testset "CUDA" verbose = true begin
+    include("cuda.jl")
+end
 
 @testset "Polynomials" begin
     include("polynomials.jl")

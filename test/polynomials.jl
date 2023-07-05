@@ -3,11 +3,13 @@ using DynamicPolynomials
 using Test
 
 using VectorInterface: VectorInterface
-const PolyTypes = Union{PolyVar,Monomial,Polynomial,Term}
-
-VectorInterface.scalartype(::Type{T}) where {T<:PolyTypes} = T
-VectorInterface.add!!(w::PolyTypes, v::PolyTypes, α::Number, β::Number) = w * β + v * α
-VectorInterface.scale!!(v::PolyTypes, α::Number) = w * α
+const PolyTypes = Union{<:AbstractPolynomialLike,<:AbstractTermLike,<:AbstractMonomialLike}
+# not clear if this is really the true `scalartype` we want
+VectorInterface.scalartype(T::Type{<:PolyTypes}) = T
+function VectorInterface.add!!(w::PolyTypes, v::PolyTypes, α::Number, β::Number)
+    return w * β + v * α
+end
+VectorInterface.scale!!(v::PolyTypes, α::Number) = v * α
 
 @polyvar a[1:2, 1:2] b[1:2, 1:2]
 @tensor c[i, k] := a[i, j] * b[j, k]
