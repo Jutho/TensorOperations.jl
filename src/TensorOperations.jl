@@ -65,13 +65,6 @@ const costcache = LRU{Any,Any}(; maxsize=10^5)
 # Backends for tensor operations
 #--------------------------------
 struct Backend{B} end # generic empty parametric struct for dispatching on different backends
-function select(tensorop, b::Backend{B}) where {B}
-    error("Tensor operation $tensorop not implemented for backend $B")
-end
-
-select(::typeof(tensoradd!), ::Backend{:default}) = tensoradd!
-select(::typeof(tensortrace!), ::Backend{:default}) = tensortrace!
-select(::typeof(tensorcontract!), ::Backend{:default}) = tensorcontract!
 
 # A switch for enabling/disabling the use of BLAS for tensor contractions # TODO: replace with backend mechanism
 const _use_blas = Ref(true)

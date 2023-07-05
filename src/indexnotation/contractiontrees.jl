@@ -5,7 +5,8 @@ function processcontractions(ex, treebuilder, treesorter, costcheck)
     elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
-        return Expr(:call, :tensorscalar, processcontractions(ex.args[2], treebuilder, treesorter, costcheck))
+        return Expr(:call, :tensorscalar,
+                    processcontractions(ex.args[2], treebuilder, treesorter, costcheck))
     elseif isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
         rhs, pre, post = _processcontractions(rhs, treebuilder, treesorter, costcheck)
@@ -100,12 +101,11 @@ function _processcontractions(ex, treebuilder, treesorter, costcheck)
             end
         end
         pre = Expr(:macrocall, Symbol("@notensor"),
-                       LineNumberNode(@__LINE__, Symbol(@__FILE__)), costex)
+                   LineNumberNode(@__LINE__, Symbol(@__FILE__)), costex)
         post = Expr(:block, map(removelinenumbernode, costcompareexprs)...)
         return ex, pre, post
     end
 end
-
 
 # extract all the tensor contractions from an expression
 # return a list of contraction networks, and the corresponding tensor contraction expressions

@@ -37,7 +37,7 @@ function removelinenumbernode(ex)
 end
 
 # fix reference to TensorOperation functions
-const tensoroperationsfunctions = (:tensoralloc, :tensoralloctemp, :tensorfree!,
+const tensoroperationsfunctions = (:tensoralloc, :tensorfree!,
                                    :tensoradd!, :tensortrace!, :tensorcontract!,
                                    :tensorscalar, :tensorcost, :IndexError, :scalartype,
                                    :checkcontractible, :promote_contract, :promote_add,
@@ -54,9 +54,11 @@ function addtensoroperations(ex)
 end
 
 function insertbackend(ex, backend)
-    if ex isa GlobalRef && ex.mod == TensorOperations && ex.name ∈ (:tensoradd!, :tensorcontract!, :tensortrace!)
+    if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
+       ex.args[1].mod == TensorOperations &&
+       ex.args[1].name ∈ (:tensoradd!, :tensorcontract!, :tensortrace!)
         b = Backend{backend}()
-        return Expr(:call, GlobalRef(TensorOperations, :select), ex,  b)
+        return Expr(:call, ex.args..., b)
     elseif isa(ex, Expr)
         return Expr(ex.head, (insertbackend(e, backend) for e in ex.args)...)
     else

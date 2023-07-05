@@ -1,7 +1,7 @@
 # replace all indices by a function of that index
 function replaceindices((@nospecialize f), ex)
     if isexpr(ex, :block)
-        return Expr(:block, map(x->replaceindices(f, x), ex.args)...)
+        return Expr(:block, map(x -> replaceindices(f, x), ex.args)...)
     elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     elseif istensor(ex)
