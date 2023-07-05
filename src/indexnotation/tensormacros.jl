@@ -10,7 +10,8 @@ macro notensor(ex::Expr)
 end
 
 """
-    @tensor(block; kwargs...)
+    @tensor(tensor_expr; kwargs...)
+    @tensor [kw_expr] tensor_expr
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
@@ -18,8 +19,18 @@ tensors together, this will be evaluated as pairwise contractions in left to rig
 order, unless the so-called NCON style is used (positive integers for contracted
 indices and negative indices for open indices).
 
-A second argument to the `@tensor` macro can be provided of the form `order=(...)`, where
-the list specifies the contraction indices in the order in which they will be contracted.
+Additional keyword arguments may be passed to control the behavior of the parser:
+
+- `order`: 
+    A list of contraction indices of the form `order=(...,)` which specify the order in which they will be contracted.
+- `opt`:
+    Contraction order optimization, similar to [`@tensoropt`](@ref). Can be either a boolean or an `OptExpr`.
+- `contractcheck`:
+    Boolean flag to enable runtime check for contractibility of indices with clearer error messages.
+- `costcheck`:
+    Adds runtime checks to ensure that the contraction order is optimal. Can be either `:warn` or `:cache`. The former will issues warnings when sub-optimal expressions are encountered, while the latter will cache the optimal contraction order for each tensor site and calling site.
+- `backend`: 
+    Inserts a backend call for the different tensor operations.
 """
 macro tensor(ex::Expr)
     return esc(defaultparser(ex))
