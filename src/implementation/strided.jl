@@ -5,9 +5,7 @@ tensorcost(C::AbstractArray, i) = size(C, i)
 function tensoradd!(C::AbstractArray, pC::Index2Tuple,
                     A::AbstractArray, conjA::Symbol,
                     α, β)
-    ndims(C) == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    ndims(C) == sum(length.(pC)) && TupleTools.isperm(linearize(pC)) ||
-        throw(IndexError("Invalid permutation of length $ndims(C): $pC"))
+    argcheck_tensoradd(C, pC, A)
 
     # Base.mightalias(C, A) &&
     #     throw(ArgumentError("output tensor must not be aliased with input tensor"))
@@ -28,32 +26,11 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
                          α, β)
-    (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
-        throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
-    (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
-        throw(IndexError("invalid permutation of B of length $(ndims(B)): $pB"))
-    (length(pA[1]) + length(pB[2]) == ndims(C)) ||
-        throw(IndexError("non-matching output indices in contraction"))
-    (length(pC[1]) + length(pC[2]) == ndims(C) && TupleTools.isperm(linearize(pC))) ||
-        throw(IndexError("invalid permutation of C of length $(ndims(C)): $pC"))
-
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+    
     (Base.mightalias(C, A) || Base.mightalias(C, B)) &&
         throw(ArgumentError("output tensor must not be aliased with input tensor"))
-
-    szA = size(A)
-    szB = size(B)
-    szC = size(C)
-
-    TupleTools.getindices(szA, pA[2]) == TupleTools.getindices(szB, pB[1]) ||
-        throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-
-    szoA = TupleTools.getindices(szA, pA[1])
-    szoB = TupleTools.getindices(szB, pB[2])
-    szoC = TupleTools.getindices(szC, linearize(pC))
-    szoC = TupleTools.getindices(szC, TupleTools.invperm(linearize(pC)))
-    TupleTools.getindices((szoA..., szoB...), linearize(pC)) == szC ||
-        throw(DimensionMismatch("non-matching sizes in uncontracted dimensions:" *
-                                "($szoA, $szoB)[$(linearize(pC))] -> $szC"))
 
     if use_blas() && eltype(C) <: LinearAlgebra.BlasFloat &&
        !isa(B, Diagonal) && !isa(A, Diagonal)
@@ -69,13 +46,8 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
 end
 
 function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α,
-                      β)
-    NA, NC = ndims(A), ndims(C)
-    NC == length(linearize(pC)) ||
-        throw(IndexError("invalid selection of $NC out of $NA: $pC"))
-    NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
-        throw(IndexError("invalid number of trace dimensions"))
+                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β)
+    argcheck_tensortrace(C, pC, A, pA)
 
     inds = ((linearize(pC)...,), pA[1], pA[2])
     if conjA == :N
@@ -170,7 +142,7 @@ function native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
                       (osizeA..., one.(osizeB)..., csizeA...))
         BS = sreshape(permutedims(StridedView(B), linearize(reverse(pB))),
                       (one.(osizeA)..., osizeB..., csizeB...))
-        CS = sreshape(permutedims(StridedView(C), TupleTools.invperm(linearize(pC))),
+        CS = sreshape(permutedims(StridedView(C), invperm(linearize(pC))),
                       (osizeA..., osizeB..., one.(csizeA)...))
         tsize = (osizeA..., osizeB..., csizeA...)
 
@@ -243,7 +215,7 @@ function _contract!(α, A::StridedView, Bd::StridedView,
 
     if length(oindB) == 1 # length(cindA) == length(cindB) == 1
         A2 = permutedims(A, (oindA..., cindA...))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+        C2 = permutedims(C, invperm(indCinoAB))
         B2 = sreshape(Bd, ((one.(osizeA))..., csizeA...))
         totsize = (osizeA..., csizeA...)
 
@@ -253,7 +225,7 @@ function _contract!(α, A::StridedView, Bd::StridedView,
         totsize = (osizeA..., csizeA[1])
         A2 = StridedView(A.parent, totsize, newstrides, A.offset, A.op)
         B2 = sreshape(Bd, ((one.(osizeA))..., csizeA[1]))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+        C2 = permutedims(C, invperm(indCinoAB))
 
     else # length(oindB) == 2
         if β != 1
@@ -261,7 +233,7 @@ function _contract!(α, A::StridedView, Bd::StridedView,
             β = 1
         end
         A2 = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., 1))
-        C3 = permutedims(C, TupleTools.invperm(indCinoAB))
+        C3 = permutedims(C, invperm(indCinoAB))
         B2 = sreshape(Bd, ((one.(osizeA))..., length(Bd)))
 
         sC = strides(C3)
@@ -365,7 +337,7 @@ end
 _trivtuple(::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
 function oindABinC(pC, pA, pB)
-    ipC = TupleTools.invperm(linearize(pC))
+    ipC = invperm(linearize(pC))
     oindAinC = TupleTools.getindices(ipC, _trivtuple(pA[1]))
     oindBinC = TupleTools.getindices(ipC, length(pA[1]) .+ _trivtuple(pB[2]))
     return oindAinC, oindBinC

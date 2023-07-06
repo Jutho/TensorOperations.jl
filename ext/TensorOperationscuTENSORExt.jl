@@ -32,19 +32,25 @@ function TensorOperations.tensorscalar(C::CuArray)
     return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
 end
 
+@inline tensorop(T::Type{<:Number}, op::Symbol) =
+    (T <: Real || op == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+
+function tensordescriptor(T::Type{<:Number}, A::CuArray, pA::Index2Tuple, conjA::Symbol)
+    return CuTensorDescriptor(A;
+                              op=tensorop(T, conjA), 
+                              size=TupleTools.getindices(size(A), linearize(pA)),
+                              strides=TupleTools.getindices(strides(A), linearize(pA)))
+end
+
 # ---------------------------------------------------------------------------------------- #
 # tensoradd!
 # ---------------------------------------------------------------------------------------- #
 
 function TensorOperations.tensoradd!(C::CuArray, pC::Index2Tuple,
                                      A::CuArray, conjA::Symbol, α::Number, β::Number)
-    N = ndims(C)
-    N == ndims(A) || throw(DimensionMismatch("ndims(A) ≠ ndims(C)"))
-    N == sum(length.(pC)) ||
-        throw(IndexError("Invalid permutation of length $N: $pC"))
+    TensorOperations.argcheck_tensoradd(C, pC, A)
 
     T = eltype(C)
-
     conjA == :N || conjA == :C ||
         throw(ArgumentError("Value of conjA should be :N or :C instead of $conjA"))
     opA = (T <: Real || conjA == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
@@ -52,9 +58,9 @@ function TensorOperations.tensoradd!(C::CuArray, pC::Index2Tuple,
 
     descA = CuTensorDescriptor(A; op=opA)
     descC = CuTensorDescriptor(C; op=CUTENSOR_OP_IDENTITY)
-    # descD = descC
+
     typeCompute = convert(cudaDataType_t, T)
-    modeA = collect(Cint, 1:N)
+    modeA = collect(Cint, 1:ndims(A))
     modeC = collect(Cint, linearize(pC))
     stream = default_stream()
     if β == zero(β)
@@ -76,63 +82,26 @@ function TensorOperations.tensorcontract!(C::CuArray, pC::Index2Tuple,
                                           A::CuArray, pA::Index2Tuple, conjA::Symbol,
                                           B::CuArray, pB::Index2Tuple, conjB::Symbol,
                                           α, β)
-    (length(pA[1]) + length(pA[2]) == ndims(A) && TupleTools.isperm(linearize(pA))) ||
-        throw(IndexError("invalid permutation of A of length $(ndims(A)): $pA"))
-    (length(pB[1]) + length(pB[2]) == ndims(B) && TupleTools.isperm(linearize(pB))) ||
-        throw(IndexError("invalid permutation of B of length $(ndims(B)): $pB"))
-    (length(pA[1]) + length(pB[2]) == ndims(C)) ||
-        throw(IndexError("non-matching output indices in contraction"))
-    (length(pC[1]) + length(pC[2]) == ndims(C) && TupleTools.isperm(linearize(pC))) ||
-        throw(IndexError("invalid permutation of C of length $(ndims(C)): $pC"))
-
-    sizeA = i -> size(A, i)
-    sizeB = i -> size(B, i)
-    # sizeC = i -> size(C, i)
-
-    csizeA = sizeA.(pA[2])
-    csizeB = sizeB.(pB[1])
-    osizeA = sizeA.(pA[1])
-    osizeB = sizeB.(pB[2])
-
-    csizeA == csizeB ||
-        throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-    sizeAB = let osize = (osizeA..., osizeB...)
-        i -> osize[i]
-    end
-    sizeAB.(linearize(pC)) == size(C) ||
-        throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
-
-    TC = eltype(C)
+    TensorOperations.argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    TensorOperations.dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
     conjA == :N || conjA == :C ||
         throw(ArgumentError("Value of conjA should be :N or :C instead of $conjA"))
     conjB == :N || conjB == :C ||
         throw(ArgumentError("Value of conjB should be :N or :C instead of $conjB"))
-
-    opA = (TC <: Real || conjA == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
-    opB = (TC <: Real || conjB == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
-    # opC = CUTENSOR_OP_IDENTITY
-
-    strideA = i -> stride(A, i)
-    strideB = i -> stride(B, i)
-
-    cstrideA = strideA.(pA[2])
-    cstrideB = strideB.(pB[1])
-    ostrideA = strideA.(pA[1])
-    ostrideB = strideB.(pB[2])
-
-    descA = CuTensorDescriptor(A; op=opA, size=(osizeA..., csizeA...),
-                               strides=(ostrideA..., cstrideA...))
-    descB = CuTensorDescriptor(B; op=opB, size=(osizeB..., csizeB...),
-                               strides=(ostrideB..., cstrideB...))
-    descC = CuTensorDescriptor(C)
+    
     T = eltype(C)
-    typeCompute = cutensorComputeType(T)
-    # opOut = CUTENSOR_OP_IDENTITY
+    
+    descA = tensordescriptor(T, A, pA, conjA)
+    descB = tensordescriptor(T, B, reverse(pB), conjB)
+    descC = CuTensorDescriptor(C)
 
-    NoA = length(pA[1])
-    NoB = length(pB[2])
-    Nc = length(pA[2])
+    typeCompute = cutensorComputeType(T)
+
+    NoA = TensorOperations.numout(pA)
+    NoB = TensorOperations.numin(pB)
+    Nc = TensorOperations.numin(pA)
+
     modeoA = ntuple(n -> n, NoA)
     modeoB = ntuple(n -> NoA + n, NoB)
     modec = ntuple(n -> NoA + NoB + n, Nc)
@@ -185,14 +154,12 @@ end
 
 function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
                                        A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
+    TensorOperations.argcheck_tensortrace(C, pC, A, pA)
     T = eltype(C)
     NA, NC = ndims(A), ndims(C)
-    NC == length(linearize(pC)) ||
-        throw(IndexError("invalid selection of $NC out of $NA: $pC"))
-    NA - NC == 2 * length(pA[1]) == 2 * length(pA[2]) ||
-        throw(IndexError("invalid number of trace dimensions"))
+    
 
-    opA = (T <: Real || conjA == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+    opA = tensorop(T, conjA)
     opReduce = CUTENSOR_OP_ADD
 
     sizeA = i -> size(A, i)
@@ -235,13 +202,10 @@ end
 # JuliaAllocator
 # ---------------------------------------------------------------------------------------- #
 
-function TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol)
-    return CuArray{TC,sum(length.(pC))}
-end
+TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol) =
+    CuArray{TC,TensorOperations.numind(pC)}
 
-function TensorOperations.tensorcontract_type(TC, pC, ::CuArray, pA, conjA,
-                                              ::CuArray, pB, conjB)
-    return CuArray{TC,sum(length.(pC))}
-end
+TensorOperations.tensorcontract_type(TC, pC::Index2Tuple, ::CuArray, pA::Index2Tuple, conjA::Symbol, ::CuArray, pB::Index2Tuple, conjB::Symbol) =
+    CuArray{TC,TensorOperations.numind(pC)}
 
 end

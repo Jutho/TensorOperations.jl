@@ -1,7 +1,7 @@
 module TensorOperations
 
 using VectorInterface
-using TupleTools
+using TupleTools: TupleTools, isperm, invperm
 
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
