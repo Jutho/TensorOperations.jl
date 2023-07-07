@@ -1,6 +1,7 @@
 using Test
 using TensorOperations
 using Random
+using Aqua
 
 Random.seed!(1234567)
 
@@ -22,4 +23,8 @@ end
 
 @testset "Polynomials" begin
     include("polynomials.jl")
+end
+
+@testset "Aqua" verbose=true begin
+    Aqua.test_all(TensorOperations; stale_deps=(; ignore=[:Requires]))
 end
