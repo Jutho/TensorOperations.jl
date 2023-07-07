@@ -32,13 +32,17 @@ Fast tensor operations using a convenient Einstein index notation.
 
 ## What's new in v4
 
-- Branched of CUDA support to [TensorOperationsCUDA]() to eliminate dependency.
+- Moved CUDA to a package extension, to avoid unnecessary dependencies for Julia versions >= 1.9
 
 - The cache for temporaries has been removed, but support for something similar is now provided through explicit allocating and freeing calls within the macro.
 
 - The interface for custom types has been changed and thoroughly documented, making it easier to know what to implement. This has as a consequence that more general element types of tensors are now also possible.
 
+- There is a new interface to work with backends, to allow for dynamic switching between different implementations of the TensorOperations interface.
+
 - The `@tensor` macro now accepts keyword arguments to facilitate a variety of options that help with debugging, contraction cost and type wrapping.
+
+- Some support for Automatic Differentiation has been added by adding reverse-mode chainrules.
 
 > **WARNING:** TensorOperations 4.0 contains breaking changes and is in general incompatible with previous versions.
 
