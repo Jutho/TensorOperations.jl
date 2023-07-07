@@ -31,9 +31,10 @@ numind(p::Index2Tuple) = numout(p) + numin(p)
     Argument Checking
 ===========================================================================================#
 
-argcheck_index2tuple(C, pC) = 
-    ndims(C) == numind(pC) && isperm(linearize(pC)) ||
-        throw(IndexError("invalid permutation of length $(ndims(C)): $pC"))
+function argcheck_index2tuple(C, pC)
+    return ndims(C) == numind(pC) && isperm(linearize(pC)) ||
+           throw(IndexError("invalid permutation of length $(ndims(C)): $pC"))
+end
 
 function argcheck_tensoradd(C, pC, A)
     ndims(C) == ndims(A) || throw(IndexError("non-matching number of dimensions"))
@@ -65,6 +66,7 @@ end
 function argcheck_tensortrace(C, pC, A, pA)
     ndims(C) == numind(pC) ||
         throw(IndexError("invalid selection of length $(ndims(C)): $pC"))
-    2 * numin(pA) == 2 * numout(pA) == ndims(A) - ndims(C) || throw(IndexError("invalid number of trace dimensions"))
+    2 * numin(pA) == 2 * numout(pA) == ndims(A) - ndims(C) ||
+        throw(IndexError("invalid number of trace dimensions"))
     return nothing
 end
