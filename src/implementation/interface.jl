@@ -5,22 +5,27 @@
 """
     tensoradd!(C, pC, A, conjA, α=true, β=true)
 
-Implements `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
-temporary.  The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
-`conjA` equals `:N`.
-Note that the permutation needs to be trivial or `C` must not be aliased with `A`.
+Compute `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
+temporary.  The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj`
+if  `conjA` equals `:C`.
+
+!!! warning
+    The permutation needs to be trivial or `C` must not be aliased with `A`.
 """
 function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol, α=true, β=true) end
 
 """
     tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α=true, β=false)
 
-Implements `C = β * C + α * permutedims(contract(opA(A), opB(B)), pC)` without creating the
+Compute `C = β * C + α * permutedims(contract(opA(A), opB(B)), pC)` without creating the
 intermediate temporary, where `A` and `B` are contracted such that the indices `pA[2]` of
 `A` are contracted with indices `pB[1]` of `B`. The remaining indices `(pA[1]..., pB[2]...)`
-are then permuted according to `pC`. The operation `opA` (`opB`) acts as `conj` if `conjA`
-(`conjB`) equals `:C` or as the identity if `conjA` (`conjB`) equals `:N`.
-Note that `C` must not be aliased with `A` or `B`.
+are then permuted according to `pC`. The operation `opA` acts as `identity` if `conjA`
+equals `:N` and as `conj` if `conjA` equals `:C`; the operation `opB` is determined by
+`conjB` analogously.
+
+!!! warning 
+    The object `C` must not be aliased with `A` or `B`.
 """
 function tensorcontract!(C, pC::Index2Tuple,
                          A, pA::Index2Tuple, conjA::Symbol,
@@ -30,12 +35,14 @@ function tensorcontract!(C, pC::Index2Tuple,
 """
     tensortrace!(C, pC, A, pA, conjA, α=true, β=false)
 
-Implements `C = β * C + α * permutedims(partialtrace(opA(A)), pC)` without creating the
+Compute `C = β * C + α * permutedims(partialtrace(opA(A)), pC)` without creating the
 intermediate temporary, where `A` is partially traced, such that indices in `pA[1]` are
 contracted with indices in `pA[2]`, and the remaining indices are permuted according
-to `pC`. The operation `opA` acts as `conj` if `conjA` equals `:C` or as the identity if
-`conjA` equals `:N`.
-Note that `C` must not be aliased with `A`.
+to `pC`. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj` if
+`conjA` equals `:C`.
+
+!!! warning
+    The object `C` must not be aliased with `A`.
 """
 function tensortrace!(C, pC::Index2Tuple,
                       A, pA::Index2Tuple, conjA::Symbol,
@@ -44,7 +51,8 @@ function tensortrace!(C, pC::Index2Tuple,
 """
     tensorscalar(C)
 
-Returns the single element of a tensor-like object with zero indices or dimensions.
+Return the single element of a tensor-like object with zero indices or dimensions as
+a value of the underlying scalar type.
 """
 function tensorscalar end
 
@@ -56,7 +64,7 @@ function tensorscalar end
     tensorstructure(A, iA, conjA)
 
 Obtain the information associated to indices `iA` of tensor `op(A)`, where `op` acts as
-`conj` when `conjA` is `:C`, or as the identity if `conjA` is `:N`.
+`identity` if `conjA` equals `:N` and as `conj` if `conjA` equals `:C`.
 """
 function tensorstructure end
 
@@ -114,7 +122,7 @@ tensorfree!(C) = nothing
 """
     tensorcost(A, i)
     
-Computes the contraction cost associated with the `i`th index of a tensor, such that the
+Compute the contraction cost associated with the `i`th index of a tensor, such that the
 total cost of a pairwise contraction is found as the product of the costs of all contracted
 indices and all uncontracted indices.
 """
@@ -122,7 +130,10 @@ function tensorcost end
 
 """
     checkcontractible(A, iA, conjA, B, iB, conjB, label)
-Verifies whether two tensors `A` and `B` are compatible for contraction, and throws an error
-if not.
+
+Verify whether two tensors `opA(A)` and `opB(B)` are compatible for having their 
+respective index `iA` and `iB` contracted, and throws an error if not. The operation `opA`
+acts as `identity` if `conjA` equals `:N` and as `conj` if `conjA` equals `:C`; the operation
+`opB` is determined by `conjB` analogously.
 """
 function checkcontractible end

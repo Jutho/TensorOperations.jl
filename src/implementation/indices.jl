@@ -41,11 +41,11 @@ function unique2(itr)
     i = 1
     while i < length(out)
         inext = _findnext(isequal(out[i]), out, i + 1)
-        if inext == nothing || inext == 0
+        if inext === nothing || inext == 0
             i += 1
             continue
         end
-        while !(inext == nothing || inext == 0)
+        while !(inext === nothing || inext == 0)
             deleteat!(out, inext)
             inext = _findnext(isequal(out[i]), out, i + 1)
         end
@@ -120,7 +120,9 @@ end
 
 function trace_labels(pC::Index2Tuple, iA₁::IndexTuple, iA₂::IndexTuple)
     length(iA₁) == length(iA₂) ||
-        throw(IndexError("number of traced indices not consistent."))
+        throw(IndexError("number of traced indices not consistent"))
+    length(iA₁) > OFFSET_OPEN - OFFSET_CLOSED ||
+        throw(IndexError("too many traced indices"))
     einA = Vector{Char}(undef, sum(length.(pC)) + length(iA₁) + length(iA₂))
     setindex!.(Ref(einA), (1:sum(length.(pC))) .+ OFFSET_OPEN, linearize(pC))
     setindex!.(Ref(einA), (1:length(iA₁)) .+ OFFSET_CLOSED, iA₁)
@@ -130,9 +132,11 @@ end
 
 function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
     length(pA[1]) + length(pB[2]) == sum(length.(pC)) ||
-        throw(IndexError("number of outer indices not consistent."))
+        throw(IndexError("number of outer indices not consistent"))
     length(pA[2]) == length(pB[1]) ||
-        throw(IndexError("number of contracted indices not consistent."))
+        throw(IndexError("number of contracted indices not consistent"))
+    length(pA[2]) > OFFSET_OPEN - OFFSET_CLOSED ||
+        throw(IndexError("too many contracted indices"))
 
     einA = Vector{Char}(undef, sum(length.(pA)))
     setindex!.(Ref(einA), (1:length(pA[1])) .+ OFFSET_OPEN, pA[1])
