@@ -342,6 +342,21 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @tensor A2[1, 2, 3, 4] := U2[3, 1, a] * S2[a, a'] * conj(V2[4, 2, a'])
         @test A2 ≈ view(A, :, :, 1:2:10, 1:2:10)
 
+        @tensor S3[i, k] := S2[i, j] * S2[k, j]
+        S4 = Diagonal(similar(S))
+        @tensor S4[i, k] = S2[i, j] * S2[j, k]
+        @test S3 ≈ S4 ≈ Diagonal(S .^ 2)
+        Str = @tensor S2[i, j] * S2[i, j]
+        @test Str ≈ sum(S .^ 2)
+        
+        @tensor SS[i, j, k, l] := S2[i, j] * S2[k, l]
+        @tensor SS2[i, j, k, l] := Array(S2)[i, j] * Array(S2)[k, l]
+        @test SS ≈ SS2
+        
+        Str = @tensor S2[i, j] * S2[i, j]
+        @test Str ≈ sum(S .^ 2)
+        
+        
         B = randn(T, 10)
         @tensor C1[3, 1, 4, 2] := A[a, 2, 3, 4] * Diagonal(B)[a, 1]
         @tensor C2[3, 1, 4, 2] := A[1, a, 3, 4] * conj(Diagonal(B)[a, 2])

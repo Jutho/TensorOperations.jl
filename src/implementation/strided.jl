@@ -28,7 +28,7 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          α, β)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
-    
+
     (Base.mightalias(C, A) || Base.mightalias(C, B)) &&
         throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
@@ -205,6 +205,56 @@ function native_contract!(C, pC, A::Diagonal, pA, conjA, B::AbstractArray, pB, c
     pC_BA = (TupleTools.getindices(indCinoBA, _trivtuple(pC[1])),
              TupleTools.getindices(indCinoBA, length(pC[1]) .+ _trivtuple(pC[2])))
     return native_contract!(C, pC_BA, B, reverse(pB), conjB, A, reverse(pA), conjA, α, β)
+end
+
+function native_contract!(C, pC, A::Diagonal, pA, conjA, B::Diagonal, pB, conjB, α, β)
+    if numin(pA) == 1 # matrix multiplication
+        if β != 1 # multiplication only takes care of diagonal elements of C
+            rmul!(C, β)
+            β = 1
+        end
+
+        A2 = sreshape(flag2op(conjA)(StridedView(A.diag)), (length(A.diag), 1))
+        B2 = sreshape(flag2op(conjB)(StridedView(B.diag)), (length(B.diag), 1))
+        # take a view of the diagonal elements of C, having strides 1 + length(diag)
+        totsize = (length(A.diag),)
+        C2 = StridedView(C, totsize, (sum(strides(C)),))
+
+    elseif numin(pA) == 2 # trace
+        A2 = flag2op(conjA)(StridedView(A.diag, (length(A.diag),)))
+        B2 = flag2op(conjB)(StridedView(B.diag, (length(B.diag),)))
+        totsize = (length(A.diag),)
+        C2 = sreshape(StridedView(C), (1,))
+
+    else # outer product
+        if β != 1
+            rmul!(C, β)
+            β = 1
+        end
+
+        A2 = sreshape(StridedView(A.diag), (length(A.diag), 1))
+        B2 = sreshape(StridedView(B.diag), (1, length(A.diag)))
+
+        C3 = permutedims(StridedView(C), invperm(linearize(pC)))
+        strC = strides(C3)
+        newstrides = (strC[1] + strC[2], strC[3] + strC[4])
+        totsize = (length(A2), length(B2))
+        C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
+    end
+
+    op1 = α == 1 ? (*) : (x, y) -> α * x * y
+    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
+    Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
+
+    return C
+end
+
+function native_contract!(C::Diagonal, ::Index2Tuple,
+                          A::Diagonal, ::Index2Tuple{1,1}, conjA::Symbol,
+                          B::Diagonal, ::Index2Tuple{1,1}, conjB::Symbol,
+                          α::Number, β::Number)
+    C.diag .= α .* flag2op(conjA)(A.diag) .* flag2op(conjB)(B.diag) .+ β .* C.diag
+    return C
 end
 
 function _contract!(α, A::StridedView, Bd::StridedView,
