@@ -2,11 +2,11 @@ module TensorOperationscuTENSORExt
 
 if !isdefined(Base, :get_extension)
     using ..TensorOperations
-    import ..cuTENSOR
+    using ..cuTENSOR: cuTENSOR
     # import ..cuTENSOR.CUDA as CUDA
 else
     using TensorOperations
-    import cuTENSOR
+    using cuTENSOR: cuTENSOR
     # import cuTENSOR.CUDA as CUDA
 end
 
@@ -32,12 +32,13 @@ function TensorOperations.tensorscalar(C::CuArray)
     return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
 end
 
-@inline tensorop(T::Type{<:Number}, op::Symbol) =
-    (T <: Real || op == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+@inline function tensorop(T::Type{<:Number}, op::Symbol)
+    return (T <: Real || op == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+end
 
 function tensordescriptor(T::Type{<:Number}, A::CuArray, pA::Index2Tuple, conjA::Symbol)
     return CuTensorDescriptor(A;
-                              op=tensorop(T, conjA), 
+                              op=tensorop(T, conjA),
                               size=TupleTools.getindices(size(A), linearize(pA)),
                               strides=TupleTools.getindices(strides(A), linearize(pA)))
 end
@@ -89,9 +90,9 @@ function TensorOperations.tensorcontract!(C::CuArray, pC::Index2Tuple,
         throw(ArgumentError("Value of conjA should be :N or :C instead of $conjA"))
     conjB == :N || conjB == :C ||
         throw(ArgumentError("Value of conjB should be :N or :C instead of $conjB"))
-    
+
     T = eltype(C)
-    
+
     descA = tensordescriptor(T, A, pA, conjA)
     descB = tensordescriptor(T, B, reverse(pB), conjB)
     descC = CuTensorDescriptor(C)
@@ -157,7 +158,6 @@ function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
     TensorOperations.argcheck_tensortrace(C, pC, A, pA)
     T = eltype(C)
     NA, NC = ndims(A), ndims(C)
-    
 
     opA = tensorop(T, conjA)
     opReduce = CUTENSOR_OP_ADD
@@ -202,10 +202,14 @@ end
 # JuliaAllocator
 # ---------------------------------------------------------------------------------------- #
 
-TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol) =
-    CuArray{TC,TensorOperations.numind(pC)}
+function TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol)
+    return CuArray{TC,TensorOperations.numind(pC)}
+end
 
-TensorOperations.tensorcontract_type(TC, pC::Index2Tuple, ::CuArray, pA::Index2Tuple, conjA::Symbol, ::CuArray, pB::Index2Tuple, conjB::Symbol) =
-    CuArray{TC,TensorOperations.numind(pC)}
+function TensorOperations.tensorcontract_type(TC, pC::Index2Tuple, ::CuArray,
+                                              pA::Index2Tuple, conjA::Symbol, ::CuArray,
+                                              pB::Index2Tuple, conjB::Symbol)
+    return CuArray{TC,TensorOperations.numind(pC)}
+end
 
 end

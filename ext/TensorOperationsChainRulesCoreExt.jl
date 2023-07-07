@@ -1,9 +1,13 @@
 module TensorOperationsChainRulesCoreExt
 
 if !isdefined(Base, :get_extension)
-    using ..TensorOperations, ..ChainRulesCore
+    using ..TensorOperations
+    using ..TensorOperations: numind, numout
+    using ..ChainRulesCore
 else
-    using TensorOperations, ChainRulesCore
+    using TensorOperations
+    using TensorOperations: numind, numout
+    using ChainRulesCore
 end
 
 using TupleTools: invperm
@@ -40,11 +44,13 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
         end
         dα = @thunk tensorscalar(tensorcontract(((), ()), A, ((), linearize(pC)),
                                                 _conj(conjA), ΔC,
-                                                (trivtuple(numind(pC)), ()), :N, backend...))
+                                                (trivtuple(numind(pC)),
+                                                 ()), :N, backend...))
         dβ = @thunk tensorscalar(tensorcontract(((), ()), C,
                                                 ((), trivtuple(numind(pC))), :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N, backend...))
-        dbackend = map(x->NoTangent(), backend)
+                                                (trivtuple(numind(pC)), ()), :N,
+                                                backend...))
+        dbackend = map(x -> NoTangent(), backend)
         return NoTangent(), dC, NoTangent(), dA, NoTangent(), dα, dβ, dbackend...
     end
 
@@ -67,7 +73,8 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
             conjΔC = conjA == :C ? :C : :N
             conjB′ = conjA == :C ? conjB : _conj(conjB)
             c_dA = tensorcontract(ipA, ΔC, (ipC[1:NA₁], ipC[(NA₁ + 1):end]), conjΔC,
-                                  B, reverse(pB), conjB′, conjA == :C ? α : conj(α), backend...)
+                                  B, reverse(pB), conjB′, conjA == :C ? α : conj(α),
+                                  backend...)
             (!(eltype(A) <: Complex) && (eltype(c_dA) <: Complex)) ? real(c_dA) : c_dA
         end
         dB = @thunk begin
@@ -87,14 +94,17 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
                                                                conjB),
                                                 ((), trivtuple(numind(pC))),
                                                 :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N, backend...))
+                                                (trivtuple(numind(pC)), ()), :N,
+                                                backend...))
         dβ = @thunk tensorscalar(tensorcontract(((), ()), C,
                                                 ((), trivtuple(numind(pC))), :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N, backend...))
+                                                (trivtuple(numind(pC)), ()), :N,
+                                                backend...))
 
-        dbackend = map(x->NoTangent(), backend)
+        dbackend = map(x -> NoTangent(), backend)
         return NoTangent(), dC, NoTangent(),
-               dA, NoTangent(), NoTangent(), dB, NoTangent(), NoTangent(), dα, dβ, dbackend...
+               dA, NoTangent(), NoTangent(), dB, NoTangent(), NoTangent(), dα, dβ,
+               dbackend...
     end
 
     return C′, pullback
@@ -103,7 +113,8 @@ end
 # note that this requires `one` to be defined, which is already not the case for regular
 # arrays when tracing multiple indices at the same time.
 function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
-                              pA::Index2Tuple, conjA::Symbol, α::Number, β::Number, backend...)
+                              pA::Index2Tuple, conjA::Symbol, α::Number, β::Number,
+                              backend...)
     C′ = tensortrace!(copy(C), pC, A, pA, conjA, α, β, backend...)
 
     function pullback(ΔC)
@@ -119,12 +130,15 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
                                                 tensortrace(pC, A, pA, conjA),
                                                 ((), trivtuple(numind(pC))),
                                                 _conj(conjA), ΔC,
-                                                (trivtuple(numind(pC)), ()), :N, backend...))
+                                                (trivtuple(numind(pC)), ()), :N,
+                                                backend...))
         dβ = @thunk tensorscalar(tensorcontract(((), ()), C,
                                                 ((), trivtuple(numind(pC))), :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N, backend...))
-        dbackend = map(x->NoTangent(), backend)
-        return NoTangent(), dC, NoTangent(), dA, NoTangent(), NoTangent(), dα, dβ, dbackend...
+                                                (trivtuple(numind(pC)), ()), :N,
+                                                backend...))
+        dbackend = map(x -> NoTangent(), backend)
+        return NoTangent(), dC, NoTangent(), dA, NoTangent(), NoTangent(), dα, dβ,
+               dbackend...
     end
 
     return C′, pullback
