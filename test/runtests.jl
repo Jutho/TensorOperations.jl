@@ -12,9 +12,13 @@ end
     include("auxiliary.jl")
 end
 
-include("strided.jl")
+@testset "strided" begin
+    include("strided.jl")
+end
 
-include("ad.jl")
+@testset "ad" begin
+    include("ad.jl")
+end
 
 using CUDA
 CUDA.functional() && @testset "CUDA" verbose = true begin
@@ -25,6 +29,6 @@ end
     include("polynomials.jl")
 end
 
-@testset "Aqua" verbose=true begin
+@testset "Aqua" verbose = true begin
     Aqua.test_all(TensorOperations; stale_deps=(; ignore=[:Requires]))
 end

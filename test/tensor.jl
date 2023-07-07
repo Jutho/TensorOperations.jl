@@ -57,24 +57,26 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
             @tensor A[a, b, c, d] * B[c, f, b, g]
         end
     end
-    
+
     @testset "tensorcontract 2" begin
         A = randn(Float64, (5, 5, 5, 5))
         B = rand(ComplexF64, (5, 5, 5, 5))
         @tensor C1[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
-        C2 = reshape(kron(reshape(B, (25, 25)), reshape(A, (25, 25))), (5, 5, 5, 5, 5, 5, 5, 5))
+        C2 = reshape(kron(reshape(B, (25, 25)), reshape(A, (25, 25))),
+                     (5, 5, 5, 5, 5, 5, 5, 5))
         @test C1 ≈ C2
         @test_throws IndexError begin
             @tensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
         end
     end
-    
+
     @testset "tensorcontract 3" begin
         Da, Db, Dc, Dd, De, Df, Dg, Dh = 10, 15, 4, 8, 6, 7, 3, 2
         A = rand(ComplexF64, (Da, Dc, Df, Da, De, Db, Db, Dg))
         B = rand(ComplexF64, (Dc, Dh, Dg, De, Dd))
         C = rand(ComplexF64, (Dd, Dh, Df))
-        @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] + 0.5 * C[d, h, f]
+        @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
+                               0.5 * C[d, h, f]
         D2 = zeros(ComplexF64, (Dd, Df, Dh))
         for d in 1:Dd, f in 1:Df, h in 1:Dh
             D2[d, f, h] += 0.5 * C[d, h, f]
@@ -83,7 +85,8 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
             end
         end
         @test D1 ≈ D2
-        @test norm(vec(D1)) ≈ sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
+        @test norm(vec(D1)) ≈
+              sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
     end
 
     @testset "views" begin
@@ -107,7 +110,7 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
             @tensor C[1, 1, 2, 3] = A[1, 2, 3, 4]
         end
     end
-    
+
     @testset "views 2" begin
         p = [3, 1, 4, 2]
         Abig = randn(Float64, (30, 30, 30, 30))
@@ -131,7 +134,7 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
             @tensor C[1, 1, 2, 3] = 0.5 * C[1, 1, 2, 3] + 1.2 * A[1, 2, 3, 4]
         end
     end
-    
+
     @testset "views 3" begin
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6), 7 .+ 2 .* (0:8))
@@ -158,7 +161,7 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
             @tensor B[c, b] += α * A[a, b, a, c]
         end
     end
-    
+
     @testset "views 4" begin
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6), 7 .+ 2 .* (0:8))
@@ -178,7 +181,7 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @tensor C[d, a, e] -= α * A[a, b, c, d] * conj(B[c, e, b])
         @test C ≈ Ccopy
     end
-    
+
     @testset "Float32 views" begin
         α = randn(Float64)
         Abig = rand(Float64, (30, 30, 30, 30))
@@ -235,7 +238,9 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
     end
 
     # Some tensor network examples
-    @testset "tensor network examples ($T)" for T in (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
+    @testset "tensor network examples ($T)" for T in
+                                                (Float32, Float64, ComplexF32, ComplexF64,
+                                                 BigFloat)
         D1, D2, D3 = 30, 40, 20
         d1, d2 = 2, 3
         A1 = rand(T, D1, d1, D2) .- 1 // 2
@@ -348,15 +353,14 @@ withblas = TensorOperations.use_blas() ? "with" : "without"
         @test S3 ≈ S4 ≈ Diagonal(S .^ 2)
         Str = @tensor S2[i, j] * S2[i, j]
         @test Str ≈ sum(S .^ 2)
-        
+
         @tensor SS[i, j, k, l] := S2[i, j] * S2[k, l]
         @tensor SS2[i, j, k, l] := Array(S2)[i, j] * Array(S2)[k, l]
         @test SS ≈ SS2
-        
+
         Str = @tensor S2[i, j] * S2[i, j]
         @test Str ≈ sum(S .^ 2)
-        
-        
+
         B = randn(T, 10)
         @tensor C1[3, 1, 4, 2] := A[a, 2, 3, 4] * Diagonal(B)[a, 1]
         @tensor C2[3, 1, 4, 2] := A[1, a, 3, 4] * conj(Diagonal(B)[a, 2])
