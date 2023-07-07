@@ -83,34 +83,27 @@ See also [`tensoradd!`](@ref).
 """
 function tensoradd end
 
-function tensoradd(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple, conjB::Symbol,
-                   α::Number=true, β::Number=true, backend...)
-    TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
-    pC₁ = add_indices(IA, IC)
-    C = tensoralloc_add(TC, pC₁, A, conjA)
-    C = tensoradd!(C, pC₁, A, conjA, α, false, backend...)
-    pC₂ = add_indices(IB, IC)
-    return tensoradd!(C, pC₂, B, conjB, β, true, backend...)
+function tensoradd(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple,
+                   conjB::Symbol, α::Number=true, β::Number=true)
+    return tensoradd(A, add_indices(IA, IC), conjA, B, add_indices(IB, IC), conjB, α, β)
 end
 # default `IC`
-function tensoradd(A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true,
-                   β::Number=true, backend...)
-    return tensoradd(tuple(IA...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β,
-                     backend...)
+function tensoradd(A, IA, conjA::Symbol, B, IB, conjB::Symbol,
+                   α::Number=true, β::Number=true)
+    return tensoradd(tuple(IA...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β)
 end
 # default `conjA` and `conjB`
-function tensoradd(IC, A, IA, B, IB, α::Number=true, β::Number=true, backend...)
-    return tensoradd(IC, A, tuple(IA...), :N, B, tuple(IB...), :N, α, β, backend...)
+function tensoradd(IC, A, IA, B, IB, α::Number=true, β::Number=true)
+    return tensoradd(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α, β)
 end
 # default `IC`, `conjA` and `conjB`
-function tensoradd(A, IA, B, IB, α::Number=true, β::Number=true, backend...)
-    return tensoradd(tuple(IA...), A, tuple(IA...), B, tuple(IB...), α, β, backend...)
+function tensoradd(A, IA, B, IB, α::Number=true, β::Number=true)
+    return tensoradd(tuple(IA...), A, tuple(IA...), B, tuple(IB...), α, β)
 end
 # iterables
-function tensoradd(IC, A, IA, conjA, B, IB, conjB, α::Number=true, β::Number=true,
-                   backend...)
-    return tensoradd(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β,
-                     backend...)
+function tensoradd(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol,
+                   α::Number=true, β::Number=true)
+    return tensoradd(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β)
 end
 # expert mode
 function tensoradd(A, pA::Index2Tuple, conjA::Symbol,
@@ -118,7 +111,7 @@ function tensoradd(A, pA::Index2Tuple, conjA::Symbol,
                    α::Number=true, β::Number=true, backend...)
     TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
     C = tensoralloc_add(TC, pA, A, conjA)
-    C = tensorcopy!(C, pA, A, conjA, α, backend...)
+    C = tensorcopy!(C, pA, A, conjA, α)
     return tensoradd!(C, pB, B, conjB, β, true, backend...)
 end
 
@@ -143,32 +136,32 @@ See also [`tensortrace!`](@ref).
 """
 function tensortrace end
 
-function tensortrace(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=true, backend...)
+function tensortrace(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=true)
     pC, cindA1, cindA2 = trace_indices(IA, IC)
-    return tensortrace(pC, A, (cindA1, cindA2), conjA, α, backend...)
+    return tensortrace(pC, A, (cindA1, cindA2), conjA, α)
 end
 # default `IC`
-function tensortrace(A, IA, conjA::Symbol, α::Number=true, backend...)
-    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), conjA, α, backend...)
+function tensortrace(A, IA, conjA::Symbol, α::Number=true)
+    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), conjA, α)
 end
 # default `conjA`
-function tensortrace(IC, A, IA, α::Number=true, backend...)
-    return tensortrace(tuple(IC...), A, tuple(IA...), :N, α, backend...)
+function tensortrace(IC, A, IA, α::Number=true)
+    return tensortrace(tuple(IC...), A, tuple(IA...), :N, α)
 end
 # default `IC` and `conjA`
-function tensortrace(A, IA, α::Number=true, backend...)
-    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), :N, α, backend...)
+function tensortrace(A, IA, α::Number=true)
+    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), :N, α)
 end
 # iterables
-function tensortrace(IC, A, IA, conjA::Symbol, α::Number=true, backend...)
-    return tensortrace(tuple(IC...), A, tuple(IA...), conjA, α, backend...)
+function tensortrace(IC, A, IA, conjA::Symbol, α::Number=true)
+    return tensortrace(tuple(IC...), A, tuple(IA...), conjA, α)
 end
 # expert mode
 function tensortrace(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, α::Number=true,
                      backend...)
     TC = promote_contract(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, pC, A, conjA)
-    return tensortrace!(C, pC, A, pA, conjA, α, false, backend...)
+    return tensortrace!(C, pC, A, pA, conjA, α, false)
 end
 
 #===========================================================================================
@@ -204,30 +197,27 @@ See also [`tensorcontract!`](@ref).
 function tensorcontract end
 
 function tensorcontract(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple, conjB::Symbol,
-                        α::Number=true, backend...)
+                        α::Number=true)
     pA, pB, pC = contract_indices(IA, IB, IC)
-    return tensorcontract(pC, A, pA, conjA, B, pB, conjB, α, backend...)
+    return tensorcontract(pC, A, pA, conjA, B, pB, conjB, α)
 end
 # default `IC`
-function tensorcontract(A, IA, conjA, B, IB, conjB, α::Number=true, backend...)
+function tensorcontract(A, IA, conjA, B, IB, conjB, α::Number=true)
     return tensorcontract(symdiff(tuple(IA...), tuple(IB...)), A, tuple(IA...), conjA, B,
-                          tuple(IB...), conjB, α, backend...)
+                          tuple(IB...), conjB, α)
 end
 # default `conjA` and `conjB`
-function tensorcontract(IC, A, IA, B, IB, α::Number=true, backend...)
-    return tensorcontract(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α,
-                          backend...)
+function tensorcontract(IC, A, IA, B, IB, α::Number=true)
+    return tensorcontract(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α)
 end
 # default `IC`, `conjA` and `conjB`
-function tensorcontract(A, IA, B, IB, α::Number=true, backend...)
+function tensorcontract(A, IA, B, IB, α::Number=true)
     return tensorcontract(symdiff(tuple(IA...), tuple(IB...)), A, tuple(IA...), :N, B,
-                          tuple(IB...), :N, α, backend...)
+                          tuple(IB...), :N, α)
 end
 # iterables
-function tensorcontract(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true,
-                        backend...)
-    return tensorcontract(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α,
-                          backend...)
+function tensorcontract(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true)
+    return tensorcontract(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α)
 end
 # expert mode
 function tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
@@ -260,36 +250,32 @@ See also [`tensorproduct!`](@ref) and [`tensorcontract`](@ref).
 function tensorproduct end
 
 function tensorproduct(IC::Tuple, A, IA::Tuple, conjA::Symbol, B, IB::Tuple, conjB::Symbol,
-                       α::Number=true, backend...)
+                       α::Number=true)
     pA, pB, pC = contract_indices(IA, IB, IC)
-    return tensorproduct(pC, A, pA, conjA, B, pB, conjB, α, backend...)
+    return tensorproduct(pC, A, pA, conjA, B, pB, conjB, α)
 end
 # default `IC`
-function tensorproduct(A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true,
-                       backend...)
+function tensorproduct(A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true)
     return tensorproduct(vcat(tuple(IA...), tuple(IB...)), A, tuple(IA...), conjA, B,
-                         tuple(IB...), conjB, α, backend...)
+                         tuple(IB...), conjB, α)
 end
 # default `conjA` and `conjB`
-function tensorproduct(IC, A, IA, B, IB, α::Number=true, backend...)
-    return tensorproduct(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α,
-                         backend...)
+function tensorproduct(IC, A, IA, B, IB, α::Number=true)
+    return tensorproduct(tuple(IC...), A, tuple(IA...), :N, B, tuple(IB...), :N, α)
 end
 # default `IC`, `conjA` and `conjB`
-function tensorproduct(A, IA, B, IB, α::Number=true, backend...)
+function tensorproduct(A, IA, B, IB, α::Number=true)
     return tensorproduct(vcat(tuple(IA...), tuple(IB...)), A, tuple(IA...), :N, B,
-                         tuple(IB...), :N, α, backend...)
+                         tuple(IB...), :N, α)
 end
 # iterables
-function tensorproduct(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true,
-                       backend...)
-    return tensorproduct(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α,
-                         backend...)
+function tensorproduct(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Number=true)
+    return tensorproduct(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α)
 end
 # expert mode
 function tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
                        pB::Index2Tuple, conjB::Symbol, α::Number=true, backend...)
-    length(pA[2]) == 0 && length(pB[1]) == 0 ||
+    numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract(pC, A, pA, conjA, B, pB, conjB, α, backend...)
 end
@@ -305,7 +291,7 @@ See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 """
 function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
                         pB::Index2Tuple, α::Number=true, β::Number=false, backend...)
-    length(pA[2]) == 0 && length(pB[1]) == 0 ||
+    numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, backend...)
 end
