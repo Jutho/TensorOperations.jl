@@ -10,7 +10,7 @@
     tensorcopy([IC=IA], A, IA, [conjA::Symbol=:N, [α::Number=true]])
     tensorcopy(pC::Index2Tuple, A, conjA::Symbol, α::Number) # expert mode
 
-Creates a copy of `A`, where the dimensions of `A` are assigned indices from the
+Create a copy of `A`, where the dimensions of `A` are assigned indices from the
 iterable `IA` and the indices of the copy are contained in `IC`. Both iterables
 should contain the same elements, optionally in a different order.
 
@@ -69,7 +69,7 @@ end
     tensoradd([IC=IA], A, IA, [conjA::Symbol], B, IB, [conjB::Symbol], [α::Number=true, [β::Number=true]])
     tensoradd(A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, pB::Index2Tuple, conjB::Symbol, α::Number=true, β::Number=true) # expert mode
 
-Returns the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
+Return the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
 the result of this method is equivalent to
 `α * permutedims(A, pA) + β * permutedims(B, pB)` where `pA` (`pB`) is the permutation such
@@ -245,7 +245,7 @@ end
     tensorproduct([IC], A, IA, [conjA], B, IB, [conjB], [α::Number=true])
     tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true) # expert mode
 
-Computes the tensor product (outer product) of two tensors `A` and `B`, i.e. returns a new
+Compute the tensor product (outer product) of two tensors `A` and `B`, i.e. returns a new
 tensor `C` with `ndims(C) = ndims(A) + ndims(B)`. The indices of the output tensor are
 related to those of the input tensors by the pattern specified by the indices. Essentially,
 this is a special case of [`tensorcontract`](@ref) with no indices being contracted over.
@@ -297,7 +297,7 @@ end
 """
     tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true, β::Number=false)
 
-Computes the tensor product (outer product) of two tensors `A` and `B`, i.e. a wrapper of
+Compute the tensor product (outer product) of two tensors `A` and `B`, i.e. a wrapper of
 [`tensorcontract!`](@ref) with no indices being contracted over. This method checks whether
 the indices indeed specify a tensor product instead of a genuine contraction.
 
