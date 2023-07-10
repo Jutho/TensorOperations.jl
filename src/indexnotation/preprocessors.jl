@@ -45,6 +45,12 @@ function normalizeindex(ex)
         error("not a valid index: $ex")
     end
 end
+
+"""
+    normalizeindices(ex::Expr)
+
+Normalize indices of an expression by replacing all indices with a prime expression (') by indices with a unicode prime "′".
+"""
 normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
 # replace all tensor objects by a function of that object
@@ -64,7 +70,11 @@ function replacetensorobjects(f, ex)
     end
 end
 
-# expandconj: conjugate individual terms or factors instead of a whole expression
+"""
+    expandconj(ex)
+
+Expand all `conj` calls in an expression to conjugate the individual terms and factors.
+"""
 function expandconj(ex)
     if isgeneraltensor(ex) || isscalarexpr(ex) || !isa(ex, Expr)
         return ex
@@ -103,6 +113,11 @@ function explicitscalar(ex)
     end
 end
 
+"""
+    groupscalarfactors(ex)
+
+Group all scalar factors of a tensor expression into a single scalar factor at the start of the expression.
+"""
 function groupscalarfactors(ex)
     if isa(ex, Expr) # prewalk
         ex = Expr(ex.head, map(groupscalarfactors, ex.args)...)
@@ -124,6 +139,12 @@ end
 
 # extracttensorobjects: replace tensor objects which are not simple symbols with newly 
 # generated symbols, and assign them before the expression and after the expression as necessary
+"""
+    extracttensorobjects(ex)
+    
+Extract all tensor objects which are not simple symbols with newly generated symbols, and
+assign them before the expression and after the expression as necessary.
+"""
 function extracttensorobjects(ex)
     inputtensors = filter!(obj -> !isa(obj, Symbol), getinputtensorobjects(ex))
     outputtensors = filter!(obj -> !isa(obj, Symbol), getoutputtensorobjects(ex))
@@ -144,6 +165,11 @@ function extracttensorobjects(ex)
 end
 
 # insertcontractionchecks: insert runtime checks for contraction
+"""
+    insertcontractionchecks(ex)
+
+Insert runtime checks before each contraction, which provide clearer debug information.
+"""
 function insertcontractionchecks(ex)
     if isexpr(ex, :block)
         return Expr(:block, map(insertcontractionchecks, ex.args)...)
