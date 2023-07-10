@@ -31,18 +31,34 @@ numind(p::Index2Tuple) = numout(p) + numin(p)
     Argument Checking
 ===========================================================================================#
 
-function argcheck_index2tuple(C, pC)
+"""
+    argcheck_index2tuple(C, pC::Index2Tuple)
+
+Check that `C` has `numind(pC)` indices and that `pC` constitutes a valid permutation.
+"""
+function argcheck_index2tuple(C, pC::Index2Tuple)
     return ndims(C) == numind(pC) && isperm(linearize(pC)) ||
            throw(IndexError("invalid permutation of length $(ndims(C)): $pC"))
 end
 
-function argcheck_tensoradd(C, pC, A)
+"""
+    argcheck_tensoradd(C, pC::Index2Tuple, A)
+
+Check that `C` and `A` have `numind(pC)` indices and that `pC` constitutes a valid permutation.
+"""
+function argcheck_tensoradd(C, pC::Index2Tuple, A)
     ndims(C) == ndims(A) || throw(IndexError("non-matching number of dimensions"))
     argcheck_index2tuple(C, pC)
     return nothing
 end
 
-function argcheck_tensorcontract(C, pC, A, pA, B, pB)
+"""
+    argcheck_tensorcontract(C, pC::Index2Tuple, A, pA::Index2Tuple, B, pB::Index2Tuple)
+
+Check that `C` and `pC`, `A` and `pA`, and `B` and `pB` have compatible indices and number
+of dimensions.
+"""
+function argcheck_tensorcontract(C, pC::Index2Tuple, A, pA::Index2Tuple, B, pB::Index2Tuple)
     argcheck_index2tuple(C, pC)
     argcheck_index2tuple(A, pA)
     argcheck_index2tuple(B, pB)
@@ -53,7 +69,12 @@ function argcheck_tensorcontract(C, pC, A, pA, B, pB)
     return nothing
 end
 
-function dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+"""
+    dimcheck_tensorcontract(C, pC::Index2Tuple, A, pA::Index2Tuple, B, pB::Index2Tuple)
+
+Check that `C`, `A` and `B` have compatible sizes for the contraction specified by `pC`, `pA` and `pB`.
+"""
+function dimcheck_tensorcontract(C, pC::Index2Tuple, A, pA::Index2Tuple, B, pB::Index2Tuple)
     szA, szB, szC = size(A), size(B), size(C)
     TupleTools.getindices(szA, pA[2]) == TupleTools.getindices(szB, pB[1]) ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
@@ -63,7 +84,13 @@ function dimcheck_tensorcontract(C, pC, A, pA, B, pB)
     return nothing
 end
 
-function argcheck_tensortrace(C, pC, A, pA)
+"""
+    argcheck_tensortrace(C, pC, A, pA)
+
+Check that `C` and `pC` have compatible indices and number of dimensions with the trace of
+`A` over indices `pA`.
+"""
+function argcheck_tensortrace(C, pC::Index2Tuple, A, pA::Index2Tuple)
     ndims(C) == numind(pC) ||
         throw(IndexError("invalid selection of length $(ndims(C)): $pC"))
     2 * numin(pA) == 2 * numout(pA) == ndims(A) - ndims(C) ||
