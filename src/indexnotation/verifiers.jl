@@ -195,7 +195,7 @@ isassignment(ex) = isexpr(ex, [:(=), :(+=), :(-=)])
 
 Test if `ex` is a definition expression, i.e. `ex` is of the form:
 
-    `a := b`
-    `a ≔ b`
+    a := b
+    a ≔ b
 """
 isdefinition(ex) = isexpr(ex, [:(:=), :(≔)])

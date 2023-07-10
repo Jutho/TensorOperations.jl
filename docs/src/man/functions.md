@@ -12,12 +12,20 @@ In this case, selected indices are determined through permutations, specified by
 In order to distinguish from the non-mutating version in *simple mode*, overlapping functionality is distinguished by specializing on these permutations, which are of type [`Index2Tuple`](@ref).
 
 ```@docs
+Index2Tuple
+```
+
+## Non-mutating functions
+
+```@docs
 tensorcopy
 tensoradd
 tensortrace
 tensorcontract
 tensorproduct
 ```
+
+## Mutating functions
 
 ```@docs
 tensorcopy!
@@ -26,5 +34,3 @@ tensortrace!
 tensorcontract!
 tensorproduct!
 ```
-
-<!-- tensorcopy! and tensorproduct!? -->

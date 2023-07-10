@@ -52,12 +52,9 @@ every more complicated tensor expression is deconstructed.
  1. **addition:** Add a (possibly scaled version of) one array to another array, where the
     indices of the both arrays might appear in different orders. This operation combines
     normal array addition and index permutation. It includes as a special case copying one
-    array into another with permuted indices.
-    
-    The actual implementation is provided by [Strided.jl](https://github.com/Jutho/Strided.jl),
-    which contains multithreaded implementations and cache-friendly blocking
-    strategies for an optimal efficiency.
-
+    array into another with permuted indices. The actual implementation is provided by
+    [Strided.jl](https://github.com/Jutho/Strided.jl), which contains multithreaded
+    implementations and cache-friendly blocking strategies for an optimal efficiency.
  2. **trace or inner contraction:** Perform a trace/contraction over pairs of indices of an
     array, where the result is a lower-dimensional array. As before, the actual
     implementation is provided by [Strided.jl](https://github.com/Jutho/Strided.jl).

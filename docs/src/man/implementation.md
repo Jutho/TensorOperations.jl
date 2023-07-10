@@ -9,8 +9,6 @@ to parse tensor expressions. The `@tensor` macro is then just a wrapper around
 this, which configures the default behavior and handles keyword arguments of the
 parser.
 
-## TensorParser
-
 The `TensorParser` works by breaking down the parsing into three main phases.
 First, a basic check of the supplied expression is performed, to ensure that it
 is a valid tensor expression. Then, a number of preprocessing steps can be
@@ -23,7 +21,7 @@ postprocessing steps can be added, which are mostly used to clean up the
 resulting expression by flattening and by removing line number nodes, but also
 to incorporate the custom backend system.
 
-### Verifiers
+## Verifiers
 
 The basic checks are performed by [`verifytensorexpr`](@ref), which calls the verifiers [`isassignment`](@ref), [`isdefinition`](@ref), [`istensor`](@ref), [`istensorexpr`](@ref) and [`isscalarexpr`](@ref).
 
@@ -37,7 +35,7 @@ TensorOperations.istensorexpr
 TensorOperations.isscalarexpr
 ```
 
-### Preprocessing
+## Preprocessing
 
 ```@docs
 TensorOperations.normalizeindices
@@ -45,17 +43,17 @@ TensorOperations.expandconj
 TensorOperations.groupscalarfactors
 TensorOperations.nconindexcompletion
 TensorOperations.extracttensorobjects
-TensorOperations.insercontractionchecks
+TensorOperations.insertcontractionchecks
 ```
 
-### Processing
+## Processing
 
 ```@docs
 TensorOperations.processcontractions
 TensorOperations.tensorify
 ```
 
-### Postprocessing
+## Postprocessing
 
 ```@docs
 TensorOperations._flatten
