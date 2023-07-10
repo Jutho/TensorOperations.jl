@@ -310,7 +310,7 @@ also plagued by the runtime analysis of the contraction, but is even worse then
 `ncon`. For small `χ`, the unavoidable type instabilities in `ncon` implementation seem to
 make the interaction with the cache hurtful rather than advantageous.
 
-## Multithreading and GPU evaluation of tensor contractions with `@cutensor`
+## Multithreading and GPU evaluation of tensor contractions
 
 Every index expression will be evaluated as a sequence of elementary tensor operations,
 i.e. permuted additions, partial traces and contractions, which are implemented for strided
@@ -334,10 +334,11 @@ currently not possible to control the use of BLAS at the level of individual con
 
 Since TensorOperations v2.0, the necessary implementations are also available for `CuArray`
 objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This
-implementation is essentially a simple wrapper over the CUTENSOR library of NVidia, and as
+implementation is essentially a simple wrapper over the cuTENSOR library of NVidia, and as
 such has certain restrictions as a result thereof. Native Julia alternatives using
 CUDA.jl or KernelAbstractions.jl might be provided in the future.
 
+<!--
 Mixed operations between host arrays (e.g. `Array`) and device arrays (e.g. `CuArray`) will
 fail. However, if one wants to harness the computing power of the GPU to perform all tensor
 operations, there is a dedicated macro `@cutensor`. This will transfer all arrays to the
@@ -346,4 +347,5 @@ the result will be copied back. If a new result array is created (i.e. using `:=
 remain on the GPU device and it is up to the user to transfer it back. Arrays are
 transfered to the GPU just before they are first used, and in a complicated tensor
 expression, this might have the benefit that transer of the later arrays overlaps with
-computation of earlier operations.
+computation of earlier operations. 
+-->
