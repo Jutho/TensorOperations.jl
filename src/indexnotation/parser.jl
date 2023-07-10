@@ -70,7 +70,11 @@ function verifytensorexpr(ex)
     end
 end
 
-# functions for parsing and processing tensor expressions
+"""
+    tensorify(ex)
+
+Parse `ex` into a series of tensor operations' building blocks.
+"""
 function tensorify(ex::Expr)
     if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex.args[3]

@@ -1,3 +1,12 @@
+"""
+    processcontractions(ex, treebuilder, treesorter, costcheck)
+
+Process the contractions in `ex` using the given `treebuilder` and `treesorter` functions.
+This is done by first extracting a network representation from the expression, then
+building and sorting the contraction trees with a given `treebuilder` and `treesorter`
+function, and finally inserting the contraction trees back into the expression. When the 
+`costcheck` function is provided, the cost of each contraction is computed and comp
+"""
 function processcontractions(ex, treebuilder, treesorter, costcheck)
     if isexpr(ex, :block)
         args = map(x -> processcontractions(x, treebuilder, treesorter, costcheck), ex.args)
