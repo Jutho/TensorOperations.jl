@@ -1,4 +1,8 @@
-# remove nested structure of expression, returning a flat line of expressions
+"""
+    _flatten(ex)
+
+Flatten nested structure of an expression, returning a flat line of expressions.
+"""
 function _flatten(ex)
     if isa(ex, Expr) # prewalk
         ex = Expr(ex.head, map(_flatten, ex.args)...)
@@ -26,7 +30,11 @@ function _flatten(ex)
     end
 end
 
-# remove line number nodes
+"""
+    removelinenumbernode(ex)
+
+Remove all `LineNumberNode`s from an expression.
+"""
 function removelinenumbernode(ex)
     if isexpr(ex, :block)
         args = [removelinenumbernode(e) for e in ex.args if !(e isa LineNumberNode)]
@@ -36,12 +44,17 @@ function removelinenumbernode(ex)
     end
 end
 
-# fix reference to TensorOperation functions
+"list of functions that are used in expressions produced by `@tensor`"
 const tensoroperationsfunctions = (:tensoralloc, :tensorfree!,
                                    :tensoradd!, :tensortrace!, :tensorcontract!,
                                    :tensorscalar, :tensorcost, :IndexError, :scalartype,
                                    :checkcontractible, :promote_contract, :promote_add,
                                    :tensoralloc_add, :tensoralloc_contract)
+"""
+    addtensoroperations(ex)
+
+Fix references to TensorOperations functions in namespaces where `@tensor` is present but the functions are not.
+"""
 function addtensoroperations(ex)
     if isexpr(ex, :call) && ex.args[1] in tensoroperationsfunctions
         return Expr(ex.head, GlobalRef(TensorOperations, ex.args[1]),
@@ -53,6 +66,14 @@ function addtensoroperations(ex)
     end
 end
 
+"""
+    insertbackend(ex, backend)
+
+Insert a backend into a tensor operation, e.g. `tensoradd!(args...)`,
+`tensorcontract!(args...)` and `tensortrace!(args...)` become
+`tensoradd!(args..., backend)`, `tensorcontract!(args..., backend)` and
+`tensortrace!(args..., backend)`.
+"""
 function insertbackend(ex, backend)
     if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
        ex.args[1].mod == TensorOperations &&
