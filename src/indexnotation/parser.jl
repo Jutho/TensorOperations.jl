@@ -39,6 +39,15 @@ function (parser::TensorParser)(ex::Expr)
     return ex
 end
 
+"""
+    verifytensorexpr(ex)
+
+Check that `ex` is a valid tensor expression and throw an `ArgumentError` if not.
+Valid tensor expressions are characterized by one of the following properties:
+- The expression is a scalar expression or a tensor expression.
+- The expression is an assignment or a definition, and the left hand side and right hand side are valid tensor expressions or scalars.
+- The expression is a block, and all subexpressions are valid tensor expressions or scalars.
+"""
 function verifytensorexpr(ex)
     if isexpr(ex, :block)
         foreach(verifytensorexpr, ex.args)

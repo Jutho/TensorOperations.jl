@@ -2,6 +2,12 @@
 
 # test for a valid index
 const prime = Symbol("'")
+
+"""
+    isindex(ex)
+
+Test for a valid index. This means a symbol or integer, or an expression of the form `i′` where `i` is a valid index.
+"""
 function isindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
         return true
@@ -13,6 +19,17 @@ function isindex(ex)
 end
 
 # test for a simple tensor object indexed by valid indices
+"""
+    istensor(ex)
+
+Test for a simple tensor object indexed by valid indices. This means an expression of the form:
+    
+    A[i, j, k, ...]
+    A[i j k ...; l m ...]
+    
+where `i`, `j`, `k`, ... are valid indices.
+"""
+function istensor end
 istensor(ex) = false
 function istensor(ex::Expr)
     if ex.head == :ref || ex.head == :typed_hcat
@@ -91,6 +108,11 @@ function hastraceindices(ex)
 end
 
 # test for a scalar expression, i.e. no indices
+"""
+    isscalarexpr(ex)
+    
+Test for a scalar expression, i.e. an expression that can be evaluated to a scalar.
+"""
 function isscalarexpr(ex)
     if ex isa Symbol || ex isa Number
         return true
@@ -113,7 +135,18 @@ function istensorcontraction(ex)
     return false
 end
 
-# test for a tensor expression, i.e. something that can be evaluated to a tensor
+"""
+    istensorexpr(ex)
+
+Test for a tensor expression. This means an expression which can be evaluated to a valid
+    tensor. This includes:
+
+    A[...] + B[...] - C[...] - ...
+    A[...] * B[...] * ...
+    λ * A[...] / μ
+    λ \\ conj(A[...])
+    A[...]' + adjoint(B[...]) - ...
+"""
 function istensorexpr(ex)
     isgeneraltensor(ex) && return true
     if isexpr(ex, :call)
@@ -146,6 +179,23 @@ function istensorexpr(ex)
     return false
 end
 
-# test for assignment (copy into existing tensor) or definition (create new tensor)
+"""
+    isassignment(ex)
+
+Test if `ex` is an assignment expression, i.e. `ex` is of one of the forms:
+
+    a = b
+    a += b
+    a -= b
+"""
 isassignment(ex) = isexpr(ex, [:(=), :(+=), :(-=)])
+
+"""
+    isdefinition(ex)
+
+Test if `ex` is a definition expression, i.e. `ex` is of the form:
+
+    `a := b`
+    `a ≔ b`
+"""
 isdefinition(ex) = isexpr(ex, [:(:=), :(≔)])
