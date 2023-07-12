@@ -13,7 +13,10 @@ end
 end
 
 @testset "strided" begin
-    include("strided.jl")
+    using TensorOperations
+    using Test
+    include("methods.jl")
+    include("tensor.jl")
 end
 
 @testset "ad" begin

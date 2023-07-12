@@ -1,135 +1,90 @@
-tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
-
-tensorcost(C::AbstractArray, i) = size(C, i)
-
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
-                    α, β)
+#----------------------------------------------------------------------
+# StridedView implementation
+#----------------------------------------------------------------------
+function tensoradd!(C::StridedView, pC::Index2Tuple,
+                    A::StridedView, conjA::Symbol,
+                    α, β, backend::Union{StridedNative,StridedBLAS}=StridedNative())
     argcheck_tensoradd(C, pC, A)
+    dimcheck_tensoradd(C, pC, A)
 
-    # Base.mightalias(C, A) &&
-    #     throw(ArgumentError("output tensor must not be aliased with input tensor"))
+    p = linearize(pC)
+    if !istrivialpermutation(pC) && Base.mightalias(C, A)
+        throw(ArgumentError("output tensor must not be aliased with input tensor"))
+    end
+    add!(C, permutedims(flag2op(conjA)(A), linearize(pC)), α, β)
+    return C
+end
 
-    if conjA == :N
-        add!(StridedView(C), permutedims(StridedView(A), linearize(pC)), α, β)
-    elseif conjA == :C
-        add!(StridedView(C), permutedims(conj(StridedView(A)), linearize(pC)), α, β)
-    elseif conjA == :A
-        add!(StridedView(C), permutedims(adjoint(StridedView(A)), linearize(pC)), α, β)
+function tensortrace!(C::StridedView, pC::Index2Tuple,
+                      A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                      α, β, backend::Union{StridedNative,StridedBLAS}=StridedNative())
+    argcheck_tensortrace(C, pC, A, pA)
+    dimcheck_tensortrace(C, pC, A, pA)
+
+    Base.mightalias(C, A) &&
+        throw(ArgumentError("output tensor must not be aliased with input tensor"))
+
+    sizeA = i -> size(A, i)
+    strideA = i -> stride(A, i)
+    tracesize = sizeA.(pA[1])
+    newstrides = (strideA.(linearize(pC))..., (strideA.(pA[1]) .+ strideA.(pA[2]))...)
+    newsize = (size(C)..., tracesize...)
+    A2 = flag2op(conjA)(StridedView(A.parent, newsize, newstrides, A.offset, A.op))
+    if α != 1
+        if β == 0
+            Strided._mapreducedim!(x -> α * x, +, zero, newsize, (C, A2))
+        elseif β == 1
+            Strided._mapreducedim!(x -> α * x, +, nothing, newsize, (C, A2))
+        else
+            Strided._mapreducedim!(x -> α * x, +, y -> β * y, newsize, (C, A2))
+        end
     else
-        throw(ArgumentError("unknown conjugation flag: $conjA"))
+        if β == 0
+            return Strided._mapreducedim!(identity, +, zero, newsize, (C, A2))
+        elseif β == 1
+            Strided._mapreducedim!(identity, +, nothing, newsize, (C, A2))
+        else
+            Strided._mapreducedim!(identity, +, y -> β * y, newsize, (C, A2))
+        end
     end
     return C
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                         α, β)
+function tensorcontract!(C::StridedView{T}, pC::Index2Tuple,
+                         A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                         B::StridedView, pB::Index2Tuple, conjB::Symbol,
+                         α, β,
+                         backend::StridedBLAS=StridedBLAS()) where {T<:LinearAlgebra.BlasFloat}
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
     (Base.mightalias(C, A) || Base.mightalias(C, B)) &&
         throw(ArgumentError("output tensor must not be aliased with input tensor"))
 
-    if use_blas() && eltype(C) <: LinearAlgebra.BlasFloat &&
-       !isa(B, Diagonal) && !isa(A, Diagonal)
-        if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) >
-           reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
-            return blas_reversecontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-        else
-            return blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-        end
-    else
-        return native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-    end
-end
-
-function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β)
-    argcheck_tensortrace(C, pC, A, pA)
-
-    inds = ((linearize(pC)...,), pA[1], pA[2])
-    if conjA == :N
-        _trace!(α, StridedView(A), β, StridedView(C), inds...)
-    elseif conjA == :C
-        _trace!(α, conj(StridedView(A)), β, StridedView(C), inds...)
-    elseif conjA == :A
-        _trace!(α, map(adjoint, StridedView(A)), β, StridedView(C), inds...)
-    else
-        throw(ArgumentError("Unknown conjugation flag: $conjA"))
-    end
-
-    return C
-end
-
-function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-    TC = eltype(C)
-
-    A_, pA, conjA, flagA = makeblascontractable(A, pA, conjA, TC)
-    B_, pB, conjB, flagB = makeblascontractable(B, pB, conjB, TC)
-
-    pC_ = oindABinC(pC, pA, pB)
-
-    flagC = isblascontractable(C, pC_, :D)
-    if flagC
-        C_ = C
-        _blas_contract!(α, A_, conjA, B_, conjB, β, C_, pA, pB, pC_)
-    else
-        C_ = TensorOperations.tensoralloc_add(TC, pC_, C, :N)
-        pC__ = (_trivtuple(pA[1]), length(pA[1]) .+ _trivtuple(pB[2]))
-        _blas_contract!(1, A_, conjA, B_, conjB, 0, C_, pA, pB, pC__)
-        tensoradd!(C, pC, C_, :N, α, β)
-    end
-
-    flagA || tensorfree!(A_)
-    flagB || tensorfree!(B_)
-    flagC || tensorfree!(C_)
-
-    return C
-end
-
-function blas_reversecontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
-    indCinoBA = let N₁ = length(pA[1]), N₂ = length(pB[2])
+    rpA = reverse(pA)
+    rpB = reverse(pB)
+    indCinoBA = let N₁ = numout(pA), N₂ = numin(pB)
         map(n -> ifelse(n > N₁, n - N₁, n + N₂), linearize(pC))
     end
-    pC_BA = (TupleTools.getindices(indCinoBA, _trivtuple(pC[1])),
-             TupleTools.getindices(indCinoBA, length(pC[1]) .+ _trivtuple(pC[2])))
-    return blas_contract!(C, pC_BA, B, reverse(pB), conjB, A, reverse(pA), conjA, α, β)
-end
-
-function makeblascontractable(A, pA, conjA, TC)
-    flagA = isblascontractable(A, pA, conjA) && eltype(A) == TC
-    if !flagA
-        A_ = TensorOperations.tensoralloc_add(TC, pA, A, conjA)
-        A = tensoradd!(A_, pA, A, conjA, one(TC), zero(TC))
-        conjA = :N
-        pA = (_trivtuple(pA[1]), _trivtuple(pA[2]) .+ length(pA[1]))
+    tpC = trivialpermutation(pC)
+    rpC = (TupleTools.getindices(indCinoBA, tpC[1]),
+           TupleTools.getindices(indCinoBA, tpC[2]))
+    if contract_memcost(C, pC, A, pA, conjA, B, pB, conjB) <=
+       contract_memcost(C, rpC, B, rpB, conjB, A, rpA, conjA)
+        return blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
+    else
+        return blas_contract!(C, rpC, B, rpB, conjB, A, rpA, conjA, α, β)
     end
-    return A, pA, conjA, flagA
 end
 
-function _blas_contract!(α, A::AbstractArray, conjA, B::AbstractArray, conjB, β,
-                         C::AbstractArray, pA, pB, pC)
-    sizeA = size(A)
-    sizeB = size(B)
-    csizeA = TupleTools.getindices(sizeA, pA[2])
-    csizeB = TupleTools.getindices(sizeB, pB[1])
-    osizeA = TupleTools.getindices(sizeA, pA[1])
-    osizeB = TupleTools.getindices(sizeB, pB[2])
+function tensorcontract!(C::StridedView, pC::Index2Tuple,
+                         A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                         B::StridedView, pB::Index2Tuple, conjB::Symbol,
+                         α, β,
+                         backend::StridedNative)
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
-    mul!(sreshape(permutedims(StridedView(C), linearize(pC)),
-                  (prod(osizeA), prod(osizeB))),
-         flag2op(conjA)(sreshape(permutedims(StridedView(A), linearize(pA)),
-                                 (prod(osizeA), prod(csizeA)))),
-         flag2op(conjB)(sreshape(permutedims(StridedView(B), linearize(pB)),
-                                 (prod(csizeB), prod(osizeB)))),
-         α, β)
-
-    return C
-end
-
-function native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
     sizeA = size(A)
     sizeB = size(B)
     csizeA = TupleTools.getindices(sizeA, pA[2])
@@ -138,11 +93,11 @@ function native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
     osizeB = TupleTools.getindices(sizeB, pB[2])
 
     let opA = flag2op(conjA), opB = flag2op(conjB), α = α
-        AS = sreshape(permutedims(StridedView(A), linearize(pA)),
+        AS = sreshape(permutedims(A, linearize(pA)),
                       (osizeA..., one.(osizeB)..., csizeA...))
-        BS = sreshape(permutedims(StridedView(B), linearize(reverse(pB))),
+        BS = sreshape(permutedims(B, linearize(reverse(pB))),
                       (one.(osizeA)..., osizeB..., csizeB...))
-        CS = sreshape(permutedims(StridedView(C), invperm(linearize(pC))),
+        CS = sreshape(permutedims(C, invperm(linearize(pC))),
                       (osizeA..., osizeB..., one.(csizeA)...))
         tsize = (osizeA..., osizeB..., csizeA...)
 
@@ -175,175 +130,62 @@ function native_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
     return C
 end
 
-function native_contract!(C, pC, A::AbstractArray, pA, conjA, B::Diagonal, pB, conjB, α, β)
-    Bd = B.diag
-    oindA, cindA = pA
-    cindB, oindB = pB
-    indCinoAB = linearize(pC)
+#----------------------------------------------------------------------
+# StridedViewBLAS contraction implementation
+#----------------------------------------------------------------------
+function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
+    TC = eltype(C)
 
-    @strided begin
-        if conjA == :N && conjB == :N
-            _contract!(α, A, Bd, β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        elseif conjA == :C && conjB == :N
-            _contract!(α, conj(A), Bd, β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        elseif conjA == :N && conjB == :C
-            _contract!(α, A, conj(Bd), β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        elseif conjA == :C && conjB == :C
-            _contract!(α, conj(A), conj(Bd), β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        else
-            throw(ArgumentError("unknown conjugation flag $conjA and $conjB"))
-        end
-    end
+    A_, pA, conjA, flagA = makeblascontractable(A, pA, conjA, TC)
+    B_, pB, conjB, flagB = makeblascontractable(B, pB, conjB, TC)
 
-    return C
-end
-
-function native_contract!(C, pC, A::Diagonal, pA, conjA, B::AbstractArray, pB, conjB, α, β)
-    indCinoBA = let N₁ = length(pA[1]), N₂ = length(pB[2])
-        map(n -> ifelse(n > N₁, n - N₁, n + N₂), linearize(pC))
-    end
-    pC_BA = (TupleTools.getindices(indCinoBA, _trivtuple(pC[1])),
-             TupleTools.getindices(indCinoBA, length(pC[1]) .+ _trivtuple(pC[2])))
-    return native_contract!(C, pC_BA, B, reverse(pB), conjB, A, reverse(pA), conjA, α, β)
-end
-
-function native_contract!(C, pC, A::Diagonal, pA, conjA, B::Diagonal, pB, conjB, α, β)
-    if numin(pA) == 1 # matrix multiplication
-        if β != 1 # multiplication only takes care of diagonal elements of C
-            rmul!(C, β)
-            β = 1
-        end
-
-        A2 = sreshape(flag2op(conjA)(StridedView(A.diag)), (length(A.diag), 1))
-        B2 = sreshape(flag2op(conjB)(StridedView(B.diag)), (length(B.diag), 1))
-        # take a view of the diagonal elements of C, having strides 1 + length(diag)
-        totsize = (length(A.diag),)
-        C2 = StridedView(C, totsize, (sum(strides(C)),))
-
-    elseif numin(pA) == 2 # trace
-        A2 = flag2op(conjA)(StridedView(A.diag, (length(A.diag),)))
-        B2 = flag2op(conjB)(StridedView(B.diag, (length(B.diag),)))
-        totsize = (length(A.diag),)
-        C2 = sreshape(StridedView(C), (1,))
-
-    else # outer product
-        if β != 1
-            rmul!(C, β)
-            β = 1
-        end
-
-        A2 = sreshape(StridedView(A.diag), (length(A.diag), 1))
-        B2 = sreshape(StridedView(B.diag), (1, length(A.diag)))
-
-        C3 = permutedims(StridedView(C), invperm(linearize(pC)))
-        strC = strides(C3)
-        newstrides = (strC[1] + strC[2], strC[3] + strC[4])
-        totsize = (length(A2), length(B2))
-        C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
-    end
-
-    op1 = α == 1 ? (*) : (x, y) -> α * x * y
-    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
-    Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
-
-    return C
-end
-
-function native_contract!(C::Diagonal, ::Index2Tuple,
-                          A::Diagonal, ::Index2Tuple{1,1}, conjA::Symbol,
-                          B::Diagonal, ::Index2Tuple{1,1}, conjB::Symbol,
-                          α::Number, β::Number)
-    C.diag .= α .* flag2op(conjA)(A.diag) .* flag2op(conjB)(B.diag) .+ β .* C.diag
-    return C
-end
-
-function _contract!(α, A::StridedView, Bd::StridedView,
-                    β, C::StridedView, oindA, cindA, oindB, cindB, indCinoAB)
-    sizeA = i -> size(A, i)
-    csizeA = sizeA.(cindA)
-    osizeA = sizeA.(oindA)
-
-    if length(oindB) == 1 # length(cindA) == length(cindB) == 1
-        A2 = permutedims(A, (oindA..., cindA...))
-        C2 = permutedims(C, invperm(indCinoAB))
-        B2 = sreshape(Bd, ((one.(osizeA))..., csizeA...))
-        totsize = (osizeA..., csizeA...)
-
-    elseif length(oindB) == 0
-        strideA = i -> stride(A, i)
-        newstrides = (strideA.(oindA)..., strideA(cindA[1]) + strideA(cindA[2]))
-        totsize = (osizeA..., csizeA[1])
-        A2 = StridedView(A.parent, totsize, newstrides, A.offset, A.op)
-        B2 = sreshape(Bd, ((one.(osizeA))..., csizeA[1]))
-        C2 = permutedims(C, invperm(indCinoAB))
-
-    else # length(oindB) == 2
-        if β != 1
-            rmul!(C, β)
-            β = 1
-        end
-        A2 = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., 1))
-        C3 = permutedims(C, invperm(indCinoAB))
-        B2 = sreshape(Bd, ((one.(osizeA))..., length(Bd)))
-
-        sC = strides(C3)
-        newstrides = (Base.front(Base.front(sC))..., sC[end - 1] + sC[end])
-        totsize = (osizeA..., length(Bd))
-
-        C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
-    end
-
-    op1 = α == 1 ? (*) : (x, y) -> α * x * y
-    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
-    Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
-
-    return C
-end
-
-function flag2op(flag::Symbol)
-    op = flag == :N ? identity :
-         flag == :C ? conj :
-         flag == :A ? adjoint :
-         throw(ArgumentError("unknown conjuagation flag $flag"))
-    return op
-end
-
-function _trace!(α, A::StridedView,
-                 β, C::StridedView, indCinA::IndexTuple{NC},
-                 cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
-    sizeA = i -> size(A, i)
-    strideA = i -> stride(A, i)
-    tracesize = sizeA.(cindA1)
-    tracesize == sizeA.(cindA2) || throw(DimensionMismatch("non-matching trace sizes"))
-    size(C) == sizeA.(indCinA) || throw(DimensionMismatch("non-matching sizes"))
-
-    newstrides = (strideA.(indCinA)..., (strideA.(cindA1) .+ strideA.(cindA2))...)
-    newsize = (size(C)..., tracesize...)
-    A2 = StridedView(A.parent, newsize, newstrides, A.offset, A.op)
-
-    if α != 1
-        if β == 0
-            Strided._mapreducedim!(x -> α * x, +, zero, newsize, (C, A2))
-        elseif β == 1
-            Strided._mapreducedim!(x -> α * x, +, nothing, newsize, (C, A2))
-        else
-            Strided._mapreducedim!(x -> α * x, +, y -> β * y, newsize, (C, A2))
-        end
+    ipC = oindABinC(pC, pA, pB)
+    flagC = isblascontractable(C, ipC, :D)
+    if flagC
+        C_ = C
+        _unsafe_blas_contract!(C_, ipC, A_, pA, conjA, B_, pB, conjB, α, β)
     else
-        if β == 0
-            return Strided._mapreducedim!(identity, +, zero, newsize, (C, A2))
-        elseif β == 1
-            Strided._mapreducedim!(identity, +, nothing, newsize, (C, A2))
-        else
-            Strided._mapreducedim!(identity, +, y -> β * y, newsize, (C, A2))
-        end
+        C_ = StridedView(TensorOperations.tensoralloc_add(TC, ipC, C, :N))
+        ipC = trivialpermutation(ipC)
+        _unsafe_blas_contract!(C_, ipC, A_, pA, conjA, B_, pB, conjB, one(TC), zero(TC))
+        tensoradd!(C, pC, C_, :N, α, β)
+        tensorfree!(C_.parent)
     end
+    flagA || tensorfree!(A_.parent)
+    flagB || tensorfree!(B_.parent)
     return C
 end
 
-function isblascontractable(A::AbstractArray, p::Index2Tuple, C::Symbol)
-    eltype(A) <: LinearAlgebra.BlasFloat || return false
-    @strided isblascontractable(A, p, C)
+function _unsafe_blas_contract!(C::StridedView{T}, ipC,
+                                A::StridedView{T}, pA, conjA,
+                                B::StridedView{T}, pB, conjB, α, β) where {T<:BlasFloat}
+    sizeA = size(A)
+    sizeB = size(B)
+    csizeA = TupleTools.getindices(sizeA, pA[2])
+    csizeB = TupleTools.getindices(sizeB, pB[1])
+    osizeA = TupleTools.getindices(sizeA, pA[1])
+    osizeB = TupleTools.getindices(sizeB, pB[2])
+
+    opA = flag2op(conjA)
+    opB = flag2op(conjB)
+
+    mul!(sreshape(permutedims(C, linearize(ipC)), (prod(osizeA), prod(osizeB))),
+         opA(sreshape(permutedims(A, linearize(pA)), (prod(osizeA), prod(csizeA)))),
+         opB(sreshape(permutedims(B, linearize(pB)), (prod(csizeB), prod(osizeB)))),
+         α, β)
+
+    return C
+end
+
+function makeblascontractable(A, pA, conjA, TC)
+    flagA = isblascontractable(A, pA, conjA) && eltype(A) == TC
+    if !flagA
+        A_ = StridedView(TensorOperations.tensoralloc_add(TC, pA, A, conjA, true))
+        A = tensoradd!(A_, pA, A, conjA, one(TC), zero(TC))
+        conjA = :N
+        pA = trivialpermutation(pA)
+    end
+    return A, pA, conjA, flagA
 end
 
 function isblascontractable(A::StridedView, p::Index2Tuple, C::Symbol)
@@ -360,7 +202,7 @@ function isblascontractable(A::StridedView, p::Index2Tuple, C::Symbol)
 
     if C == :D # destination
         return A.op == identity && canfuse1 && canfuse2 && s1 == 1
-    elseif (C == :C && A.op == identity) || (C == :N && A.op == conj)# conjugated
+    elseif (C == :C && A.op == identity) || (C == :N && A.op == conj) # conjugated
         return canfuse1 && canfuse2 && s2 == 1
     else
         return canfuse1 && canfuse2 && (s1 == 1 || s2 == 1)
@@ -384,13 +226,12 @@ function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
         end
     end
 end
-_trivtuple(::NTuple{N}) where {N} = ntuple(identity, Val(N))
 
 function oindABinC(pC, pA, pB)
     ipC = invperm(linearize(pC))
-    oindAinC = TupleTools.getindices(ipC, _trivtuple(pA[1]))
-    oindBinC = TupleTools.getindices(ipC, length(pA[1]) .+ _trivtuple(pB[2]))
-    return oindAinC, oindBinC
+    oindAinC = TupleTools.getindices(ipC, trivialpermutation(pA[1]))
+    oindBinC = TupleTools.getindices(ipC, numout(pA) .+ trivialpermutation(pB[2]))
+    return (oindAinC, oindBinC)
 end
 
 function contract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
@@ -400,8 +241,4 @@ function contract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
            length(B) *
            (!isblascontractable(B, pB, conjB) || eltype(B) !== eltype(C)) +
            length(C) * !isblascontractable(C, ipC, :D)
-end
-
-function reversecontract_memcost(C, pC, A, pA, conjA, B, pB, conjB)
-    return contract_memcost(C, reverse(pC), B, reverse(pB), conjB, A, reverse(pA), conjA)
 end

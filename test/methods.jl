@@ -2,9 +2,7 @@ using TensorOperations: IndexError
 
 # test simple methods
 #---------------------
-withblas = TensorOperations.use_blas() ? "with" : "without"
-
-@testset "Method syntax $withblas BLAS" verbose = true begin
+@testset "Method syntax" verbose = true begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (3, 1, 4, 2)

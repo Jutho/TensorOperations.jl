@@ -1,9 +1,7 @@
 using LinearAlgebra
 # test index notation using @tensor macro
 #-----------------------------------------
-withblas = TensorOperations.use_blas() ? "with" : "without"
-
-@testset "Index Notation $withblas BLAS" verbose = true begin
+@testset "Macro with index notation" verbose = true begin
     @testset "tensorcontract 1" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (4, 1, 3, 2)

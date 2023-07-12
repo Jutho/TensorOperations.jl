@@ -16,8 +16,6 @@ using Base.Meta: isexpr
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
 
-export enable_blas, disable_blas
-
 # export function based API
 export ncon
 export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, tensorscalar
@@ -29,10 +27,18 @@ export IndexTuple, Index2Tuple, linearize
 # export debug functionality
 export checkcontractible, tensorcost
 
-# Index notation
-#----------------
+# Backends for tensor operations
+#--------------------------------
+struct Backend{B} end # generic empty parametric struct for dispatching on different backends
+
+# Interface and index types
+#---------------------------
+include("indices.jl")
+include("interface.jl")
+
+# Index notation via macros
+#---------------------------
 @nospecialize
-include("indexnotation/utility.jl")
 include("indexnotation/verifiers.jl")
 include("indexnotation/analyzers.jl")
 include("indexnotation/preprocessors.jl")
@@ -51,9 +57,10 @@ include("indexnotation/cutensormacros.jl")
 
 # Implementations
 #-----------------
-include("implementation/interface.jl")
 include("implementation/functions.jl")
 include("implementation/ncon.jl")
+include("implementation/abstractarray.jl")
+include("implementation/diagonal.jl")
 include("implementation/strided.jl")
 include("implementation/indices.jl")
 include("implementation/allocator.jl")
@@ -61,22 +68,6 @@ include("implementation/allocator.jl")
 # Global variables
 #------------------
 const costcache = LRU{Any,Any}(; maxsize=10^5)
-
-# Backends for tensor operations
-#--------------------------------
-struct Backend{B} end # generic empty parametric struct for dispatching on different backends
-
-# A switch for enabling/disabling the use of BLAS for tensor contractions # TODO: replace with backend mechanism
-const _use_blas = Ref(true)
-use_blas() = _use_blas[]
-function disable_blas()
-    _use_blas[] = false
-    return
-end
-function enable_blas()
-    _use_blas[] = true
-    return
-end
 
 # Package extensions
 #-------------------------
