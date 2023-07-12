@@ -5,9 +5,9 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,
                          α, β, ::StridedNative)
-                         argcheck_tensorcontract(C, pC, A, pA, B, pB)
-                         dimcheck_tensorcontract(C, pC, A, pA, B, pB)
-                     
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+
     _diagtensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
                          StridedView(B.diag), pB, conjB, α, β)
     return C
@@ -19,7 +19,7 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          α, β, ::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
-                     
+
     rpA = reverse(pA)
     rpB = reverse(pB)
     indCinoBA = let N₁ = numout(pA), N₂ = numin(pB)
@@ -38,9 +38,9 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::Diagonal, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,
                          α, β, ::StridedNative)
-                         argcheck_tensorcontract(C, pC, A, pA, B, pB)
-                         dimcheck_tensorcontract(C, pC, A, pA, B, pB)
-                     
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+
     if numin(pA) == 1 # matrix multiplication
         if β != one(β) # multiplication only takes care of diagonal elements of C
             rmul!(C, β)
@@ -86,8 +86,8 @@ function tensorcontract!(C::Diagonal, pC::Index2Tuple,
                          A::Diagonal, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,
                          α, β, ::StridedNative)
-                         argcheck_tensorcontract(C, pC, A, pA, B, pB)
-                         dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
     A2 = flag2op(conjA)(StridedView(A.diag))
     B2 = flag2op(conjB)(StridedView(B.diag))

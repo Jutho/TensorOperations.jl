@@ -28,7 +28,9 @@ numin(p::Index2Tuple) = length(p[2])
 numind(p::Index2Tuple) = numout(p) + numin(p)
 
 trivialpermutation(p::IndexTuple{N}) where {N} = ntuple(identity, Val(N))
-trivialpermutation(p::Index2Tuple) = (trivialpermutation(p[1]), numout(p) .+ trivialpermutation(p[2]))
+function trivialpermutation(p::Index2Tuple)
+    return (trivialpermutation(p[1]), numout(p) .+ trivialpermutation(p[2]))
+end
 
 istrivialpermutation(p::IndexTuple) = p == trivialpermutation(p)
 istrivialpermutation(p::Index2Tuple) = p == trivialpermutation(p)

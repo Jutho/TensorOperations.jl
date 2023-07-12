@@ -2,6 +2,13 @@ tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch()
 
 tensorcost(C::AbstractArray, i) = size(C, i)
 
+function checkcontractible(A::AbstractArray, iA, conjA::Symbol,
+                           B::AbstractArray, iB, conjB::Symbol, label)
+    size(A, iA) == size(B, iB) ||
+        throw(IndexError("Nonmatching dimensions for $label: $(size(A, iA)) != $(size(B, iB))"))
+    return nothing
+end
+
 # TODO
 # add check for stridedness of abstract arrays and add a pure implementation as fallback
 
