@@ -8,8 +8,12 @@ Random.seed!(1234567)
 @testset "tensoropt" begin
     include("tensoropt.jl")
 end
-@testset "auxiliary" begin
+@testset "auxiliary" verbose = true begin
     include("auxiliary.jl")
+end
+
+@testset "macro keywords" verbose = true begin
+    include("macro_kwargs.jl")
 end
 
 @testset "strided" begin
