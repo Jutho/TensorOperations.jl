@@ -46,9 +46,9 @@ function tensordescriptor(T::Type{<:Number}, A::CuArray, pA::Index2Tuple, conjA:
                               strides=TupleTools.getindices(strides(A), linearize(pA)))
 end
 
-# ---------------------------------------------------------------------------------------- #
-# tensoradd!
-# ---------------------------------------------------------------------------------------- #
+#-------------------------------------------------------------------------------------------
+# Operations
+#-------------------------------------------------------------------------------------------
 
 function TensorOperations.tensoradd!(C::CuArray, pC::Index2Tuple,
                                      A::CuArray, conjA::Symbol, α::Number, β::Number)
@@ -77,10 +77,6 @@ function TensorOperations.tensoradd!(C::CuArray, pC::Index2Tuple,
 
     return C
 end
-
-# ---------------------------------------------------------------------------------------- #
-# tensorcontract!
-# ---------------------------------------------------------------------------------------- #
 
 function TensorOperations.tensorcontract!(C::CuArray, pC::Index2Tuple,
                                           A::CuArray, pA::Index2Tuple, conjA::Symbol,
@@ -152,10 +148,6 @@ function TensorOperations.tensorcontract!(C::CuArray, pC::Index2Tuple,
     return C
 end
 
-# ---------------------------------------------------------------------------------------- #
-# tensortrace!
-# ---------------------------------------------------------------------------------------- #
-
 function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
                                        A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
     TensorOperations.argcheck_tensortrace(C, pC, A, pA)
@@ -201,9 +193,9 @@ function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
     return C
 end
 
-# ---------------------------------------------------------------------------------------- #
-# Allocation
-# ---------------------------------------------------------------------------------------- #
+#-------------------------------------------------------------------------------------------
+# Allocations
+#-------------------------------------------------------------------------------------------
 
 function TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol)
     return CuArray{TC,TensorOperations.numind(pC)}
@@ -215,9 +207,9 @@ function TensorOperations.tensorcontract_type(TC, pC::Index2Tuple, ::CuArray,
     return CuArray{TC,TensorOperations.numind(pC)}
 end
 
-# ---------------------------------------------------------------------------------------- #
+#-------------------------------------------------------------------------------------------
 # Backend
-# ---------------------------------------------------------------------------------------- #
+#-------------------------------------------------------------------------------------------
 
 const CUDABackend = TensorOperations.Backend{:cuTENSOR}
 

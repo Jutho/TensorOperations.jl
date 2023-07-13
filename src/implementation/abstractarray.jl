@@ -74,9 +74,9 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
     return C
 end
 
-#===========================================================================================
-    Argument Checking: can be used by backends to check the validity of the arguments
-===========================================================================================#
+# ------------------------------------------------------------------------------------------
+# Argument Checking: can be used by backends to check the validity of the arguments
+# ------------------------------------------------------------------------------------------
 
 """
     argcheck_index2tuple(C::AbstractArray, pC::Index2Tuple)
@@ -180,6 +180,7 @@ end
 #-------------------------------------------------------------------------------------------
 # Utility functions
 #-------------------------------------------------------------------------------------------
+
 function flag2op(flag::Symbol)
     op = flag == :N ? identity :
          flag == :C ? conj :

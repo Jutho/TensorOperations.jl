@@ -1,6 +1,6 @@
-#--------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
 # Specialized implementations for contractions involving diagonal matrices
-#--------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,

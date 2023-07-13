@@ -3,8 +3,9 @@
 # Implements the index calculations, i.e. converting the tensor labels into
 # indices specifying the operations
 
+#-------------------------------------------------------------------------------------------
 # Auxiliary tools to manipulate tuples
-#--------------------------------------
+#-------------------------------------------------------------------------------------------
 import Base.tail
 
 # tuple setdiff, assumes b is completely contained in a
@@ -28,8 +29,6 @@ _findfirst(args...) = (i = findfirst(args...); i === nothing ? 0 : i)
 _findnext(args...) = (i = findnext(args...); i === nothing ? 0 : i)
 _findlast(args...) = (i = findlast(args...); i === nothing ? 0 : i)
 
-# Auxiliary method to analyze trace indices
-#-------------------------------------------
 """
     unique2(itr)
 
@@ -54,8 +53,9 @@ function unique2(itr)
     return out
 end
 
+#-------------------------------------------------------------------------------------------
 # Extract index information
-#---------------------------
+#-------------------------------------------------------------------------------------------
 function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     indCinA = map(l -> _findfirst(isequal(l), IA), IC)
     (NA == NC && isperm(indCinA)) ||
@@ -107,8 +107,9 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
     return pA, pB, pC
 end
 
+#-------------------------------------------------------------------------------------------
 # Generate index information
-#---------------------------
+#-------------------------------------------------------------------------------------------
 const OFFSET_OPEN = 'a' - 1
 const OFFSET_CLOSED = 'A' - 1
 
