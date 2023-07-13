@@ -183,5 +183,14 @@ end
         @test x * p == p * x
     end
 
+    @testset "expandconj" begin
+        @test TensorOperations.expandconj(:(conj(a[x, y, z] * b[x, y, z]))) ==
+              :(conj(a[x, y, z]) * conj(b[x, y, z]))
+        @test TensorOperations.expandconj(:(conj(a[x, y, z] * 2 * c[x, y, z] + 12 +
+                                                 A[1, 2] * B[3, 4] \ 1))) ==
+              :(conj(a[x, y, z]) * conj(2) * conj(c[x, y, z]) + conj(12) +
+                conj(A[1, 2]) * conj(B[3, 4]) \ conj(1))
+    end
+
     @testset "cost methods" begin end
 end
