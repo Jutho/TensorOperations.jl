@@ -1,5 +1,13 @@
+@testset "cuTENSOR dependency check" begin
+    @test_throws ArgumentError begin
+        ex = :(@cutensor A[a, b, c, d] := B[a, b, c, d])
+        macroexpand(Main, ex)
+    end
+end
+
 using cuTENSOR
 using LinearAlgebra: norm
+using TensorOperations: IndexError
 
 @testset "elementary operations" verbose = true begin
     @testset "tensorcopy" begin
@@ -126,5 +134,74 @@ end
                  conj(CuArray(A1)[a', t, b']) * conj(CuArray(A2)[b', t', c'])
         end
         @test E2 ≈ E1
+    end
+end
+
+@testset "@cutensor" verbose = true begin
+    @testset "tensorcontract 1" begin
+        A = randn(Float64, (3, 5, 4, 6))
+        @tensor C1[4, 1, 3, 2] := A[1, 2, 3, 4]
+        @cutensor C2[4, 1, 3, 2] := A[1, 2, 3, 4]
+        @test C1 ≈ collect(C2)
+        @test_throws IndexError begin
+            @cutensor C[1, 2, 3, 4] := A[1, 2, 3]
+        end
+        @test_throws IndexError begin
+            @cutensor C[1, 2, 3, 4] := A[1, 2, 2, 4]
+        end
+
+        B = randn(Float64, (5, 6, 3, 4))
+        p = [3, 1, 4, 2]
+        @tensor C1[3, 1, 4, 2] := A[3, 1, 4, 2] + B[1, 2, 3, 4]
+        @cutensor C2[3, 1, 4, 2] := A[3, 1, 4, 2] + B[1, 2, 3, 4]
+        @test C1 ≈ collect(C2)
+        @test_throws CUTENSORError begin
+            @cutensor C[1, 2, 3, 4] := A[1, 2, 3, 4] + B[1, 2, 3, 4]
+        end
+
+        A = randn(Float64, (50, 100, 100))
+        @tensor C1[a] := A[a, b', b']
+        @cutensor C2[a] := A[a, b', b']
+        @test C1 ≈ collect(C2)
+
+        A = randn(Float64, (3, 20, 5, 3, 20, 4, 5))
+        @tensor C1[e, a, d] := A[a, b, c, d, b, e, c]
+        @cutensor C2[e, a, d] := A[a, b, c, d, b, e, c]
+        @test C1 ≈ collect(C2)
+
+        A = randn(Float64, (3, 20, 5, 3, 4))
+        B = randn(Float64, (5, 6, 20, 3))
+        @tensor C1[a, g, e, d, f] := A[a, b, c, d, e] * B[c, f, b, g]
+        @cutensor C2[a, g, e, d, f] := A[a, b, c, d, e] * B[c, f, b, g]
+        @test C1 ≈ collect(C2)
+        @test_throws IndexError begin
+            @cutensor A[a, b, c, d] * B[c, f, b, g]
+        end
+    end
+
+    @testset "tensorcontract 2" begin
+        A = randn(Float64, (5, 5, 5, 5))
+        B = rand(ComplexF64, (5, 5, 5, 5))
+        @tensor C1[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
+        @cutensor C2[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
+        @test C1 ≈ collect(C2)
+        @test_throws IndexError begin
+            @cutensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
+        end
+    end
+
+    @testset "tensorcontract 3" begin
+        Da, Db, Dc, Dd, De, Df, Dg, Dh = 10, 15, 4, 8, 6, 7, 3, 2
+        A = rand(ComplexF64, (Da, Dc, Df, Da, De, Db, Db, Dg))
+        B = rand(ComplexF64, (Dc, Dh, Dg, De, Dd))
+        C = rand(ComplexF64, (Dd, Dh, Df))
+        @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
+                               0.5 * C[d, h, f]
+        @cutensor D2[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
+                                 0.5 * C[d, h, f]
+        @test D1 ≈ collect(D2)
+        E1 = sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
+        E2 = sqrt(abs((@cutensor tensorscalar(D2[d, f, h] * conj(D2[d, f, h])))))
+        @test E1 ≈ E2
     end
 end

@@ -52,7 +52,6 @@ include("indexnotation/optimaltree.jl")
 include("indexnotation/instantiators.jl")
 include("indexnotation/parser.jl")
 include("indexnotation/tensormacros.jl")
-include("indexnotation/cutensormacros.jl")
 @specialize
 
 # Implementations

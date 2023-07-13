@@ -329,23 +329,18 @@ is also a native contraction implementation that is used for e.g. arrays with an
 that is not `<:LinearAlgebra.BlasFloat`. It performs the contraction directly without the
 additional permutations, but still in a cache-friendly and multithreaded way (again relying
 on `JULIA_NUM_THREADS>1`). This implementation can sometimes be faster even for `BlasFloat`
-types, and the use of BLAS can be disabled globally by calling `disable_blas()`. It is
-currently not possible to control the use of BLAS at the level of individual contractions.
+types, and the use of BLAS can be controlled by explicitly switching the backend between `StridedBLAS` and `StridedNative`.
 
 Since TensorOperations v2.0, the necessary implementations are also available for `CuArray`
 objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This
-implementation is essentially a simple wrapper over the cuTENSOR library of NVidia, and as
-such has certain restrictions as a result thereof. Native Julia alternatives using
-CUDA.jl or KernelAbstractions.jl might be provided in the future.
+implementation is essentially a simple wrapper over the cuTENSOR library of NVidia, and will only be loaded when the `cuTENSOR` library is loaded. The `@tensor` macro will then automatically work for operations between GPU arrays.
 
-<!--
 Mixed operations between host arrays (e.g. `Array`) and device arrays (e.g. `CuArray`) will
-fail. However, if one wants to harness the computing power of the GPU to perform all tensor
-operations, there is a dedicated macro `@cutensor`. This will transfer all arrays to the
-GPU before performing the requested operations. If the output is an existing host array,
+fail however. If one wants to harness the computing power of the GPU to perform all tensor
+operations, there is a dedicated macro `@cutensor`. This will transfer all host arrays to
+the GPU before performing the requested operations. If the output is an existing host array,
 the result will be copied back. If a new result array is created (i.e. using `:=`), it will
 remain on the GPU device and it is up to the user to transfer it back. Arrays are
 transfered to the GPU just before they are first used, and in a complicated tensor
 expression, this might have the benefit that transer of the later arrays overlaps with
 computation of earlier operations. 
--->

@@ -28,6 +28,9 @@ using cuTENSOR.CUDA: CUDA, CuArray
 using cuTENSOR.CUDA.CUBLAS: CublasFloat, CublasReal
 using cuTENSOR.CUDA: with_workspace, default_stream
 
+# this might be dependency-piracy, but removes a dependency from the main package
+using cuTENSOR.CUDA.Adapt: adapt
+
 function TensorOperations.tensorscalar(C::CuArray)
     return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
 end
@@ -199,7 +202,7 @@ function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
 end
 
 # ---------------------------------------------------------------------------------------- #
-# JuliaAllocator
+# Allocation
 # ---------------------------------------------------------------------------------------- #
 
 function TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol)
@@ -210,6 +213,85 @@ function TensorOperations.tensorcontract_type(TC, pC::Index2Tuple, ::CuArray,
                                               pA::Index2Tuple, conjA::Symbol, ::CuArray,
                                               pB::Index2Tuple, conjB::Symbol)
     return CuArray{TC,TensorOperations.numind(pC)}
+end
+
+# ---------------------------------------------------------------------------------------- #
+# Backend
+# ---------------------------------------------------------------------------------------- #
+
+const CUDABackend = TensorOperations.Backend{:cuTENSOR}
+
+function TensorOperations.tensoradd!(C::AbstractArray, pC::Index2Tuple,
+                                     A::AbstractArray, conjA::Symbol, α::Number, β::Number,
+                                     backend::CUDABackend)
+    C_cuda = adapt(CuArray, C)
+    tensoradd!(C_cuda, pC, A, conjA, α, β, backend)
+    copyto!(C, collect(C_cuda))
+    return C
+end
+
+function TensorOperations.tensoradd!(C::CuArray, pC::Index2Tuple,
+                                     A::AbstractArray, conjA::Symbol, α::Number, β::Number,
+                                     ::CUDABackend)
+    return tensoradd!(C, pC, adapt(CuArray, A), conjA, α, β)
+end
+
+function TensorOperations.tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+                                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                                          α, β, backend::CUDABackend)
+    C_cuda = adapt(CuArray, C)
+    tensorcontract!(C_cuda, pC, A, pA, conjA, B, pB, conjB, α, β, backend)
+    copyto!(C, collect(C_cuda))
+    return C
+end
+function TensorOperations.tensorcontract!(C::CuArray, pC::Index2Tuple,
+                                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                                          α, β, ::CUDABackend)
+    return tensorcontract!(C, pC, adapt(CuArray, A), pA, conjA, adapt(CuArray, B), pB,
+                           conjB, α, β)
+end
+
+function TensorOperations.tensortrace!(C::AbstractArray, pC::Index2Tuple,
+                                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                                       α, β, backend::CUDABackend)
+    C_cuda = adapt(CuArray, C)
+    tensortrace!(C_cuda, pC, A, pA, conjA, α, β, backend)
+    copyto!(C, collect(C_cuda))
+    return C
+end
+function TensorOperations.tensortrace!(C::CuArray, pC::Index2Tuple,
+                                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                                       α, β, ::CUDABackend)
+    return tensortrace!(C, pC, adapt(CuArray, A), pA, conjA, α, β)
+end
+
+function TensorOperations.tensoradd_type(TC, pC::Index2Tuple, ::AbstractArray,
+                                         conjA::Symbol, ::CUDABackend)
+    return CuArray{TC,TensorOperations.numind(pC)}
+end
+
+function TensorOperations.tensorcontract_type(TC, pC::Index2Tuple, ::AbstractArray,
+                                              pA::Index2Tuple, conjA::Symbol,
+                                              ::AbstractArray,
+                                              pB::Index2Tuple, conjB::Symbol, ::CUDABackend)
+    return CuArray{TC,TensorOperations.numind(pC)}
+end
+
+function TensorOperations.tensoralloc_add(TC, pC, A::AbstractArray, conjA, istemp,
+                                          ::CUDABackend)
+    ttype = CuArray{TC,TensorOperations.numind(pC)}
+    structure = TensorOperations.tensoradd_structure(pC, A, conjA)
+    return tensoralloc(ttype, structure, istemp)::ttype
+end
+
+function TensorOperations.tensoralloc_contract(TC, pC, A::AbstractArray, pA, conjA,
+                                               B::AbstractArray, pB, conjB, istemp,
+                                               ::CUDABackend)
+    ttype = CuArray{TC,TensorOperations.numind(pC)}
+    structure = TensorOperations.tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
+    return tensoralloc(ttype, structure, istemp)::ttype
 end
 
 end

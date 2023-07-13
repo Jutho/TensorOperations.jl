@@ -35,7 +35,7 @@ function tensoradd_structure(pC::Index2Tuple, A::AbstractArray, conjA::Symbol)
 end
 
 function tensorcontract_type(TC, pC, A::AbstractArray, pA, conjA,
-                             B::AbstractArray, pB, conjB)
+                             B::AbstractArray, pB, conjB, backend...)
     return Array{TC,sum(length.(pC))}
 end
 
