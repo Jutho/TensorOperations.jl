@@ -6,17 +6,17 @@ tensorop(args...) = +(*(args...), *(args...))
 promote_contract(args...) = Base.promote_op(tensorop, args...)
 promote_add(args...) = Base.promote_op(+, args...)
 
-function tensoralloc_add(TC, pC, A, conjA, istemp=false)
+function tensoralloc_add(TC, pC, A, conjA, istemp=false, backend::Backend...)
     ttype = tensoradd_type(TC, pC, A, conjA)
     structure = tensoradd_structure(pC, A, conjA)
-    return tensoralloc(ttype, structure, istemp)::ttype
+    return tensoralloc(ttype, structure, istemp, backend...)::ttype
 end
 
 function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB,
-                              istemp=false)
+                              istemp=false, backend::Backend...)
     ttype = tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
     structure = tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
-    return tensoralloc(ttype, structure, istemp)::ttype
+    return tensoralloc(ttype, structure, istemp, backend...)::ttype
 end
 
 # ------------------------------------------------------------------------------------------
@@ -47,8 +47,9 @@ function tensorcontract_structure(pC::Index2Tuple,
     end
 end
 
-function tensoralloc(ttype, structure, istemp=false)
+function tensoralloc(ttype, structure, istemp=false, backend::Backend...)
     C = ttype(undef, structure)
+    # fix an issue with undefined references for strided arrays
     if !isbitstype(scalartype(ttype))
         C = fill!(C, zero(scalartype(ttype)))
     end
