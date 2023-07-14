@@ -1,5 +1,8 @@
 # Implementation
 
+TODO: read and fix some referencing issues
+
+
 The macros [`@tensor`](@ref) and the related [`@tensoropt`](@ref) work as
 parsers for indexed tensor expressions. They transform these into a sequence of
 calls to the primitive tensor operations. This allows the support of custom
@@ -23,7 +26,9 @@ to incorporate the custom backend system.
 
 ## Verifiers
 
-The basic checks are performed by [`verifytensorexpr`](@ref), which calls the verifiers [`isassignment`](@ref), [`isdefinition`](@ref), [`istensor`](@ref), [`istensorexpr`](@ref) and [`isscalarexpr`](@ref).
+The basic checks are performed by [`verifytensorexpr`](@ref), which calls the verifiers
+[`isassignment`](@ref), [`isdefinition`](@ref), [`istensor`](@ref), [`istensorexpr`](@ref)
+and [`isscalarexpr`](@ref).
 
 ```@docs
 TensorOperations.verifytensorexpr
@@ -64,7 +69,11 @@ TensorOperations.insertbackend
 
 ## Analysis of contraction graphs and optimizing contraction order
 
-The macro [`@tensoropt`](@ref) or the combination of [`@tensor`](@ref) with the keyword `opt` can be used to optimize the contraction order of the expression at compile time.
-This is done by analyzing the contraction graph, where the nodes are the tensors and the edges are the contractions, in combination with the data provided in `optdata`, which is a dictionary associating a cost (either a number or a polynomial in some abstract scaling parameter) to every index.
-This information is then used to determine the (asymptotically) optimal contraction tree (in terms of number of floating point operations).
-The algorithm that is used is described in [arXiv:1304.6112](https://arxiv.org/abs/1304.6112).
+The macro [`@tensoropt`](@ref) or the combination of [`@tensor`](@ref) with the keyword
+`opt` can be used to optimize the contraction order of the expression at compile time. This
+is done by analyzing the contraction graph, where the nodes are the tensors and the edges
+are the contractions, in combination with the data provided in `optdata`, which is a
+dictionary associating a cost (either a number or a polynomial in some abstract scaling
+parameter) to every index. This information is then used to determine the (asymptotically)
+optimal contraction tree (in terms of number of floating point operations). The algorithm
+that is used is described in [arXiv:1304.6112](https://arxiv.org/abs/1304.6112).

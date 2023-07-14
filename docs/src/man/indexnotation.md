@@ -1,5 +1,14 @@
 # Index notation with macros
 
+The main export and main functionality of TensorOperations.jl is the `@tensor` macro
+
+```@docs
+@tensor
+```
+
+The functionality and configurability of `@tensor` and some of its relatives is explained in
+detail on this page.
+
 ## The `@tensor` macro
 
 The prefered way to specify (a sequence of) tensor operations is by using the `@tensor`
@@ -213,8 +222,8 @@ can be obtained during compilation by using the alternative macro `@tensoropt_ve
 As the cost is determined at compile time, it is not using actual tensor properties (e.g.
 `size(A, i)` in the case of arrays) in the cost model, and the cost or extent associated
 with every index can be specified in various ways, either using integers or floating point
-numbers or some arbitrary polynomial of an abstract variable, e.g. `χ`. In the latter case,
-the optimization assumes the asymptotic limit of large `χ`.
+numbers or some arbitrary univariate polynomial of an abstract variable, e.g. `χ`. In the
+latter case, the optimization assumes the asymptotic limit of large `χ`.
 
 ```julia
 @tensoropt D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
@@ -397,12 +406,27 @@ make the interaction with the cache hurtful rather than advantageous.
 
 Indices with the same label, either open indices on the two sides of the equation, or contracted
 indices, need to be compatible. For `AbstractArray` objects, this means they must have the same
-size, or more generally, the same range, as obtained with `axes(array, i)`. 
+size, or more generally, the same range, as obtained with `axes(array, i)`. Other tensor types
+might have more complicated structure associated with their indices, and requires matching between
+those. The function [`checkcontractible`](@ref) is part of the interface that can be used to control
+when tensors can be contracted with each other along specific indices.
+
+If indices don't match, the contraction will spawn an error. However, this can be an error
+deep within the implementation, at which point the error message will provide little
+information as to which specific tensors and which indices are producing the mismatch. By
+adding the keyword argument `contractcheck = true` to the `@tensor` macro, explicit checks
+are enabled that are run before any tensor operation is performed, and when a mismatch is
+detected, the still have the label information to spawn a more useful error message.
+
+
+TODO: continue the following
+A different type of check is the `costcheck` keyword argument, which can be given the values
+`:warn` or `:cache`.
 
 ## Backends, multithreading and GPUs
 
-Every index expression will be evaluated as a sequence of elementary tensor operations,
-i.e. permuted additions, partial traces and contractions, which are implemented for strided
+Every index expression will be evaluated as a sequence of elementary tensor operations, i.e.
+permuted additions, partial traces and contractions, which are implemented for strided
 arrays as discussed in [Package features](@ref). In particular, these implementations rely
 on [Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a
 full specification of which arrays are supported. As a rule of thumb, `Array`s from Julia
@@ -413,17 +437,18 @@ multithreading if `JULIA_NUM_THREADS>1`. The binary contraction is performed by 
 permuting the two input tensors into a form such that the contraction becomes equivalent to
 one matrix multiplication on the whole data, followed by a final permutation to bring the
 indices of the output tensor into the desired order. This approach allows to use the highly
-efficient matrix multiplication (`gemm`) from BLAS, which is multithreaded by default. There
-is also a native contraction implementation that is used for e.g. arrays with an `eltype`
-that is not `<:LinearAlgebra.BlasFloat`. It performs the contraction directly without the
-additional permutations, but still in a cache-friendly and multithreaded way (again relying
-on `JULIA_NUM_THREADS>1`). This implementation can sometimes be faster even for `BlasFloat`
-types, and the use of BLAS can be controlled by explicitly switching the backend between `StridedBLAS` and `StridedNative`.
+efficient matrix multiplication kernel (`gemm`) from BLAS, which is multithreaded by
+default. There is also a native contraction implementation that is used for e.g. arrays with
+an `eltype` that is not `<:LinearAlgebra.BlasFloat`. It performs the contraction directly
+without the additional permutations, but still in a cache-friendly and multithreaded way
+(again relying on `JULIA_NUM_THREADS>1`). This implementation can also be used for
+`BlasFloat` types (but will typically be slower), and the use of BLAS can be controlled by
+explicitly switching the backend between `StridedBLAS` and `StridedNative`.
 
-Since TensorOperations v2.0, the necessary implementations are also available for `CuArray`
-objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation
-is essentially a simple wrapper over the cuTENSOR library of NVidia, and will only be loaded
-when the `cuTENSOR` library is loaded. The `@tensor` macro will then automatically work for
+The primitive tensor operations are also implemented for `CuArray` objects of the
+[CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation is essentially a
+simple wrapper over the cuTENSOR library of NVidia, and will only be loaded when the
+`cuTENSOR` library is loaded. The `@tensor` macro will then automatically work for
 operations between GPU arrays.
 
 Mixed operations between host arrays (e.g. `Array`) and device arrays (e.g. `CuArray`) will
@@ -431,8 +456,8 @@ fail however. If one wants to harness the computing power of the GPU to perform 
 operations, there is a dedicated macro `@cutensor`. This will transfer all host arrays to
 the GPU before performing the requested operations. If the output is an existing host array,
 the result will be copied back. If a new result array is created (i.e. using `:=`), it will
-remain on the GPU device and it is up to the user to transfer it back. Arrays are
-transfered to the GPU just before they are first used, and in a complicated tensor
-expression, this might have the benefit that transer of the later arrays overlaps with
-computation of earlier operations. 
+remain on the GPU device and it is up to the user to transfer it back. Arrays are transfered
+to the GPU just before they are first used, and in a complicated tensor expression, this
+might have the benefit that transer of the later arrays overlaps with computation of earlier
+operations.
 

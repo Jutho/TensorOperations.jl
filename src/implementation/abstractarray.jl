@@ -4,8 +4,8 @@ tensorcost(C::AbstractArray, i) = size(C, i)
 
 function checkcontractible(A::AbstractArray, iA, conjA::Symbol,
                            B::AbstractArray, iB, conjB::Symbol, label)
-    size(A, iA) == size(B, iB) ||
-        throw(DimensionMismatch("Nonmatching dimensions for $label: $(size(A, iA)) != $(size(B, iB))"))
+    axes(A, iA) == axes(B, iB) ||
+        throw(DimensionMismatch("Nonmatching index range for $label: $(axes(A, iA)) != $(axes(B, iB))"))
     return nothing
 end
 

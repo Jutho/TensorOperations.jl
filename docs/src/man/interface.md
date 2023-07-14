@@ -1,5 +1,7 @@
 # Interface
 
+TODO: read and fix some referencing issues
+
 The `@tensor` macro rewrites tensor operations in terms of basic building blocks, such that
 any tensor type that implements the following interface can be supported. In these methods,
 `C` will indicate an output tensor which is changed in-place, while `A` and `B` denote input

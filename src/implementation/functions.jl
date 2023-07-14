@@ -45,7 +45,7 @@ function tensorcopy(pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backe
 end
 
 """
-    tensorcopy!(C, pC::Index2Tuple, A, conjA=:N, α=true)
+    tensorcopy!(C, pC::Index2Tuple, A, conjA=:N, α=true, [backend])
 
 Copy the contents of tensor `A` into `C`, where the dimensions `A` are permuted according to
 the permutation and repartition `pC`.
@@ -54,6 +54,9 @@ The result of this method is equivalent to `α * permutedims!(C, A, pC)`.
 
 Optionally, the symbol `conjA` can be used to specify whether the input tensor should be
 conjugated (`:C`) or not (`:N`).
+
+!!! warning 
+    The object `C` must not be aliased with `A`.
 
 See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
 """
@@ -67,7 +70,7 @@ end
 
 """
     tensoradd([IC=IA], A, IA, [conjA], B, IB, [conjB], [α=true, [β=true]])
-    tensoradd(A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, pB::Index2Tuple, conjB, α=true, β=true) # expert mode
+    tensoradd(A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, pB::Index2Tuple, conjB, α=true, β=true, [backend]) # expert mode
 
 Return the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
@@ -121,7 +124,7 @@ end
 
 """
     tensortrace([IC], A, IA, [conjA], [α=true])
-    tensortrace(pC::Index2Tuple, A, pA::Index2Tuple, conjA, α=true) # expert mode
+    tensortrace(pC::Index2Tuple, A, pA::Index2Tuple, conjA, α=true, [backend]) # expert mode
 
 Trace or contract pairs of indices of tensor `A`, by assigning them identical indices in the
 iterable `IA`. The untraced indices, which are assigned a unique index, can be reordered
@@ -170,7 +173,7 @@ end
 
 """
     tensorcontract([IC], A, IA, [conjA], B, IB, [conjB], [α=true])
-    tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true) # expert mode
+    tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true, [backend]) # expert mode
 
 Contract indices of tensor `A` with corresponding indices in tensor `B` by assigning
 them identical labels in the iterables `IA` and `IB`. The indices of the resulting
@@ -233,7 +236,7 @@ end
 
 """
     tensorproduct([IC], A, IA, [conjA], B, IB, [conjB], [α=true])
-    tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true) # expert mode
+    tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true, [backend]) # expert mode
 
 Compute the tensor product (outer product) of two tensors `A` and `B`, i.e. returns a new
 tensor `C` with `ndims(C) = ndims(A) + ndims(B)`. The indices of the output tensor are
@@ -286,6 +289,9 @@ end
 Compute the tensor product (outer product) of two tensors `A` and `B`, i.e. a wrapper of
 [`tensorcontract!`](@ref) with no indices being contracted over. This method checks whether
 the indices indeed specify a tensor product instead of a genuine contraction.
+
+!!! warning 
+    The object `C` must not be aliased with `A` or `B`.
 
 See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 """
