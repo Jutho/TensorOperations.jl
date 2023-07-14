@@ -38,7 +38,8 @@ function tensorcopy(IC, A, IA, conjA::Symbol=:N, α::Number=true)
     return tensorcopy(tuple(IC...), A, tuple(IA...), conjA, α)
 end
 # expert mode
-function tensorcopy(pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backend::Backend...)
+function tensorcopy(pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true,
+                    backend::Backend...)
     TC = promote_add(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, pC, A, conjA)
     return tensorcopy!(C, pC, A, conjA, α, backend...)
@@ -60,7 +61,8 @@ conjugated (`:C`) or not (`:N`).
 
 See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
 """
-function tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backend::Backend...)
+function tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true,
+                     backend::Backend...)
     return tensoradd!(C, pC, A, conjA, α, false, backend...)
 end
 
@@ -295,8 +297,10 @@ the indices indeed specify a tensor product instead of a genuine contraction.
 
 See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 """
-function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
-                        pB::Index2Tuple, α::Number=true, β::Number=false, backend::Backend...)
+function tensorproduct!(C, pC::Index2Tuple,
+                        A, pA::Index2Tuple, conjA::Symbol,
+                        B, pB::Index2Tuple, conjB::Symbol,
+                        α::Number=true, β::Number=false, backend::Backend...)
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, backend...)

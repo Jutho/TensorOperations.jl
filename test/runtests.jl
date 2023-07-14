@@ -16,7 +16,7 @@ end
     include("macro_kwargs.jl")
 end
 
-@testset "strided" verbose=true begin
+@testset "strided" verbose = true begin
     using TensorOperations
     using Test
     include("methods.jl")

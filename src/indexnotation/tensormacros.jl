@@ -83,15 +83,17 @@ end
 
 function parse_tensor_kwargs(args)
     # @tensor(tensorexpr; kwargs)
-    if length(args) == 1 && isexpr(args[1], :parameters) 
+    if length(args) == 1 && isexpr(args[1], :parameters)
         return args[1]
     end
-    
+
     # @tensor kw1=val1 kw2=val2 ... tensorexpr
-    expr_to_kw(ex) = isexpr(ex, :(=), 2) ? Expr(:kw, ex.args...) : throw(ArgumentError("unknown keyword expression `$ex`"))
+    function expr_to_kw(ex)
+        return isexpr(ex, :(=), 2) ? Expr(:kw, ex.args...) :
+               throw(ArgumentError("unknown keyword expression `$ex`"))
+    end
     return Expr(:parameters, expr_to_kw.(args)...)
 end
-
 
 """
     @tensoropt(optex, block)
