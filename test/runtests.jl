@@ -16,7 +16,7 @@ end
     include("macro_kwargs.jl")
 end
 
-@testset "strided" begin
+@testset "strided" verbose=true begin
     using TensorOperations
     using Test
     include("methods.jl")
@@ -38,6 +38,6 @@ end
 
 @testset "Aqua" verbose = true begin
     # only test project formatting for Julia >= 1.9
-    Aqua.test_all(TensorOperations; stale_deps=(; ignore=[:Requires]),
+    Aqua.test_all(TensorOperations;
                   project_toml_formatting=(VERSION >= v"1.9"))
 end

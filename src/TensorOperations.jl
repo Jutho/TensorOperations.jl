@@ -68,8 +68,9 @@ include("implementation/allocator.jl")
 #------------------
 const costcache = LRU{Any,Any}(; maxsize=10^5)
 
-# Package extensions
-#-------------------------
+# Package extensions backwards compatibility
+#--------------------------------------------
+
 if !isdefined(Base, :get_extension)
     using Requires
 end
