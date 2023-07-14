@@ -11,7 +11,7 @@ end
 
 """
     @tensor(tensor_expr; kwargs...)
-    @tensor [kw_expr] tensor_expr
+    @tensor [kw_expr...] tensor_expr
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
@@ -32,31 +32,20 @@ Additional keyword arguments may be passed to control the behavior of the parser
 - `backend`: 
     Inserts a backend call for the different tensor operations.
 """
-macro tensor(ex::Expr)
-    return esc(defaultparser(ex))
-end
 
-function standardize_kwargs(ex)
-    ex.head == :parameters && return ex
-    ex.head == :(=) && return Expr(:parameters, Expr(:kw, ex.args...))
-    if ex.head == :tuple
-        params = map(ex.args) do x
-            return Expr(:kw, x.args...)
-        end
-        return Expr(:parameters, params...)
-    end
-    throw(ArgumentError("unknown keyword expression `$ex`"))
-end
+macro tensor(args::Vararg{Expr})
+    isempty(args) && throw(ArgumentError("No arguments passed to `@tensor`"))
+    length(args) == 1 && return esc(defaultparser(args[1]))
 
-macro tensor(kwargsex::Expr, ex::Expr)
-    kwargs = standardize_kwargs(kwargsex)
+    tensorexpr = args[end]
+    kwargs = parse_tensor_kwargs(args[1:(end - 1)])
     parser = TensorParser()
 
     for param in kwargs.args
         name, val = param.args
 
         if name == :order
-            (val isa Expr && val.head == :tuple) ||
+            isexpr(val, :tuple) ||
                 throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
             indexorder = map(normalizeindex, val.args)
             parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
@@ -72,9 +61,9 @@ macro tensor(kwargsex::Expr, ex::Expr)
             parser.contractioncostcheck = val
         elseif name == :opt
             if val isa Bool && val
-                optdict = optdata(ex)
+                optdict = optdata(tensorexpr)
             elseif val isa Expr
-                optdict = optdata(val, ex)
+                optdict = optdata(val, tensorexpr)
             else
                 throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
             end
@@ -89,8 +78,20 @@ macro tensor(kwargsex::Expr, ex::Expr)
         end
     end
 
-    return esc(parser(ex))
+    return esc(parser(tensorexpr))
 end
+
+function parse_tensor_kwargs(args)
+    # @tensor(tensorexpr; kwargs)
+    if length(args) == 1 && isexpr(args[1], :parameters) 
+        return args[1]
+    end
+    
+    # @tensor kw1=val1 kw2=val2 ... tensorexpr
+    expr_to_kw(ex) = isexpr(ex, :(=), 2) ? Expr(:kw, ex.args...) : throw(ArgumentError("unknown keyword expression `$ex`"))
+    return Expr(:parameters, expr_to_kw.(args)...)
+end
+
 
 """
     @tensoropt(optex, block)
