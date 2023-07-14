@@ -404,12 +404,12 @@ make the interaction with the cache hurtful rather than advantageous.
 
 ## Index compatibility and checks
 
-Indices with the same label, either open indices on the two sides of the equation, or contracted
-indices, need to be compatible. For `AbstractArray` objects, this means they must have the same
-size, or more generally, the same range, as obtained with `axes(array, i)`. Other tensor types
-might have more complicated structure associated with their indices, and requires matching between
-those. The function [`checkcontractible`](@ref) is part of the interface that can be used to control
-when tensors can be contracted with each other along specific indices.
+Indices with the same label, either open indices on the two sides of the equation, or
+contracted indices, need to be compatible. For `AbstractArray` objects, this means they must
+have the same size. Other tensor types might have more complicated structure associated with
+their indices, and requires matching between those. The function
+[`checkcontractible`](@ref) is part of the interface that can be used to control when
+tensors can be contracted with each other along specific indices.
 
 If indices don't match, the contraction will spawn an error. However, this can be an error
 deep within the implementation, at which point the error message will provide little
