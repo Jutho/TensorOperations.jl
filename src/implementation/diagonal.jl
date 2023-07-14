@@ -1,164 +1,142 @@
-# overwrite similar from indices, because similar on `Diagonal` tends to create
-# `SparseArray` for some horrible reason
+#-------------------------------------------------------------------------------------------
+# Specialized implementations for contractions involving diagonal matrices
+#-------------------------------------------------------------------------------------------
+function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                         B::Diagonal, pB::Index2Tuple, conjB::Symbol,
+                         α, β, ::StridedNative)
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
-function similar_from_indices(T::Type, ind::IndexTuple, A::Diagonal, CA::Symbol)
-    sz = similarstructure_from_indices(T, ind, A, CA)
-    return similar(A.diag, T, sz)
-end
-function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
-                              p1::IndexTuple, p2::IndexTuple,
-                              A::Diagonal, B::AbstractArray, CA::Symbol, CB::Symbol)
-    sz = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
-    return similar(A.diag, T, sz)
-end
-function similar_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
-                              p1::IndexTuple, p2::IndexTuple,
-                              A::Diagonal, B::Diagonal, CA::Symbol, CB::Symbol)
-    sz = similarstructure_from_indices(T, poA, poB, p1, p2, A, B, CA, CB)
-    return similar(A.diag, T, sz)
-end
-
-function contract!(α, A::AbstractArray, CA::Symbol, B::Diagonal, CB::Symbol,
-                   β, C::AbstractArray,
-                   oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
-                   cindB::IndexTuple,
-                   indCinoAB::IndexTuple, syms::Union{Nothing,NTuple{3,Symbol}}=nothing)
-    pA = (oindA..., cindA...)
-    (length(pA) == ndims(A) && TupleTools.isperm(pA)) ||
-        throw(IndexError("invalid permutation of length $(ndims(A)): $pA"))
-    pB = (oindB..., cindB...)
-    (length(pB) == ndims(B) && TupleTools.isperm(pB)) ||
-        throw(IndexError("invalid permutation of length $(ndims(B)): $pB"))
-    (length(oindA) + length(oindB) == ndims(C)) ||
-        throw(IndexError("non-matching output indices in contraction"))
-    (ndims(C) == length(indCinoAB) && isperm(indCinoAB)) ||
-        throw(IndexError("invalid permutation of length $(ndims(C)): $indCinoAB"))
-
-    sizeA = i -> size(A, i)
-    sizeB = i -> size(B, i)
-    sizeC = i -> size(C, i)
-
-    csizeA = sizeA.(cindA)
-    csizeB = sizeB.(cindB)
-    osizeA = sizeA.(oindA)
-    osizeB = sizeB.(oindB)
-
-    csizeA == csizeB ||
-        throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-    sizeAB = let osize = (osizeA..., osizeB...)
-        i -> osize[i]
-    end
-    sizeAB.(indCinoAB) == size(C) ||
-        throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
-
-    Bd = B.diag
-    if CA == :N && CB == :N
-        @unsafe_strided A Bd C begin
-            _contract!(α, A, Bd, β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        end
-    elseif CA == :C && CB == :N
-        @unsafe_strided A Bd C begin
-            _contract!(α, conj(A), Bd, β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        end
-    elseif CA == :N && CB == :C
-        @unsafe_strided A Bd C begin
-            _contract!(α, A, conj(Bd), β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        end
-    elseif CA == :C && CB == :C
-        @unsafe_strided A Bd C begin
-            _contract!(α, conj(A), conj(Bd), β, C, oindA, cindA, oindB, cindB, indCinoAB)
-        end
-    else
-        throw(ArgumentError("unknown conjugation flag $CA and $CB"))
-    end
+    _diagtensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
+                         StridedView(B.diag), pB, conjB, α, β)
     return C
 end
-function _contract!(α, A::UnsafeStridedView, Bd::UnsafeStridedView,
-                    β, C::UnsafeStridedView, oindA, cindA, oindB, cindB, indCinoAB)
-    sizeA = i -> size(A, i)
-    csizeA = sizeA.(cindA)
-    osizeA = sizeA.(oindA)
 
-    if length(oindB) == 1 # length(cindA) == length(cindB) == 1
-        A2 = permutedims(A, (oindA..., cindA...))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
-        B2 = sreshape(Bd, ((one.(osizeA))..., csizeA...))
-        totsize = (osizeA..., csizeA...)
-        if α != 1
-            if β == 0
-                Strided._mapreducedim!((x, y) -> α * x * y, +, zero, totsize, (C2, A2, B2))
-            elseif β == 1
-                Strided._mapreducedim!((x, y) -> α * x * y, +, nothing, totsize,
-                                       (C2, A2, B2))
-            else
-                Strided._mapreducedim!((x, y) -> α * x * y, +, y -> β * y, totsize,
-                                       (C2, A2, B2))
-            end
-        else
-            if β == 0
-                return Strided._mapreducedim!(*, +, zero, totsize, (C2, A2, B2))
-            elseif β == 1
-                Strided._mapreducedim!(*, +, nothing, totsize, (C2, A2, B2))
-            else
-                Strided._mapreducedim!(*, +, y -> β * y, totsize, (C2, A2, B2))
-            end
-        end
-    elseif length(oindB) == 0
-        strideA = i -> stride(A, i)
-        newstrides = (strideA.(oindA)..., strideA(cindA[1]) + strideA(cindA[2]))
-        totsize = (osizeA..., csizeA[1])
-        A2 = UnsafeStridedView(A.ptr, totsize, newstrides, A.offset, A.op)
-        B2 = sreshape(Bd, ((one.(osizeA))..., csizeA[1]))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+                         A::Diagonal, pA::Index2Tuple, conjA::Symbol,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         α, β, ::StridedNative)
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
-        if α != 1
-            if β == 0
-                Strided._mapreducedim!((x, y) -> α * x * y, +, zero, totsize, (C2, A2, B2))
-            elseif β == 1
-                Strided._mapreducedim!((x, y) -> α * x * y, +, nothing, totsize,
-                                       (C2, A2, B2))
-            else
-                Strided._mapreducedim!((x, y) -> α * x * y, +, y -> β * y, totsize,
-                                       (C2, A2, B2))
-            end
-        else
-            if β == 0
-                return Strided._mapreducedim!(*, +, zero, totsize, (C2, A2, B2))
-            elseif β == 1
-                Strided._mapreducedim!(*, +, nothing, totsize, (C2, A2, B2))
-            else
-                Strided._mapreducedim!(*, +, y -> β * y, totsize, (C2, A2, B2))
-            end
+    rpA = reverse(pA)
+    rpB = reverse(pB)
+    indCinoBA = let N₁ = numout(pA), N₂ = numin(pB)
+        map(n -> ifelse(n > N₁, n - N₁, n + N₂), linearize(pC))
+    end
+    tpC = trivialpermutation(pC)
+    rpC = (TupleTools.getindices(indCinoBA, tpC[1]),
+           TupleTools.getindices(indCinoBA, tpC[2]))
+
+    _diagtensorcontract!(StridedView(C), rpC, StridedView(B), rpB, conjB,
+                         StridedView(A.diag), rpA, conjA, α, β)
+    return C
+end
+
+function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+                         A::Diagonal, pA::Index2Tuple, conjA::Symbol,
+                         B::Diagonal, pB::Index2Tuple, conjB::Symbol,
+                         α, β, ::StridedNative)
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+
+    if numin(pA) == 1 # matrix multiplication
+        if β != one(β) # multiplication only takes care of diagonal elements of C
+            rmul!(C, β)
+            β = one(β)
         end
-    else # length(oindB) == 2
+
+        A2 = sreshape(flag2op(conjA)(StridedView(A.diag)), (length(A.diag), 1))
+        B2 = sreshape(flag2op(conjB)(StridedView(B.diag)), (length(B.diag), 1))
+        # take a view of the diagonal elements of C, having strides 1 + length(diag)
+        totsize = (length(A.diag),)
+        C2 = StridedView(C, totsize, (sum(strides(C)),))
+
+    elseif numin(pA) == 2 # trace
+        A2 = flag2op(conjA)(StridedView(A.diag, (length(A.diag),)))
+        B2 = flag2op(conjB)(StridedView(B.diag, (length(B.diag),)))
+        totsize = (length(A.diag),)
+        C2 = sreshape(StridedView(C), (1,))
+
+    else # outer product
         if β != 1
             rmul!(C, β)
+            β = 1
         end
-        A2 = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., 1))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
-        B2 = sreshape(Bd, ((one.(osizeA))..., length(Bd)))
 
-        sC = strides(C2)
-        newstrides = (Base.front(Base.front(sC))..., sC[end - 1] + sC[end])
-        totsize = (osizeA..., length(Bd))
+        A2 = sreshape(StridedView(A.diag), (length(A.diag), 1))
+        B2 = sreshape(StridedView(B.diag), (1, length(A.diag)))
 
-        C3 = UnsafeStridedView(C2.ptr, totsize, newstrides, C2.offset, C2.op)
-        if α != 1
-            Strided._mapreducedim!((x, y) -> α * x * y, +, nothing, totsize, (C3, A2, B2))
-        else
-            Strided._mapreducedim!(*, +, nothing, totsize, (C3, A2, B2))
-        end
+        C3 = permutedims(StridedView(C), invperm(linearize(pC)))
+        strC = strides(C3)
+        newstrides = (strC[1] + strC[2], strC[3] + strC[4])
+        totsize = (length(A2), length(B2))
+        C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
+
+    op1 = α == 1 ? (*) : (x, y) -> α * x * y
+    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
+    Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
+
     return C
 end
 
-function contract!(α, A::Diagonal, CA::Symbol, B::AbstractArray, CB::Symbol,
-                   β, C::AbstractArray,
-                   oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
-                   cindB::IndexTuple,
-                   indCinoAB::IndexTuple, syms::Union{Nothing,NTuple{3,Symbol}}=nothing)
-    indCinoAB′ = map(i -> i <= length(oindA) ? length(oindB) + i : i - length(oindA),
-                     indCinoAB)
-    contract!(α, B, CB, A, CA, β, C, oindB, cindB, oindA, cindA, indCinoAB′)
+function tensorcontract!(C::Diagonal, pC::Index2Tuple,
+                         A::Diagonal, pA::Index2Tuple, conjA::Symbol,
+                         B::Diagonal, pB::Index2Tuple, conjB::Symbol,
+                         α, β, ::StridedNative)
+    argcheck_tensorcontract(C, pC, A, pA, B, pB)
+    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+
+    A2 = flag2op(conjA)(StridedView(A.diag))
+    B2 = flag2op(conjB)(StridedView(B.diag))
+    C2 = StridedView(C.diag)
+
+    C2 .= α .* A2 .* B2 .+ β .* C2
+    return C
+end
+
+function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
+                              A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                              Bdiag::StridedView, pB::Index2Tuple, conjB::Symbol,
+                              α, β)
+    sizeA = i -> size(A, i)
+    csizeA = sizeA.(pA[2])
+    osizeA = sizeA.(pA[1])
+
+    if numin(pB) == 1 # => numin(A) == numout(B) == 1
+        totsize = (osizeA..., csizeA...)
+        A2 = flag2op(conjA)(permutedims(A, linearize(pA)))
+        B2 = flag2op(conjB)(sreshape(Bdiag, ((one.(osizeA))..., csizeA...)))
+        C2 = permutedims(C, invperm(linearize(pC)))
+
+    elseif numin(pB) == 0
+        strideA = i -> stride(A, i)
+        newstrides = (strideA.(pA[1])..., strideA(pA[2][1]) + strideA(pA[2][2]))
+        totsize = (osizeA..., csizeA[1])
+        A2 = flag2op(conjA)(StridedView(A.parent, totsize, newstrides, A.offset, A.op))
+        B2 = flag2op(conjB)(sreshape(Bdiag, ((one.(osizeA))..., csizeA[1])))
+        C2 = permutedims(C, invperm(linearize(pC)))
+
+    else # numout(pB) == 2 # direct product
+        if β != 1
+            rmul!(C, β)
+            β = 1
+        end
+        A2 = flag2op(conjA)(sreshape(permutedims(A, linearize(pA)), (osizeA..., 1)))
+        B2 = flag2op(conjB)(sreshape(Bdiag, ((one.(osizeA))..., length(Bdiag))))
+
+        C3 = permutedims(C, invperm(linearize(pC)))
+        sC = strides(C3)
+        newstrides = (Base.front(Base.front(sC))..., sC[end - 1] + sC[end])
+        totsize = (osizeA..., length(Bdiag))
+        C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
+    end
+
+    op1 = α == 1 ? (*) : (x, y) -> α * x * y
+    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
+    Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
+
     return C
 end

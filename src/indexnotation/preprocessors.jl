@@ -1,6 +1,10 @@
 # replace all indices by a function of that index
-function replaceindices((@nospecialize f), ex::Expr)
-    if istensor(ex)
+function replaceindices((@nospecialize f), ex)
+    if isexpr(ex, :block)
+        return Expr(:block, map(x -> replaceindices(f, x), ex.args)...)
+    elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
+        return ex
+    elseif istensor(ex)
         if ex.head == :ref || ex.head == :typed_hcat
             if length(ex.args) == 1
                 return ex
@@ -24,90 +28,130 @@ function replaceindices((@nospecialize f), ex::Expr)
             end
             return Expr(ex.head, ex.args[1], arg2, arg3)
         end
-    else
+    elseif isa(ex, Expr)
         return Expr(ex.head, (replaceindices(f, e) for e in ex.args)...)
+    else
+        return ex
     end
 end
-replaceindices((@nospecialize f), ex) = ex
 
+# normalize indices with primes
 function normalizeindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
         return ex
-    elseif isa(ex, Expr) && ex.head == prime && length(ex.args) == 1
+    elseif isexpr(ex, prime) && length(ex.args) == 1
         return Symbol(normalizeindex(ex.args[1]), "′")
     else
         error("not a valid index: $ex")
     end
 end
 
+"""
+    normalizeindices(ex::Expr)
+
+Normalize indices of an expression by replacing all indices with a prime expression (') by indices with a unicode prime "′".
+"""
 normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
 # replace all tensor objects by a function of that object
-function replacetensorobjects(f, ex::Expr)
+function replacetensorobjects(f, ex)
     # first try to replace ex completely:
-    # this needed if `ex` is a tensor object that appears outside an actual tensor expression
-    # in a 'regular' block of code
+    # this is needed if `ex` is a tensor object that appears outside an actual tensor
+    # expression in a 'regular' block of code
     ex2 = f(ex, nothing, nothing)
     ex2 !== ex && return ex2
     if istensor(ex)
         obj, leftind, rightind = decomposetensor(ex)
         return Expr(ex.head, f(obj, leftind, rightind), ex.args[2:end]...)
-    else
+    elseif isa(ex, Expr)
         return Expr(ex.head, (replacetensorobjects(f, e) for e in ex.args)...)
+    else
+        return ex
     end
 end
-replacetensorobjects(f, ex) = f(ex, nothing, nothing) # same reason as lines 48-52.
 
-# expandconj: conjugate individual terms or factors instead of a whole expression
-function expandconj(ex::Expr)
-    if isgeneraltensor(ex) || isscalarexpr(ex)
+"""
+    expandconj(ex)
+
+Expand all `conj` calls in an expression to conjugate the individual terms and factors.
+"""
+function expandconj(ex)
+    if isgeneraltensor(ex) || isscalarexpr(ex) || !isa(ex, Expr)
         return ex
-    elseif ex.head == :call && ex.args[1] == :conj
+    elseif isexpr(ex, :call) && ex.args[1] == :conj
         @assert length(ex.args) == 2
         return conjexpr(expandconj(ex.args[2]))
     else
         return Expr(ex.head, map(expandconj, ex.args)...)
     end
 end
-expandconj(ex) = ex
 
-function conjexpr(ex::Expr)
-    if ex.head == :call && ex.args[1] == :conj
-        return ex.args[2]
-    elseif isgeneraltensor(ex) || isscalarexpr(ex)
+function conjexpr(ex)
+    if isgeneraltensor(ex) || isscalarexpr(ex) || isa(ex, Symbol)
         return Expr(:call, :conj, ex)
-    elseif ex.head == :call && (ex.args[1] == :* || ex.args[1] == :+ || ex.args[1] == :-)
+    elseif isa(ex, Number)
+        return conj(ex)
+    elseif isexpr(ex, :call) && ex.args[1] == :conj
+        return ex.args[2]
+    elseif isexpr(ex, :call) && ex.args[1] ∈ (:*, :+, :-, :/, :\)
         return Expr(ex.head, ex.args[1], map(conjexpr, ex.args[2:end])...)
-    elseif ex.head == :call && (ex.args[1] == :/ || ex.args[1] == :\)
-        return Expr(ex.head, ex.args[1], map(conjexpr, ex.args[2:end])...)
-    else
-        error("cannot conjugate expression: $ex")
+    elseif !isa(ex, Expr)
+        return ex
     end
+    return error("cannot conjugate expression: $ex")
 end
-conjexpr(ex::Number) = conj(ex)
-conjexpr(ex::Symbol) = Expr(:call, :conj, ex)
-conjexpr(ex) = ex
 
 # explicitscalar: wrap all tensor expressions with zero output indices in scalar call
-function explicitscalar(ex::Expr)
-    ex = Expr(ex.head, map(explicitscalar, ex.args)...)
+function explicitscalar(ex)
+    if isa(ex, Expr) # prewalk
+        ex = Expr(ex.head, map(explicitscalar, ex.args)...)
+    end
     if istensorexpr(ex) && isempty(getindices(ex))
-        return Expr(:call, :scalar, ex)
+        return Expr(:call, :tensorscalar, ex)
     else
         return ex
     end
 end
-explicitscalar(ex) = ex
 
-# extracttensorobjects: replace all tensor objects with newly generated symbols, and assign
-# them before the expression and after the expression as necessary
-function extracttensorobjects(ex::Expr)
-    inputtensors = getinputtensorobjects(ex)
-    outputtensors = getoutputtensorobjects(ex)
-    newtensors = getnewtensorobjects(ex)
+"""
+    groupscalarfactors(ex)
+
+Group all scalar factors of a tensor expression into a single scalar factor at the start of the expression.
+"""
+function groupscalarfactors(ex)
+    if isa(ex, Expr) # prewalk
+        ex = Expr(ex.head, map(groupscalarfactors, ex.args)...)
+    end
+    if istensorexpr(ex) && ex.args[1] == :*
+        args = ex.args[2:end]
+        scalarpos = findall(isscalarexpr, args)
+        length(scalarpos) == 0 && return ex
+        tensorpos = setdiff(1:length(args), scalarpos)
+        if length(scalarpos) == 1
+            scalar = args[scalarpos[1]]
+        else
+            scalar = Expr(:call, :*, args[scalarpos]...)
+        end
+        return Expr(:call, :*, scalar, args[tensorpos]...)
+    end
+    return ex
+end
+
+# extracttensorobjects: replace tensor objects which are not simple symbols with newly 
+# generated symbols, and assign them before the expression and after the expression as necessary
+"""
+    extracttensorobjects(ex)
+    
+Extract all tensor objects which are not simple symbols with newly generated symbols, and
+assign them before the expression and after the expression as necessary.
+"""
+function extracttensorobjects(ex)
+    inputtensors = filter!(obj -> !isa(obj, Symbol), getinputtensorobjects(ex))
+    outputtensors = filter!(obj -> !isa(obj, Symbol), getoutputtensorobjects(ex))
+    newtensors = filter!(obj -> !isa(obj, Symbol), getnewtensorobjects(ex))
     existingtensors = unique!(vcat(inputtensors, outputtensors))
     alltensors = unique!(vcat(existingtensors, newtensors))
-    tensordict = Dict{Any,Any}(a => gensym() for a in alltensors)
+    tensordict = Dict{Any,Any}(a => gensym(string(a)) for a in alltensors)
     pre = Expr(:block, [Expr(:(=), tensordict[a], a) for a in existingtensors]...)
     ex = replacetensorobjects((obj, leftind, rightind) -> get(tensordict, obj, obj), ex)
     post = Expr(:block,
@@ -118,4 +162,57 @@ function extracttensorobjects(ex::Expr)
     post2 = Expr(:macrocall, Symbol("@notensor"),
                  LineNumberNode(@__LINE__, Symbol(@__FILE__)), post)
     return Expr(:block, pre2, ex, post2)
+end
+
+# insertcontractionchecks: insert runtime checks for contraction
+"""
+    insertcontractionchecks(ex)
+
+Insert runtime checks before each contraction, which provide clearer debug information.
+"""
+function insertcontractionchecks(ex)
+    if isexpr(ex, :block)
+        return Expr(:block, map(insertcontractionchecks, ex.args)...)
+    elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
+        return ex
+    elseif isassignment(ex) || isdefinition(ex) || istensorexpr(ex) || isscalarexpr(ex)
+        rhs = (isassignment(ex) || isdefinition(ex)) ? getrhs(ex) : ex
+        indexmap = Dict{Any,Any}()
+        if isassignment(ex)
+            (object, indl, indr) = decomposegeneraltensor(getlhs(ex))
+            inds = vcat(indl, indr)
+            for (pos, label) in enumerate(inds)
+                push!(get!(indexmap, label, Vector{Any}()), (object, pos, :C)) # treat lhs as conjugated tensor
+            end
+        end
+        _fillindexmap!(indexmap, rhs)
+        out = Expr(:block)
+        for (label, v) in indexmap
+            l = (label isa Symbol) ? QuoteNode(label) : label
+            obj1, pos1, conj1 = v[1]
+            for k in 2:length(v)
+                obj2, pos2, conj2 = v[k]
+                push!(out.args,
+                      :(@notensor checkcontractible($obj1, $pos1, $(QuoteNode(conj1)),
+                                                    $obj2, $pos2,
+                                                    $(QuoteNode(conj2)), $l)))
+            end
+        end
+        return Expr(:block, out, ex)
+    end
+    return ex
+end
+function _fillindexmap!(indexmap, ex)
+    if isgeneraltensor(ex)
+        (object, indl, indr, _, conj) = decomposegeneraltensor(ex)
+        inds = vcat(indl, indr)
+        for (pos, label) in enumerate(inds)
+            push!(get!(indexmap, label, Vector{Any}()), (object, pos, conj ? :C : :N))
+        end
+    elseif ex isa Expr
+        for exa in ex.args
+            _fillindexmap!(indexmap, exa)
+        end
+    end
+    return indexmap
 end

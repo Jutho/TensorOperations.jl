@@ -3,7 +3,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool=false)
     allindices = unique(vcat(network...))
     numindices = length(allindices)
     costtype = valtype(optdata)
-    allcosts = [get(optdata, i, one(costtype)) for i in allindices]
+    allcosts = costtype[get(optdata, i, one(costtype)) for i in allindices]
     maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)),
                               maximum(allcosts)), zero(costtype)) # add zero for type stability: Power -> Poly
     tensorcosts = Vector{costtype}(undef, numtensors)
@@ -59,7 +59,7 @@ _isemptyset(s::Unsigned) = iszero(s)
 _isemptyset(s::BitVector) = !any(s)
 _isemptyset(s::BitSet) = isempty(s)
 
-function addcost(cost1::Integer, cost2::Integer, costs::Vararg{<:Integer})
+function addcost(cost1::Integer, cost2::Integer, costs::Vararg{Integer})
     return Base.Checked.checked_add(cost1, cost2, costs...)
 end
 mulcost(cost1::Integer, cost2::Integer) = Base.Checked.checked_mul(cost1, cost2)

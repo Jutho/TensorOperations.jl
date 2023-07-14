@@ -3,8 +3,9 @@
 # Implements the index calculations, i.e. converting the tensor labels into
 # indices specifying the operations
 
+#-------------------------------------------------------------------------------------------
 # Auxiliary tools to manipulate tuples
-#--------------------------------------
+#-------------------------------------------------------------------------------------------
 import Base.tail
 
 # tuple setdiff, assumes b is completely contained in a
@@ -28,8 +29,6 @@ _findfirst(args...) = (i = findfirst(args...); i === nothing ? 0 : i)
 _findnext(args...) = (i = findnext(args...); i === nothing ? 0 : i)
 _findlast(args...) = (i = findlast(args...); i === nothing ? 0 : i)
 
-# Auxiliary method to analyze trace indices
-#-------------------------------------------
 """
     unique2(itr)
 
@@ -41,11 +40,11 @@ function unique2(itr)
     i = 1
     while i < length(out)
         inext = _findnext(isequal(out[i]), out, i + 1)
-        if inext == nothing || inext == 0
+        if inext === nothing || inext == 0
             i += 1
             continue
         end
-        while !(inext == nothing || inext == 0)
+        while !(inext === nothing || inext == 0)
             deleteat!(out, inext)
             inext = _findnext(isequal(out[i]), out, i + 1)
         end
@@ -54,13 +53,14 @@ function unique2(itr)
     return out
 end
 
+#-------------------------------------------------------------------------------------------
 # Extract index information
-#---------------------------
+#-------------------------------------------------------------------------------------------
 function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     indCinA = map(l -> _findfirst(isequal(l), IA), IC)
     (NA == NC && isperm(indCinA)) ||
         throw(IndexError("invalid index specification: $IA to $IC"))
-    return indCinA
+    return (indCinA, ())
 end
 
 function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
@@ -76,7 +76,7 @@ function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     pA = (indCinA..., cindA1..., cindA2...)
     (isperm(pA) && length(pA) == NA) ||
         throw(IndexError("invalid trace specification: $IA to $IC"))
-    return indCinA, cindA1, cindA2
+    return (indCinA, ()), cindA1, cindA2
 end
 
 function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
@@ -96,9 +96,56 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
     oindB = map(l -> _findfirst(isequal(l), IB), IopenB)
     indCinoAB = map(l -> _findfirst(isequal(l), (IopenA..., IopenB...)), IC)
 
-    if !isperm((oindA..., cindA...)) || !isperm((oindB..., cindB...)) || !isperm(indCinoAB)
+    pA = (oindA, cindA)
+    pB = (cindB, oindB)
+    pC = (indCinoAB, ())
+
+    if !isperm(linearize(pA)) || !isperm(linearize(pB)) || !isperm(indCinoAB)
         throw(IndexError("invalid contraction pattern: $IA and $IB to $IC"))
     end
 
-    return oindA, cindA, oindB, cindB, indCinoAB
+    return pA, pB, pC
+end
+
+#-------------------------------------------------------------------------------------------
+# Generate index information
+#-------------------------------------------------------------------------------------------
+const OFFSET_OPEN = 'a' - 1
+const OFFSET_CLOSED = 'A' - 1
+
+function add_labels(pA::Index2Tuple)
+    einA = OFFSET_OPEN .+ (1:numind(pA))
+    einB = getindex.(Ref(einA), linearize(pA))
+    return tuple(einA...), tuple(einB...)
+end
+
+function trace_labels(pC::Index2Tuple, iA₁::IndexTuple, iA₂::IndexTuple)
+    length(iA₁) == length(iA₂) ||
+        throw(IndexError("number of traced indices not consistent"))
+    length(iA₁) < OFFSET_OPEN - OFFSET_CLOSED ||
+        throw(IndexError("too many traced indices"))
+    einA = Vector{Char}(undef, numind(pC) + length(iA₁) + length(iA₂))
+    setindex!.(Ref(einA), (1:numind(pC)) .+ OFFSET_OPEN, linearize(pC))
+    setindex!.(Ref(einA), (1:length(iA₁)) .+ OFFSET_CLOSED, iA₁)
+    setindex!.(Ref(einA), (1:length(iA₂)) .+ OFFSET_CLOSED, iA₂)
+    return tuple(einA...), tuple(((1:numind(pC)) .+ OFFSET_OPEN)...)
+end
+
+function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
+    numout(pA) + numin(pB) == numind(pC) ||
+        throw(IndexError("number of outer indices not consistent"))
+    numin(pA) == numout(pB) ||
+        throw(IndexError("number of contracted indices not consistent"))
+    numin(pA) < OFFSET_OPEN - OFFSET_CLOSED ||
+        throw(IndexError("too many contracted indices"))
+
+    einA = Vector{Char}(undef, numind(pA))
+    setindex!.(Ref(einA), (1:numout(pA)) .+ OFFSET_OPEN, pA[1])
+    setindex!.(Ref(einA), (1:numin(pA)) .+ OFFSET_CLOSED, pA[2])
+
+    einB = Vector{Char}(undef, sum(length.(pB)))
+    setindex!.(Ref(einB), (1:numin(pB)) .+ (OFFSET_OPEN + numout(pA)), pB[2])
+    setindex!.(Ref(einB), (1:numout(pB)) .+ OFFSET_CLOSED, pB[1])
+
+    return tuple(einA...), tuple(einB...), tuple((linearize(pC) .+ OFFSET_OPEN)...)
 end

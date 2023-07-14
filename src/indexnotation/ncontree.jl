@@ -57,6 +57,14 @@ function _ncontree!(partialtrees, contractionindices)
     return _ncontree!(partialtrees, contractionindices)
 end
 
+"""
+    nconindexcompletion(ex)
+
+Complete the indices of the left hand side of an ncon expression. For example, the following expressions are equivalent after index completion.
+
+    @tensor A[:] := B[-1, 1, 2] * C[1, 2, -3]
+    @tensor A[-1, -2] := B[-1, 1, 2] * C[1, 2, -3]
+"""
 function nconindexcompletion(ex)
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
@@ -85,12 +93,7 @@ end
 function resolve_traces(tensors, network)
     transformed = map(zip(tensors, network)) do (A, IA)
         IC = unique2(IA)
-        if length(IC) == length(IA)
-            (A, IA)
-        else
-            (tensortrace(copy(A), IA, IC), IC)
-        end
+        return length(IC) == length(IA) ? (A, IA) : (tensortrace(IC, A, IA), IC)
     end
-
     return first.(transformed), last.(transformed)
 end

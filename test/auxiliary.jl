@@ -4,7 +4,7 @@
                                 istensor, isgeneraltensor, istensorexpr, isscalarexpr,
                                 hastraceindices,
                                 hastraceindices, getindices, getallindices,
-                                normalizeindex, instantiate_scalar, instantiate_eltype,
+                                normalizeindex, instantiate_scalar, instantiate_scalartype,
                                 decomposetensor, decomposegeneraltensor
 
         @test isassignment(:(a[-1, -2, -3] = b[-1, -2, 1] * c[1, -3] + d[-2, -3, -1]))
@@ -76,6 +76,19 @@
         @test isgeneraltensor(:(x * a[5][a b c]))
         @test decomposegeneraltensor(:(x * a[5][a b c])) ==
               (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(x * 1)), false)
+        @test isgeneraltensor(:(x * x * a[5][a, b, c]))
+        @test decomposegeneraltensor(:(x * x * a[5][a, b, c])) ==
+              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(x * x * 1)), false)
+        @test isgeneraltensor(:(x * a[5][a, b, c] * x))
+        @test decomposegeneraltensor(:(x * a[5][a, b, c] * x)) ==
+              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(x * 1 * x)), false)
+        @test isgeneraltensor(:(a[5][a, b, c] * x / y))
+        @test decomposegeneraltensor(:(a[5][a, b, c] / y * x)) ==
+              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:((1 / y) * x)), false)
+        @test isgeneraltensor(:(x / y * a[5][a, b, c] * y / x))
+        @test decomposegeneraltensor(:(x / y * a[5][a, b, c] / y * x)) ==
+              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(((((x / y) * 1) / y) * x))),
+               false)
         @test isgeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3])))
         @test decomposegeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3]))) ==
               (:(cos(y)), Any[:a, :b, :c], Any[1, 2, 3],
@@ -83,6 +96,8 @@
         @test !isgeneraltensor(:(1 / a[1, 2, 3]))
         @test !isgeneraltensor(:(a[1 2 3; 4 5 6] \ x))
         @test !isgeneraltensor(:(cos(y)[a b c; 1 2 3] * b[4, 5]))
+        @test !isgeneraltensor(:(x * y * cos(y)[a b c; 1 2 3] * b[4, 5]))
+        @test !isgeneraltensor(:(x / y * cos(y)[a b c; 1 2 3] * b[4, 5] / z * v))
         @test !isgeneraltensor(:(3 + 5))
 
         @test hastraceindices(:(a[x, y, z, 1, x]))
@@ -95,12 +110,12 @@
         @test isscalarexpr(:(2.0 + im * 3))
         @test isscalarexpr(:(3 * a + c))
         @test isscalarexpr(:(sin(x) + exp(-y)))
-        @test isscalarexpr(:(scalar(a[x, y] * b[y, x])))
+        @test isscalarexpr(:(tensorscalar(a[x, y] * b[y, x])))
         @test !isscalarexpr(:(a[x, y] * b[y, x]))
-        @test !isscalarexpr(:(3 * scalar(a[x, y] * b[y, x]) + conj(c[z])))
+        @test !isscalarexpr(:(3 * tensorscalar(a[x, y] * b[y, x]) + conj(c[z])))
 
-        @test instantiate_eltype(:(a[1, 2, 3] * b[3, 4, 5] + c[1, 2, 4, 5])) ==
-              :(promote_type(promote_type(eltype(a), eltype(b)), eltype(c)))
+        @test instantiate_scalartype(:(a[1, 2, 3] * b[3, 4, 5] + c[1, 2, 4, 5])) ==
+              :(promote_add(promote_contract(scalartype(a), scalartype(b)), scalartype(c)))
     end
 
     @testset "parsecost" begin
@@ -166,6 +181,15 @@ end
         @test p * zero(p) == 0 == p * zero(x)
         @test p <= p * x
         @test x * p == p * x
+    end
+
+    @testset "expandconj" begin
+        @test TensorOperations.expandconj(:(conj(a[x, y, z] * b[x, y, z]))) ==
+              :(conj(a[x, y, z]) * conj(b[x, y, z]))
+        @test TensorOperations.expandconj(:(conj(a[x, y, z] * 2 * c[x, y, z] + 12 +
+                                                 A[1, 2] * B[3, 4] \ 1))) ==
+              :(conj(a[x, y, z]) * conj(2) * conj(c[x, y, z]) + conj(12) +
+                conj(A[1, 2]) * conj(B[3, 4]) \ conj(1))
     end
 
     @testset "cost methods" begin end

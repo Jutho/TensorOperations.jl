@@ -25,10 +25,8 @@ over are labelled by increasing integers, i.e. first the contraction correspondi
 See also the macro version [`@ncon`](@ref).
 """
 function ncon(tensors, network,
-              conjlist=fill(false, length(tensors)), sym=nothing;
+              conjlist=fill(false, length(tensors));
               order=nothing, output=nothing)
-    # length(tensors) >= 2 ||
-    #     throw(ArgumentError("do not use `ncon` for less than two tensors"))
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
@@ -52,70 +50,33 @@ function ncon(tensors, network,
                 throw(ArgumentError("invalid NCON network: $network -> $output"))
         end
     end
+
     if length(tensors) == 1
         if length(output) == length(network[1])
-            return tensorcopy(tensors[1], network[1], output)
+            return tensorcopy(output, tensors[1], network[1], conjlist[1] ? :C : :N)
         else
-            return tensortrace(tensors[1], network[1], output)
+            return tensortrace(output, tensors[1], network[1], conjlist[1] ? :C : :N)
         end
     end
+
     (tensors, network) = resolve_traces(tensors, network)
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
-    if sym !== nothing
-        syma = Symbol(sym, "_a")
-        symb = Symbol(sym, "_b")
-    else
-        syma = symb = nothing
-    end
-    A, IA, CA = contracttree(tensors, network, conjlist, tree[1], syma)
-    B, IB, CB = contracttree(tensors, network, conjlist, tree[2], symb)
+    A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
+    B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(output...)
 
-    oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    T = promote_type(eltype(A), eltype(B))
-    # end result: don't use cache
-    C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    if sym !== nothing
-        symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
-    else
-        symcontract = nothing
-    end
-    contract!(true, A, CA, B, CB, false, C,
-              oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
-    return C
+    return tensorcontract(IC, A, IA, CA, B, IB, CB)
 end
 
-function contracttree(tensors, network, conjlist, tree, sym)
+function contracttree(tensors, network, conjlist, tree)
     @nospecialize
     if tree isa Int
         return tensors[tree], tuple(network[tree]...), (conjlist[tree] ? :C : :N)
     end
-
-    if sym !== nothing
-        syma = Symbol(sym, "_a")
-        symb = Symbol(sym, "_b")
-    else
-        syma = nothing
-        symb = nothing
-    end
-    A, IA, CA = contracttree(tensors, network, conjlist, tree[1], syma)
-    B, IB, CB = contracttree(tensors, network, conjlist, tree[2], symb)
+    A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
+    B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
     IC = tuple(symdiff(IA, IB)...)
-    oindA, cindA, oindB, cindB, indCinoAB = contract_indices(IA, IB, IC)
-    T = promote_type(eltype(A), eltype(B))
-    if sym !== nothing
-        symc = Symbol(sym, "_c")
-        C = cached_similar_from_indices(symc, T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    else
-        C = similar_from_indices(T, oindA, oindB, indCinoAB, (), A, B, CA, CB)
-    end
-    if sym !== nothing
-        symcontract = (Symbol(sym, "_a′"), Symbol(sym, "_b′"), Symbol(sym, "_c′"))
-    else
-        symcontract = nothing
-    end
-    contract!(true, A, CA, B, CB, false, C,
-              oindA, cindA, oindB, cindB, indCinoAB, (), symcontract)
+    C = tensorcontract(IC, A, IA, CA, B, IB, CB)
     return C, IC, :N
 end

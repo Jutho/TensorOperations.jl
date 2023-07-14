@@ -10,7 +10,8 @@ macro notensor(ex::Expr)
 end
 
 """
-    @tensor(block)
+    @tensor(tensor_expr; kwargs...)
+    @tensor [kw_expr...] tensor_expr
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
 be chosen to be arbitrary Julia variable names, or integers. When contracting several
@@ -18,22 +19,80 @@ tensors together, this will be evaluated as pairwise contractions in left to rig
 order, unless the so-called NCON style is used (positive integers for contracted
 indices and negative indices for open indices).
 
-A second argument to the `@tensor` macro can be provided of the form `order=(...)`, where
-the list specifies the contraction indices in the order in which they will be contracted.
+Additional keyword arguments may be passed to control the behavior of the parser:
+
+- `order`: 
+    A list of contraction indices of the form `order=(...,)` which specify the order in which they will be contracted.
+- `opt`:
+    Contraction order optimization, similar to [`@tensoropt`](@ref). Can be either a boolean or an `OptExpr`.
+- `contractcheck`:
+    Boolean flag to enable runtime check for contractibility of indices with clearer error messages.
+- `costcheck`:
+    Adds runtime checks to ensure that the contraction order is optimal. Can be either `:warn` or `:cache`. The former will issues warnings when sub-optimal expressions are encountered, while the latter will cache the optimal contraction order for each tensor site and calling site.
+- `backend`: 
+    Inserts a backend call for the different tensor operations.
 """
-macro tensor(ex::Expr)
-    return esc(defaultparser(ex))
+
+macro tensor(args::Vararg{Expr})
+    isempty(args) && throw(ArgumentError("No arguments passed to `@tensor`"))
+    length(args) == 1 && return esc(defaultparser(args[1]))
+
+    tensorexpr = args[end]
+    kwargs = parse_tensor_kwargs(args[1:(end - 1)])
+    parser = TensorParser()
+
+    for param in kwargs.args
+        name, val = param.args
+
+        if name == :order
+            isexpr(val, :tuple) ||
+                throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
+            indexorder = map(normalizeindex, val.args)
+            parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
+
+        elseif name == :contractcheck
+            val isa Bool ||
+                throw(ArgumentError("Invalid use of `contractcheck`, should be `contractcheck=bool`."))
+            val && push!(parser.preprocessors, ex -> insertcontractionchecks(ex))
+
+        elseif name == :costcheck
+            val in (:warn, :cache) ||
+                throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
+            parser.contractioncostcheck = val
+        elseif name == :opt
+            if val isa Bool && val
+                optdict = optdata(tensorexpr)
+            elseif val isa Expr
+                optdict = optdata(val, tensorexpr)
+            else
+                throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
+            end
+            parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
+        elseif name == :backend
+            val isa Symbol ||
+                throw(ArgumentError("Backend should be a symbol."))
+            backend = val
+            push!(parser.postprocessors, ex -> insertbackend(ex, backend))
+        else
+            throw(ArgumentError("Unknown keyword argument `name`."))
+        end
+    end
+
+    return esc(parser(tensorexpr))
 end
 
-macro tensor(ex::Expr, orderex::Expr)
-    parser = TensorParser()
-    if !(orderex.head == :(=) && orderex.args[1] == :order &&
-         orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
-        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+function parse_tensor_kwargs(args)
+    # @tensor(tensorexpr; kwargs)
+    if length(args) == 1 && isexpr(args[1], :parameters)
+        return args[1]
     end
-    indexorder = map(normalizeindex, orderex.args[2].args)
-    parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
-    return esc(parser(ex))
+
+    # @tensor kw1=val1 kw2=val2 ... tensorexpr
+    function expr_to_kw(ex)
+        return isexpr(ex, :(=), 2) ? Expr(:kw, ex.args...) :
+               throw(ArgumentError("unknown keyword expression `$ex`"))
+    end
+    return Expr(:parameters, expr_to_kw.(args)...)
 end
 
 """
@@ -167,12 +226,10 @@ function _nconmacro(tensors, indices, kwargs=nothing)
     if !(tensors isa Expr) # there is not much that we can do
         if kwargs === nothing
             ex = Expr(:call, :ncon, tensors, indices,
-                      Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                      QuoteNode(gensym()))
+                      Expr(:call, :fill, false, Expr(:call, :length, tensors)))
         else
             ex = Expr(:call, :ncon, kwargs, tensors, indices,
-                      Expr(:call, :fill, false, Expr(:call, :length, tensors)),
-                      QuoteNode(gensym()))
+                      Expr(:call, :fill, false, Expr(:call, :length, tensors)))
         end
         return esc(ex)
     end
@@ -201,9 +258,30 @@ function _nconmacro(tensors, indices, kwargs=nothing)
         tensorex = Expr(:ref, :Any, tensorargs...)
     end
     if kwargs === nothing
-        ex = Expr(:call, :ncon, tensorex, indices, conjlist, QuoteNode(gensym()))
+        ex = Expr(:call, :ncon, tensorex, indices, conjlist)
     else
-        ex = Expr(:call, :ncon, kwargs, tensorex, indices, conjlist, QuoteNode(gensym()))
+        ex = Expr(:call, :ncon, kwargs, tensorex, indices, conjlist)
     end
     return esc(ex)
+end
+
+"""
+    @cutensor tensor_expr
+
+Use the GPU to perform all tensor operations, through the use of the cuTENSOR library.
+This will transfer all arrays to the GPU before performing the requested operations. If the
+output is an existing host array, the result will be transferred back. If a new array is
+created (i.e. using `:=`), it will remain on the GPU device and it is up to the user to
+transfer it back. This macro is equivalent to `@tensor backend=cuTENSOR tensor_expr`.
+
+!!! note
+    This macro requires the cuTENSOR library to be installed and loaded. This can be
+    achieved by running `using cuTENSOR` or `import cuTENSOR` before using the macro.
+"""
+macro cutensor(ex::Expr)
+    haskey(Base.loaded_modules, Base.identify_package("cuTENSOR")) ||
+        throw(ArgumentError("cuTENSOR not loaded: add `using cuTENSOR` or `import cuTENSOR` before using `@cutensor`"))
+    parser = TensorParser()
+    push!(parser.postprocessors, ex -> insertbackend(ex, :cuTENSOR))
+    return esc(parser(ex))
 end
