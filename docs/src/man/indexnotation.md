@@ -24,8 +24,8 @@ end
 ```
 
 In the second to last line, the result of the operation will be stored in the preallocated
-array `D`, whereas the last line uses a different assignment operator `:=` in order to
-define a new array `E` of the correct size. The contents of `D` and `E` will be equal.
+array `D`, whereas use of the different assignment operator `:=` indicates that a new array
+`E` of the correct size is to be created. The contents of `D` and `E` will be equal.
 
 Following Einstein's summation convention, the result is computed by first tracing/
 contracting the 3rd and 5th index of array `A`. The resulting array will then be contracted
@@ -36,133 +36,215 @@ order). To this, the array `C` (scaled with `α`) is added, where its first two 
 be permuted to fit with the order `a, c, b`. The result will then be stored in array `D`,
 which requires a second permutation to bring the indices in the requested order `a, b, c`.
 
-In this example, the labels were specified by arbitrary letters or even longer names. Any
-valid variable name is valid as a label. Note though that these labels are never
-interpreted as existing Julia variables, but rather are converted into symbols by the
-`@tensor` macro. This means, in particular, that the specific tensor operations defined by
-the code inside the `@tensor` environment are completely specified at compile time.
-Alternatively, one can also choose to specify the labels using literal integer constants,
-such that also the following code specifies the same operation as above. Finally, it is
-also allowed to use primes (i.e. Julia's `adjoint` operator) to denote different indices,
-including using multiple subsequent primes.
-
-```julia
-@tensor D[å'', ß, c'] = A[å'', 1, -3, c', -3, 2] * B[2, ß, 1] + α * C[c', å'', ß]
-```
-
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
-tensor operations, i.e. [`tensoradd!`](@ref),
-[`tensortrace!`](@ref) and [`tensorcontract!`](@ref).
-Temporaries are created where necessary, as these building blocks operate pairwise on the
-input tensors.
+tensor operations, i.e. [`tensoradd!`](@ref), [`tensortrace!`](@ref) and
+[`tensorcontract!`](@ref). Temporaries are created where necessary, as these building blocks
+operate pairwise on the input tensors. The generated code can easily be inspected
 
-Note that the `@tensor` specifier can be put in front of a full block of code, or even in
-front of a function definition, if index expressions are prevalent throughout this block.
-If a certain part of the code is nonetheless to be interpreted literally and should not be
-transformed by the `@tensor` macro, it can be annotated using `@notensor`, e.g.
+```@example
+using TensorOperations
+@macroexpand @tensor E[a, b, c] := A[a, e, f, c, f, g] * B[g, b, e] + α * C[c, a, b]
+```
+The different functions in which this tensor expression is decomposed are discussed in more
+detail in the [Implementation](@ref) section of this manual.
+
+In this example, the tensor indices were labeled with arbitrary letters; also longer names
+could have been used. In fact, any proper Julia variable name constitutes a valid label.
+Note though that these labels are never interpreted as existing Julia variables. Within the
+`@tensor` macro they are converted into symbols and then used as dummy names, whose only
+role is to distinguish the different indices. Their specific value bears no meaning. They
+also do not appear in the generated code as illustrated above. This implies, in particular,
+that the specific tensor operations defined by the code inside the `@tensor` environment are
+completely specified at compile time. Various remarks regarding the index notation are in
+order.
+
+1.  TensorOperations.jl only supports strict Einstein summation convention. This implies
+    that there are two types of indices. Either an index label appears once in every term of
+    the right hand side, and it also appears on the left hand side. We refer to the
+    corresponding indices as *open or free*. Alternatively, an index label appears exactly
+    twice within a given term on the right hand side. The corresponding indices are referred
+    to as *closed or contracted*, i.e. the pair of indices takes equal values and are summed
+    over their (equal) range. This is known as a contraction, either an outer contraction
+    (between two indices of two different tensors) or an inner contraction (a.k.a. trace,
+    between two indices of a single tensor). More liberal use of the index notation, such as
+    simultaneous summutation over three or more indices, or a open index appearing
+    simultaneously in different tensor factors, are not supported by TensorOperations.jl
+
+2.  Aside from valid Julia identifiers, index labels can also be specified using literal
+    integer constants or using a combination of integers and symbols. Furthermore, it is
+    also allowed to use primes (i.e. Julia's `adjoint` operator) to denote different
+    indices, including using multiple subsequent primes. The following expression thus
+    computes the same result as the example above:
+
+    ```julia
+    @tensor D[å'', ß, clap'] = A[å'', 1, -3, clap', -3, 2] * B[2, ß, 1] + α * C[c', å'', ß]
+    ```
+
+3.  If only integers are used for specifying index labels, this can be used to control the
+    pairwise contraction order, by using the well-known NCON convention, where 'open
+    indices' (appearing) in the left hand side are labelled by negative integers `-1`, `-2`,
+    `-3`, whereas contraction indices are labelled with positive integers `1`, `2`, … Since
+    the index order of the left hand side is in that case clear from the right hand side
+    expression, the left hand side can be indexed with `[:]`, which is automatically
+    replaced with all negative integers appearing in the right hand side, in decreasing
+    order. The value of the labels for the contraction indices determines the pairwise
+    contraction order. If multiple tensors need to be contracted, a first temporary will be
+    created consisting of the contraction of the pair of tensors that share contraction
+    index `1`, then the pair of tensors that share contraction index `2` (if not contracted
+    away in the first pair) will be contracted, and so forth. The next subsection explains
+    contraction order in more detail and gives some useful examples, as the example above
+    only includes a single pair of tensors to be contracted.
+
+4.  Index expressions `[...]` are only interpreted as index notation on the highest level.
+    For example, if you want to mulitply two matrices which are stored in a list, you can
+    write
+    
+    ```
+    @tensor result[i,j] := list[1][i,k] * list[2][k,j]
+    ```
+
+    However, if both are stored as a the slices of a 3-way array, you cannot write
+
+    ```
+    @tensor result[i,j] := list[i,k,1] * list[k,j,2]
+    ```
+
+    Rather, you should use
+
+    ```
+    @tensor result[i,j] := list[:,:,1][i,k] * list[:,:,2][k,j]
+    ```
+
+    or, if you want to avoid additional allocations
+
+    ```
+    @tensor result[i,j] := view(list, :,:,1)[i,k] * view(list, :,:,2)[k,j]
+    ```
+
+Note, finally, that the `@tensor` specifier can be put in front of a single tensor
+expression, or in front of a `begin ... end` block to group and evaluate different
+expressions at once. Within an `@tensor begin ... end` block, the `@notensor` macro can be
+used to annotate indexing expressions that need to be interpreted literally. The previous
+matrix multiplication example with matrices stored in a 3-way array could for example also
+be written as
 
 ```julia
-@tensor function f(args...)
-    some_tensor_expr
-    some_more_tensor_exprs
-    @notensor begin
-        some_literal_indexing_expression
-    end
-    return ...
+@tensor begin
+    @notensor A = list[:,:,1]
+    @notensor B = list[:,:,2]
+    result[i,j] = A[i,k] * B[k,j]
 end
 ```
 
-Note that [`@notensor`](@ref) annotations are only needed for indexing expressions which need to be
-interpreted literally.
+## Contraction order specification and optimisation
 
-## Contraction order and `@tensoropt` macro
-
-A contraction of several tensors `A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j] * ...`
-is generically evaluted as a sequence of pairwise contractions, using Julia's default left
-to right order, i.e. as `( (A[a, b, c, d, e] * B[b, e, f, g]) * C[c, f, i, j]) * ...)`.
-Explicit parenthesis can be used to modify this order. Alternatively, if one respects the
-so-called [NCON](https://arxiv.org/abs/1402.0939) style of specifying indices, i.e.
-positive integers for the contracted indices and negative indices for the open indices, the
-different factors will be reordered and so that the pairwise tensor contractions contract
-over indices with smaller integer label first. For example,
+A contraction of several (more than two) tensors, as in
 
 ```julia
-@tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
+@tensor D[a, d, j, i, g] := A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j]
 ```
 
-will be evaluated as `(A[-1, 3, 1, -2, 2] * C[1, 4, -4, -3]) * B[3, 2, 4, -5]`.
-Furthermore, in that case the indices of the output tensor (`D` in this case) do not need
-to be specified (using `[:]` instead), and will be chosen as `(-1, -2, -3, -4, -5)`. Any
-other index order for the output tensor is of course still possible by just explicitly
-specifying it.
+is known as a *tensor network* and is generically evaluted as a sequence of pairwise
+contractions. In the example above, this contraction is evaluated using Julia's default left
+to right order, i.e. as `(A[a, b, c, d, e] * B[b, e, f, g]) * C[c, f, i, j]`. There are
+however different strategies to modify this order.
 
-A final way to enforce a specific order is by giving the `@tensor` macro a keyword argument of the form `order=(list of indices)`, e.g.
+1.  Explicit parenthesis can be used to group subnetworks within a tensor network that will
+    be evaluated first. Parentheses around subexpressions are thus always respected by the
+    `@tensor` macro.
 
-```julia
-@tensor order = (f, e, g) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-# alternative macro syntax:
-@tensor(D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]; order=(f, e, g))
-```
+2.  As explained in the previous subsection, if one respects the
+    [NCON](https://arxiv.org/abs/1402.0939) convention of specifying indices, i.e. positive
+    integers for the contracted indices and negative indices for the open indices, the
+    different factors will be reordered and so that the pairwise tensor contractions
+    contract over indices with smaller integer label first. For example,
 
-This will now first perform the contraction corresponding to the index labeled `f`, i.e.
-the contraction between `A` and `C`. Then, the contraction corresponding to index labeled
-`e` will be performed, which is between `B` and the result of contracting `A` and `C`. If
-these objects share other contraction indices, in this case `g`, that contraction will be
-performed simultaneously, irrespective of its position in the list.
+    ```
+    @tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
+    ```
 
-Furthermore, there is a `@tensoropt` macro which will optimize the contraction order to
-minimize the total number of multiplications (cost model might change or become configurable
-in the future). The optimal contraction order will be determined at compile time and will
-be hard coded in the expression resulting from the macro expansion. The cost/size of the
-different indices can be specified in various ways, and can be integers or some arbitrary
-polynomial of an abstract variable, e.g. `χ`. In the latter case, the optimization assumes
-the asymptotic limit of large `χ`.
+    will be evaluated as `(A[-1, 3, 1, -2, 2] * C[1, 4, -4, -3]) * B[3, 2, 4, -5]`.
+    Furthermore, in that case the indices of the output tensor (`D` in this case) do not
+    need to be specified (using `[:]` instead), and will be chosen as
+    `(-1, -2, -3, -4, -5)`. Note that if two tensors are contracted, all contraction indices
+    among them will be contracted, even if there are additional contraction indices whose
+    label is a higher positive number. For example,
+
+    ```
+    @tensor D[:] := A[-1, 3, 2, -2, 1] * B[3, 1, 4, -5] * C[2, 4, -4, -3]
+    ```
+
+    amounts to the original left to right order, because `A` and `B` share the first
+    contraction index `1`. When `A` and `B` are contracted, also the contraction with label
+    `3` will be performed, even though contraction index with label `2` is not yet
+    'processed'.
+
+3.  A specific contraction order can be manually specified by supplying an `order` keyword
+    argument to the `@tensor` macro. The value is a tuple of the contraction indices in the
+    order that they should be dealt with, e.g. the default order could be changed to first
+    contract `A` with `C` using
+    
+    ```
+    @tensor order=(c,b,e,f) begin
+        D[a, d, j, i, g] := A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j]
+    end
+    ```
+
+    Here, the same comment as in the NCON style applies; once two tensors are contracted
+    because they share an index label which is next in the `order` list, all other indices
+    with shared label among them will be contracted, irrespective of their order.
+
+In the case of more complex tensor networks, the optimal contraction order cannot always
+easily be guessed or determined on plain sight. It is then useful to be able to optimise the
+contraction order automatically, given a model for the complexity of contracting the
+different tensors in a particular order. This functionality is provided where the cost
+function being minimised models the computational complexity by counting the number of
+scalar multiplications. This minimisation problem is solved using the algorithm that was
+described in
+[Physical Review E 90, 033315 (2014)](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.90.033315).
+For a given tensor networ contraction, this algorithm is ran once at compile time, while
+lowering the tensor espression, and the outcome will be hard coded in the expression
+resulting from the macro expansion. While the computational complexity of this optimisation
+algorithm scales itself exponentially in the number of tensors involved in the network, it
+should still be acceptibly fast (milliseconds up to a few seconds at most) for tensor
+network contractions with up to around 30 tensors. Information of the optimization process
+can be obtained during compilation by using the alternative macro `@tensoropt_verbose`.
+
+As the cost is determined at compile time, it is not using actual tensor properties (e.g.
+`size(A, i)` in the case of arrays) in the cost model, and the cost or extent associated
+with every index can be specified in various ways, either using integers or floating point
+numbers or some arbitrary polynomial of an abstract variable, e.g. `χ`. In the latter case,
+the optimization assumes the asymptotic limit of large `χ`.
 
 ```julia
 @tensoropt D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+@tensor opt=true D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 # cost χ for all indices (a, b, c, d, e, f)
+
 @tensoropt (a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+@tensor opt=(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 # cost χ for indices (a, b, c, e), other indices (d, f) have cost 1
+
 @tensoropt !(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+@tensor opt=!(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 # cost 1 for indices (a, b, c, e), other indices (d, f) have cost χ
-@tensoropt (a => χ, b => χ^2, c => 2 * χ, e => 5) D[a, b, c, d] := A[a, e, c, f] *
-                                                                   B[g, d, e] *
-                                                                   C[g, f, b]
+
+@tensoropt (a => χ, b => χ^2, c => 2 * χ, e => 5) begin
+    D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+end
+@tensor opt=(a => χ, b => χ^2, c => 2 * χ, e => 5) begin
+    D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+end
 # cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
 ```
 
-Because of the compile time optimization process, the optimization cannot use run-time
-information such as the actual sizes of the tensors involved. If these sizes are fixed,
-they should be hardcoded by specifying the cost in one of the ways as above. The
-optimization algorithm was described in
-[Physical Review E 90, 033315 (2014)](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.90.033315)
-and has a cost that scales exponentially in the number of tensors involved. For reasonably
-sized tensor network contractions with up to around 30 tensors, this should still be
-sufficiently fast (at most a few seconds) to be performed once at compile time, i.e. when
-the contraction is first invoked. Information of the optimization process can be obtained
-during compilation by using the alternative macro `@tensoropt_verbose`.
-
-The optimal contraction tree as well as the associated cost can be obtained by
-
-```julia
-@optimalcontractiontree D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-```
-
-where the cost of the indices can be specified in the same various ways as for
-`@tensoropt`. In this case, no contraction is performed and the tensors involved do not
-need to exist.
-
-Finally, this feature is also exposed within the `@tensor` macro through the `opt` keyword
-argument, which can be set to either `true` or any of the cost-specifying expressions
-previously mentioned.
-
 ## Dynamical tensor network contractions with `ncon` and `@ncon`
 
-Tensor network practicioners are probably more familiar with the network contractor
-function `ncon` to perform a tensor network contraction, as e.g. described in
+Tensor network practicioners are probably more familiar with the network contractor function
+`ncon` to perform a tensor network contraction, as e.g. described in
 [NCON](https://arxiv.org/abs/1402.0939). In particular, a graphical application
 [TensorTrace](https://www.tensortrace.com) was recently introduced to facilitate the
-generation of such `ncon` calls. TensorOperations.jl now provides compatibility with this
+generation of such `ncon` calls. TensorOperations.jl provides compatibility with this
 interface by also exposing an `ncon` function with the same basic syntax
 
 ```julia
@@ -171,7 +253,7 @@ ncon(list_of_tensor_objects, list_of_index_lists)
 
 e.g. the example of above is equivalent to
 
-```julia
+```@example
 @tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
 D ≈ ncon((A, B, C), ([-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]))
 ```
@@ -191,11 +273,11 @@ ncon(tensorlist, indexlist, [conjlist]; order=..., output=...)
 ```
 
 where the first two arguments are those of above. Let us first discuss the keyword
-arguments. The keyword argument `order` can be used to change the contraction order, i.e.
-by specifying which contraction indices need to be processed first, rather than the
-strictly increasing order `[1, 2, ...]`. The keyword argument `output` can be used to
-specify the order of the output indices, when it is different from the default
-`[-1, -2, ...]`.
+arguments. The keyword argument `order` can be used to change the contraction order, i.e. by
+specifying which contraction indices need to be processed first, rather than the strictly
+increasing order `[1, 2, ...]`, as discussed in the previous subsection. The keyword
+argument `output` can be used to specify the order of the output indices, when it is
+different from the default `[-1, -2, ...]`.
 
 The optional positional argument `conjlist` is a list of `Bool` variables that indicate
 whether the corresponding tensor needs to be conjugated in the contraction. So while
@@ -206,7 +288,8 @@ ncon([A, B, C], [[-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]], [false, true
 ```
 
 the latter has the advantage that conjugating `B` is not an extra step (which creates an
-additional temporary), but is performed at the same time when it is contracted.
+additional temporary requiring allocations), but is performed at the same time when it is
+contracted.
 
 As an alternative solution to the optional positional arguments, there is also an `@ncon`
 macro. It is just a simple wrapper over an `ncon` call and thus does not analyze the
@@ -260,18 +343,18 @@ function IsoEnvW2(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
     return wEnv
 end
 
-@tensor function IsoEnvW3(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
-    wEnv[-1, -2, -3] := hamAB[7, 8, -1, 9] * rhoBA[4, 3, -3, 2] * conj(w[7, 5, 4]) *
-                        u[9, 10, -2, 11] * conj(u[8, 10, 5, 6]) * v[1, 11, 2] *
-                        conj(v[1, 6, 3]) +
-                        hamBA[1, 2, 3, 4] * rhoBA[10, 7, -3, 6] * conj(w[-1, 11, 10]) *
-                        u[3, 4, -2, 8] * conj(u[1, 2, 11, 9]) * v[5, 8, 6] *
-                        conj(v[5, 9, 7]) +
-                        hamAB[5, 7, 3, 1] * rhoBA[10, 9, -3, 8] * conj(w[-1, 11, 10]) *
-                        u[4, 3, -2, 2] * conj(u[4, 5, 11, 6]) * v[1, 2, 8] *
-                        conj(v[7, 6, 9]) +
-                        hamBA[3, 7, 2, -1] * rhoAB[5, 6, 4, -3] * v[2, 1, 4] *
-                        conj(v[3, 1, 5]) * conj(w[7, -2, 6])
+function IsoEnvW3(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
+    @tensor wEnv[-1, -2, -3] := hamAB[7, 8, -1, 9] * rhoBA[4, 3, -3, 2] * conj(w[7, 5, 4]) *
+                                u[9, 10, -2, 11] * conj(u[8, 10, 5, 6]) * v[1, 11, 2] *
+                                conj(v[1, 6, 3]) +
+                                hamBA[1, 2, 3, 4] * rhoBA[10, 7, -3, 6] * conj(w[-1, 11, 10]) *
+                                u[3, 4, -2, 8] * conj(u[1, 2, 11, 9]) * v[5, 8, 6] *
+                                conj(v[5, 9, 7]) +
+                                hamAB[5, 7, 3, 1] * rhoBA[10, 9, -3, 8] * conj(w[-1, 11, 10]) *
+                                u[4, 3, -2, 2] * conj(u[4, 5, 11, 6]) * v[1, 2, 8] *
+                                conj(v[7, 6, 9]) +
+                                hamBA[3, 7, 2, -1] * rhoAB[5, 6, 4, -3] * v[2, 1, 4] *
+                                conj(v[3, 1, 5]) * conj(w[7, -2, 6])
     return wEnv
 end
 ```
@@ -310,7 +393,13 @@ also plagued by the runtime analysis of the contraction, but is even worse then
 `ncon`. For small `χ`, the unavoidable type instabilities in `ncon` implementation seem to
 make the interaction with the cache hurtful rather than advantageous.
 
-## Multithreading and GPU evaluation of tensor contractions
+## Index compatibility and checks
+
+Indices with the same label, either open indices on the two sides of the equation, or contracted
+indices, need to be compatible. For `AbstractArray` objects, this means they must have the same
+size, or more generally, the same range, as obtained with `axes(array, i)`. 
+
+## Backends, multithreading and GPUs
 
 Every index expression will be evaluated as a sequence of elementary tensor operations,
 i.e. permuted additions, partial traces and contractions, which are implemented for strided
@@ -332,8 +421,10 @@ on `JULIA_NUM_THREADS>1`). This implementation can sometimes be faster even for 
 types, and the use of BLAS can be controlled by explicitly switching the backend between `StridedBLAS` and `StridedNative`.
 
 Since TensorOperations v2.0, the necessary implementations are also available for `CuArray`
-objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This
-implementation is essentially a simple wrapper over the cuTENSOR library of NVidia, and will only be loaded when the `cuTENSOR` library is loaded. The `@tensor` macro will then automatically work for operations between GPU arrays.
+objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation
+is essentially a simple wrapper over the cuTENSOR library of NVidia, and will only be loaded
+when the `cuTENSOR` library is loaded. The `@tensor` macro will then automatically work for
+operations between GPU arrays.
 
 Mixed operations between host arrays (e.g. `Array`) and device arrays (e.g. `CuArray`) will
 fail however. If one wants to harness the computing power of the GPU to perform all tensor
@@ -344,3 +435,4 @@ remain on the GPU device and it is up to the user to transfer it back. Arrays ar
 transfered to the GPU just before they are first used, and in a complicated tensor
 expression, this might have the benefit that transer of the later arrays overlaps with
 computation of earlier operations. 
+

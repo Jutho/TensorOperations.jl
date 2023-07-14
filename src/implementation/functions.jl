@@ -7,8 +7,8 @@
 # ------------------------------------------------------------------------------------------
 
 """
-    tensorcopy([IC=IA], A, IA, [conjA::Symbol=:N, [α::Number=true]])
-    tensorcopy(pC::Index2Tuple, A, conjA::Symbol, α::Number) # expert mode
+    tensorcopy([IC=IA], A, IA, [conjA=:N, [α=true]])
+    tensorcopy(pC::Index2Tuple, A, conjA, α) # expert mode
 
 Create a copy of `A`, where the dimensions of `A` are assigned indices from the
 iterable `IA` and the indices of the copy are contained in `IC`. Both iterables
@@ -25,27 +25,27 @@ See also [`tensorcopy!`](@ref).
 """
 function tensorcopy end
 
-function tensorcopy(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=true, backend...)
+function tensorcopy(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=true)
     pC = add_indices(IA, IC)
-    return tensorcopy(pC, A, conjA, α, backend...)
+    return tensorcopy(pC, A, conjA, α)
 end
 # default `IC`
-function tensorcopy(A, IA, conjA::Symbol=:N, α::Number=true, backend...)
-    return tensorcopy(tuple(IA...), A, tuple(IA...), conjA, α, backend...)
+function tensorcopy(A, IA, conjA::Symbol=:N, α::Number=true)
+    return tensorcopy(tuple(IA...), A, tuple(IA...), conjA, α)
 end
 # implement for iterables
-function tensorcopy(IC, A, IA, conjA::Symbol=:N, α::Number=true, backend...)
-    return tensorcopy(tuple(IC...), A, tuple(IA...), conjA, α, backend...)
+function tensorcopy(IC, A, IA, conjA::Symbol=:N, α::Number=true)
+    return tensorcopy(tuple(IC...), A, tuple(IA...), conjA, α)
 end
 # expert mode
-function tensorcopy(pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backend...)
+function tensorcopy(pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backend::Backend...)
     TC = promote_add(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, pC, A, conjA)
     return tensorcopy!(C, pC, A, conjA, α, backend...)
 end
 
 """
-    tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true)
+    tensorcopy!(C, pC::Index2Tuple, A, conjA=:N, α=true)
 
 Copy the contents of tensor `A` into `C`, where the dimensions `A` are permuted according to
 the permutation and repartition `pC`.
@@ -57,7 +57,7 @@ conjugated (`:C`) or not (`:N`).
 
 See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
 """
-function tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backend...)
+function tensorcopy!(C, pC::Index2Tuple, A, conjA::Symbol=:N, α::Number=true, backend::Backend...)
     return tensoradd!(C, pC, A, conjA, α, false, backend...)
 end
 
@@ -66,8 +66,8 @@ end
 # ------------------------------------------------------------------------------------------
 
 """
-    tensoradd([IC=IA], A, IA, [conjA::Symbol], B, IB, [conjB::Symbol], [α::Number=true, [β::Number=true]])
-    tensoradd(A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, pB::Index2Tuple, conjB::Symbol, α::Number=true, β::Number=true) # expert mode
+    tensoradd([IC=IA], A, IA, [conjA], B, IB, [conjB], [α=true, [β=true]])
+    tensoradd(A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, pB::Index2Tuple, conjB, α=true, β=true) # expert mode
 
 Return the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
@@ -108,7 +108,7 @@ end
 # expert mode
 function tensoradd(A, pA::Index2Tuple, conjA::Symbol,
                    B, pB::Index2Tuple, conjB::Symbol,
-                   α::Number=true, β::Number=true, backend...)
+                   α::Number=true, β::Number=true, backend::Backend...)
     TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
     C = tensoralloc_add(TC, pA, A, conjA)
     C = tensorcopy!(C, pA, A, conjA, α)
@@ -120,8 +120,8 @@ end
 # ------------------------------------------------------------------------------------------
 
 """
-    tensortrace([IC], A, IA, [conjA::Symbol], [α::Number=true])
-    tensortrace(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, α::Number=true) # expert mode
+    tensortrace([IC], A, IA, [conjA], [α=true])
+    tensortrace(pC::Index2Tuple, A, pA::Index2Tuple, conjA, α=true) # expert mode
 
 Trace or contract pairs of indices of tensor `A`, by assigning them identical indices in the
 iterable `IA`. The untraced indices, which are assigned a unique index, can be reordered
@@ -158,7 +158,7 @@ function tensortrace(IC, A, IA, conjA::Symbol, α::Number=true)
 end
 # expert mode
 function tensortrace(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, α::Number=true,
-                     backend...)
+                     backend::Backend...)
     TC = promote_contract(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, pC, A, conjA)
     return tensortrace!(C, pC, A, pA, conjA, α, false)
@@ -169,8 +169,8 @@ end
 # ------------------------------------------------------------------------------------------
 
 """
-    tensorcontract([IC], A, IA, [conjA::Symbol], B, IB, [conjB::Symbol], [α::Number=true])
-    tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true) # expert mode
+    tensorcontract([IC], A, IA, [conjA], B, IB, [conjB], [α=true])
+    tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true) # expert mode
 
 Contract indices of tensor `A` with corresponding indices in tensor `B` by assigning
 them identical labels in the iterables `IA` and `IB`. The indices of the resulting
@@ -221,7 +221,7 @@ function tensorcontract(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Numb
 end
 # expert mode
 function tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
-                        pB::Index2Tuple, conjB::Symbol, α::Number=true, backend...)
+                        pB::Index2Tuple, conjB::Symbol, α::Number=true, backend::Backend...)
     TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
     C = tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB)
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, false, backend...)
@@ -232,8 +232,8 @@ end
 # ------------------------------------------------------------------------------------------
 
 """
-    tensorproduct([IC], A, IA, [conjA], B, IB, [conjB], [α::Number=true])
-    tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true) # expert mode
+    tensorproduct([IC], A, IA, [conjA], B, IB, [conjB], [α=true])
+    tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true) # expert mode
 
 Compute the tensor product (outer product) of two tensors `A` and `B`, i.e. returns a new
 tensor `C` with `ndims(C) = ndims(A) + ndims(B)`. The indices of the output tensor are
@@ -274,14 +274,14 @@ function tensorproduct(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Numbe
 end
 # expert mode
 function tensorproduct(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
-                       pB::Index2Tuple, conjB::Symbol, α::Number=true, backend...)
+                       pB::Index2Tuple, conjB::Symbol, α::Number=true, backend::Backend...)
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract(pC, A, pA, conjA, B, pB, conjB, α, backend...)
 end
 
 """
-    tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B, pB::Index2Tuple, conjB::Symbol, α::Number=true, β::Number=false)
+    tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=true, β=false)
 
 Compute the tensor product (outer product) of two tensors `A` and `B`, i.e. a wrapper of
 [`tensorcontract!`](@ref) with no indices being contracted over. This method checks whether
@@ -290,7 +290,7 @@ the indices indeed specify a tensor product instead of a genuine contraction.
 See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 """
 function tensorproduct!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
-                        pB::Index2Tuple, α::Number=true, β::Number=false, backend...)
+                        pB::Index2Tuple, α::Number=true, β::Number=false, backend::Backend...)
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, backend...)
