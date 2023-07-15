@@ -96,8 +96,8 @@ function tensorcontract_structure end
 """
     tensoradd_type(TC, pC, A, conjA)
 
-Obtain `typeof(C)`, where `C` is the result of `tensoradd!(C, pC, A, conjA)` with scalartype
-`TC`.
+Obtain `typeof(C)`, where `C` is the result of `tensoradd!(C, pC, A, conjA)`
+with scalar type `TC`.
 """
 function tensoradd_type end
 
@@ -105,22 +105,24 @@ function tensoradd_type end
     tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
 
 Obtain `typeof(C)`, where `C` is the result of
-`tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB)` with scalartype `TC`.
+`tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB)` with scalar type `TC`.
 """
 function tensorcontract_type end
 
 """
-    tensoralloc(ttype, structure, istemp=false)
+    tensoralloc(ttype, structure, istemp=false, [backend::Backend])
 
-Allocate memory for a tensor of type `ttype` and structure `structure`, optionally
-distinguishing between temporary intermediate tensors.
+Allocate memory for a tensor of type `ttype` and structure `structure`. The optional third
+argument can be used to indicate that the result is used as a temporary tensor, for which
+in some cases and with some backends (the optional foruth argument) a different allocation
+strategy might be used.
 """
 function tensoralloc end
 
 """
     tensorfree!(C)
 
-Release the allocated memory of `C`.
+Provide a hint that the allocated memory of `C` can be released.
 """
 tensorfree!(C) = nothing
 

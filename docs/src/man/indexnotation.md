@@ -32,18 +32,22 @@ D = zeros(5, 5, 5)
 end
 ```
 
-In the second to last line, the result of the operation will be stored in the preallocated
-array `D`, whereas use of the different assignment operator `:=` indicates that a new array
-`E` of the correct size is to be created. The contents of `D` and `E` will be equal.
+The first thing to note is the use of two different assignment operators within the body of
+the `@tensor` call. The regular assignment operator `=` stores the result of the tensor
+expression in the right hand side in an existing tensor `D`, whereas the alternative
+assignment operator `:=` results in a new tensor `E` with the correct properties to be
+created. However, the contents of `D` and `E` will be equal.
 
-Following Einstein's summation convention, the result is computed by first tracing/
-contracting the 3rd and 5th index of array `A`. The resulting array will then be contracted
-with array `B` by contracting its 2nd index with the last index of `B` and its last index
-with the first index of `B`. The resulting array has three remaining indices, which
-correspond to the indices `a` and `c` of array `A` and index `b` of array `B` (in that
-order). To this, the array `C` (scaled with `α`) is added, where its first two indices will
-be permuted to fit with the order `a, c, b`. The result will then be stored in array `D`,
-which requires a second permutation to bring the indices in the requested order `a, b, c`.
+Following Einstein's summation convention, that contents is computed in a number of steps
+involving the three primitive tensor operators. In this particular example, the first step
+involves tracing/ contracting the 3rd and 5th index of array `A`. The resulting array will
+then be contracted with array `B` by contracting its 2nd index with the last index of `B`
+and its last index with the first index of `B`. The resulting array has three remaining
+indices, which correspond to the indices `a` and `c` of array `A` and index `b` of array `B`
+(in that order). To this, the array `C` (scaled with `α`) is added, where its first two
+indices will be permuted to fit with the order `a, c, b`. The result will then be stored in
+array `D` (or `E`), which requires a second permutation to bring the indices in the
+requested order `a, b, c`.
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
 tensor operations, i.e. [`tensoradd!`](@ref), [`tensortrace!`](@ref) and

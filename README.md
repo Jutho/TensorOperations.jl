@@ -32,19 +32,19 @@ Fast tensor operations using a convenient Einstein index notation.
 
 ## What's new in v4
 
-- Moved CUDA to a package extension, to avoid unnecessary dependencies for Julia versions >= 1.9
+- The `@tensor` macro now accepts keyword arguments to facilitate a variety of options that help with debugging, contraction cost and backend selection.
 
-- The cache for temporaries has been removed, but support for something similar is now provided through explicit allocating and freeing calls within the macro.
+- Experimental support for automatic differentiation has been added by adding reverse-mode chainrules.
 
 - The interface for custom types has been changed and thoroughly documented, making it easier to know what to implement. This has as a consequence that more general element types of tensors are now also possible.
 
 - There is a new interface to work with backends, to allow for dynamic switching between different implementations of the TensorOperations interface.
 
-- The `@tensor` macro now accepts keyword arguments to facilitate a variety of options that help with debugging, contraction cost and type wrapping.
+- Support for `CuArray` objects is moved to a package extension, to avoid unnecessary CUDA dependencies for Julia versions >= 1.9
 
-- Some support for Automatic Differentiation has been added by adding reverse-mode chainrules.
+- The cache for temporaries has been removed due to its inconsistent and intricate interplay with multithreading.
 
-> **WARNING:** TensorOperations 4.0 contains breaking changes and is in general incompatible with previous versions.
+> **WARNING:** TensorOperations 4.0 contains seveal breaking changes and cannot generally be expected to be compatible with previous versions.
 
 ### Code example
 
@@ -72,4 +72,4 @@ preallocated array `D`, whereas the last line uses a different assignment
 operator `:=` in order to define and allocate a new array `E` of the correct
 size. The contents of `D` and `E` will be equal.
 
-For more information, please see the documentation.
+For more detailed information, please see the documentation.

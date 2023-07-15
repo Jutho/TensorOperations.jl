@@ -1,6 +1,6 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
-authors = ["Jutho Haegeman"]
+authors = ["Jutho Haegeman <jutho.haegeman@ugent.be>, Lukas Devos <lukas.devos@ugent.be> and contributors"]
 version = "4.0.0"
 
 [deps]

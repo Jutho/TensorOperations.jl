@@ -32,7 +32,6 @@ Additional keyword arguments may be passed to control the behavior of the parser
 - `backend`: 
     Inserts a backend call for the different tensor operations.
 """
-
 macro tensor(args::Vararg{Expr})
     isempty(args) && throw(ArgumentError("No arguments passed to `@tensor`"))
     length(args) == 1 && return esc(defaultparser(args[1]))

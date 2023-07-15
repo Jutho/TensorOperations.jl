@@ -19,14 +19,15 @@ The TensorOperations.jl package is centered around the following features:
 
   - A macro [`@tensor`](@ref) for conveniently specifying tensor contractions and index
     permutations via Einstein's index notation convention. The index notation is analyzed at
-    compile time. The macro supports several keyword arguments to customize how the tensor
-    expression is lowered, thereby affecting which checks are performed, the backend that is
-    used for evaluating the [Tensor operations](@ref), the order in which the tensor
-    contractions are evaluated (as discussed in the next bullet point), …
+    compile time and lowered into primitive tensor operations. The macro supports several
+    keyword arguments to customize the lowering process, e.g. to insert additional checks
+    that help with debugging, to specify contraction order or to have this determined
+    automatically based on specified costs, to select different backends to evaulate those
+    primitive operations.
   - The ability to optimize pairwise contraction order in complicated tensor contraction
-    networks according to the algorithm in
-    [this paper](https://doi.org/10.1103/PhysRevE.90.033315), where custom (compile time)
-    costs costs can be specified, either as a keyword to [`@tensor`](@ref) or using the
+    networks according to the algorithm in [this
+    paper](https://doi.org/10.1103/PhysRevE.90.033315), where custom (compile time) costs
+    costs can be specified, either as a keyword to [`@tensor`](@ref) or using the
     [`@tensoropt`](@ref) macro (for expliciteness and backward compatibility). This
     optimization is performed at compile time, and the resulting contraction order is hard
     coded into the resulting expression. The similar macro `@tensoropt_verbose` provides
