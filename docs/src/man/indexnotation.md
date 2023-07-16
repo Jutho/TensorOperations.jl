@@ -38,7 +38,7 @@ expression in the right hand side in an existing tensor `D`, whereas the alterna
 assignment operator `:=` results in a new tensor `E` with the correct properties to be
 created. However, the contents of `D` and `E` will be equal.
 
-Following Einstein's summation convention, that contents is computed in a number of steps
+Following Einstein's summation convention, these contents are computed in a number of steps
 involving the three primitive tensor operators. In this particular example, the first step
 involves tracing/ contracting the 3rd and 5th index of array `A`. The resulting array will
 then be contracted with array `B` by contracting its 2nd index with the last index of `B`
@@ -157,7 +157,7 @@ A contraction of several (more than two) tensors, as in
 @tensor D[a, d, j, i, g] := A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j]
 ```
 
-is known as a *tensor network* and is generically evaluted as a sequence of pairwise
+is known as a *tensor network* and is generically evaluated as a sequence of pairwise
 contractions. In the example above, this contraction is evaluated using Julia's default left
 to right order, i.e. as `(A[a, b, c, d, e] * B[b, e, f, g]) * C[c, f, i, j]`. There are
 however different strategies to modify this order.
@@ -273,9 +273,9 @@ D ≈ ncon((A, B, C), ([-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]))
 
 where the lists of tensor objects and of index lists can be given as a vector or a tuple.
 The `ncon` function necessarily needs to analyze the contraction pattern at runtime, but
-this can be an advantage, in case where the contraction is determined by runtime
+this can be an advantage, in cases where the contraction is determined by runtime
 information and thus not known at compile time. A downside from this, besides the fact that
-this can result in some overhead (though that is typical negligable for anything but very
+this can result in some overhead (though this is typically negligable for anything but very
 small tensor contractions), is that `ncon` is type-unstable, i.e. its return type cannot be
 inferred by the Julia compiler.
 
@@ -433,21 +433,21 @@ Every index expression will be evaluated as a sequence of elementary tensor oper
 permuted additions, partial traces and contractions, which are implemented for strided
 arrays as discussed in [Package features](@ref). In particular, these implementations rely
 on [Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a
-full specification of which arrays are supported. As a rule of thumb, `Array`s from Julia
-base, as well as `view`s thereof if sliced with a combination of `Integer`s and `Range`s.
-Special types such as `Adjoint` and `Transpose` from Base are also supported. For permuted
-addition and partial traces, native Julia implementations are used which could benefit from
-multithreading if `JULIA_NUM_THREADS>1`. The binary contraction is performed by first
-permuting the two input tensors into a form such that the contraction becomes equivalent to
-one matrix multiplication on the whole data, followed by a final permutation to bring the
-indices of the output tensor into the desired order. This approach allows to use the highly
-efficient matrix multiplication kernel (`gemm`) from BLAS, which is multithreaded by
-default. There is also a native contraction implementation that is used for e.g. arrays with
-an `eltype` that is not `<:LinearAlgebra.BlasFloat`. It performs the contraction directly
-without the additional permutations, but still in a cache-friendly and multithreaded way
-(again relying on `JULIA_NUM_THREADS>1`). This implementation can also be used for
-`BlasFloat` types (but will typically be slower), and the use of BLAS can be controlled by
-explicitly switching the backend between `StridedBLAS` and `StridedNative`.
+full specification of which arrays are supported. As a rule of thumb, this primarily
+includes `Array`s from Julia base, as well as `view`s thereof if sliced with a combination
+of `Integer`s and `Range`s. Special types such as `Adjoint` and `Transpose` from Base are
+also supported. For permuted addition and partial traces, native Julia implementations are
+used which could benefit from multithreading if `JULIA_NUM_THREADS>1`. The binary
+contraction is performed by first permuting the two input tensors into a form such that the
+contraction becomes equivalent to one matrix multiplication on the whole data, followed by a
+final permutation to bring the indices of the output tensor into the desired order. This
+approach allows to use the highly efficient matrix multiplication kernel (`gemm`) from BLAS,
+which is multithreaded by default. There is also a native contraction implementation that is
+used for e.g. arrays with an `eltype` that is not `<:LinearAlgebra.BlasFloat`. It performs
+the contraction directly without the additional permutations, but still in a cache-friendly
+and multithreaded way (again relying on `JULIA_NUM_THREADS>1`). This implementation can also
+be used for `BlasFloat` types (but will typically be slower), and the use of BLAS can be
+controlled by explicitly switching the backend between `StridedBLAS` and `StridedNative`.
 
 The primitive tensor operations are also implemented for `CuArray` objects of the
 [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation is essentially a
@@ -464,4 +464,3 @@ remain on the GPU device and it is up to the user to transfer it back. Arrays ar
 to the GPU just before they are first used, and in a complicated tensor expression, this
 might have the benefit that transer of the later arrays overlaps with computation of earlier
 operations.
-

@@ -4,8 +4,8 @@ TensorOperations offers experimental support for reverse-mode automatic diffenti
 through the use of [ChainRules.jl](https://github.com/JuliaDiff/ChainRules.jl). As the basic
 operations are multi-linear, the vector-Jacobian products thereof can all be expressed in
 terms of the operations defined in VectorInterface and TensorOperations. Thus, any custom
-type whos tangent type also support these interfaces will automatically inherit reverse-mode
-AD support.
+type whose tangent type also support these interfaces will automatically inherit
+reverse-mode AD support.
 
 As the [`@tensor`](@ref) macro rewrites everything in terms of the basic tensor operations,
 the reverse-mode rules for these methods are supplied. However, because most AD-engines do

@@ -22,12 +22,12 @@ The TensorOperations.jl package is centered around the following features:
     compile time and lowered into primitive tensor operations. The macro supports several
     keyword arguments to customize the lowering process, e.g. to insert additional checks
     that help with debugging, to specify contraction order or to have this determined
-    automatically based on specified costs, to select different backends to evaulate those
+    automatically based on specified costs, to select different backends to evaluate those
     primitive operations.
   - The ability to optimize pairwise contraction order in complicated tensor contraction
     networks according to the algorithm in [this
     paper](https://doi.org/10.1103/PhysRevE.90.033315), where custom (compile time) costs
-    costs can be specified, either as a keyword to [`@tensor`](@ref) or using the
+    can be specified, either as a keyword to [`@tensor`](@ref) or using the
     [`@tensoropt`](@ref) macro (for expliciteness and backward compatibility). This
     optimization is performed at compile time, and the resulting contraction order is hard
     coded into the resulting expression. The similar macro `@tensoropt_verbose` provides
@@ -44,7 +44,7 @@ The TensorOperations.jl package is centered around the following features:
     type.
   - An efficient default implementation for Julia Base arrays that qualify as strided, i.e.
     such that its entries are layed out according to a regular pattern in memory. The only
-    exception are `ReinterpretedArray` objects. Additionally, `Diagonal` objects whose
+    exceptions are `ReinterpretedArray` objects. Additionally, `Diagonal` objects whose
     underlying diagonal data is stored as a strided vector are supported. This facilitates
     tensor contractions where one of the operands is e.g. a diagonal matrix of singular
     values or eigenvalues, which are returned as a `Vector` by Julia's `eigen` or `svd`
@@ -55,7 +55,7 @@ The TensorOperations.jl package is centered around the following features:
     Strided.jl, e.g. for scalar types which are not supported by BLAS. Additional backends
     (e.g. pure Julia Base using loops and/or broadcasting) may be added in the future.
   - Support for `CuArray` objects if used together with
-    [CUDA.jl and cuTensor.jl](https://github.com/JuliaGPU/CUDA.jl), by relying on (and thus
+    [CUDA.jl and cuTENSOR.jl](https://github.com/JuliaGPU/CUDA.jl), by relying on (and thus
     providing a high level interface into) NVidia's
     [cuTENSOR](https://developer.nvidia.com/cutensor) library.
 
@@ -65,7 +65,7 @@ TensorOperations.jl supports 3 basic tensor operations, i.e. primitives in which
 complicated tensor expression is deconstructed.
 
  1. **addition:** Add a (possibly scaled version of) one tensor to another tensor, where the
-    indices of the both arrays might appear in different orders. This operation combines
+    indices of both arrays might appear in different orders. This operation combines
     normal tensor addition and index permutation. It includes as a special case copying one
     tensor into another with permuted indices.
  2. **trace or inner contraction:** Perform a trace/contraction over pairs of indices of a
