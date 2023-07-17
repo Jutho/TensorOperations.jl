@@ -38,7 +38,7 @@ expression in the right hand side in an existing tensor `D`, whereas the 'defini
 operator `:=` results in a new tensor `E` with the correct properties to be created.
 However, the contents of `D` and `E` will be equal.
 
-Following Einstein's summation convention, these contents are computed in a number of steps
+Following Einstein's summation convention, that contents is computed in a number of steps
 involving the three primitive tensor operators. In this particular example, the first step
 involves tracing/contracting the 3rd and 5th index of array `A`, the result of which is
 stored in a temporary array which thus needs to be created. This resulting array will then
@@ -432,17 +432,28 @@ their indices, and requires matching between those. The function
 [`checkcontractible`](@ref) is part of the interface that can be used to control when
 tensors can be contracted with each other along specific indices.
 
-If indices don't match, the contraction will spawn an error. However, this can be an error
+If indices do not match, the contraction will spawn an error. However, this can be an error
 deep within the implementation, at which point the error message will provide little
-information as to which specific tensors and which indices are producing the mismatch. By
-adding the keyword argument `contractcheck = true` to the `@tensor` macro, explicit checks
-are enabled that are run before any tensor operation is performed, and when a mismatch is
-detected, the still have the label information to spawn a more useful error message.
+information as to which specific tensors and which indices are producing the mismatch. When
+debugging, it might be useful to add the keyword argument `contractcheck = true` to the
+`@tensor` macro. Explicit checks using `checkcontractible` are then enabled that are run
+before any tensor operation is performed. When a mismatch is detected, these checks still
+have access to the label information and spawn a more informative error message.
 
-
-TODO: continue the following
 A different type of check is the `costcheck` keyword argument, which can be given the values
-`:warn` or `:cache`.
+`:warn` or `:cache`. With either of both values for this keyword argument, additional checks
+are inserted that compare the contraction order of any tensor contraction of three or more
+factors against the optimal order based on the current tensor size. More generally, the
+function [`tensorcost`](@ref) is part of the interface and associated a cost value with
+every index of a tensor, which is then used in the cost model. With `costcheck=:warn`, a
+warning will be spawn for every tensor network where the actual contraction order (even when
+optimised using abstract costs) does not match with the ideal contraction order given the
+current `tensorcost` values. With `costcheck = :cache`, the tensor networks with non-optimal
+contraction order are stored in a global package variable `TensorOperations.costcache`.
+However, when a tensor network is evaluated several times with different tensor sizes or
+tensor costs, only the evaluation giving rise to the largest total contraction cost for that
+network will appear in the cache (provided the actual contraction order deviates from the
+optimal order in that largest case).
 
 ## Backends, multithreading and GPUs
 
@@ -454,26 +465,28 @@ full specification of which arrays are supported. As a rule of thumb, this prima
 includes `Array`s from Julia base, as well as `view`s thereof if sliced with a combination
 of `Integer`s and `Range`s. Special types such as `Adjoint` and `Transpose` from Base are
 also supported. For permuted addition and partial traces, native Julia implementations are
-used which could benefit from multithreading if `JULIA_NUM_THREADS>1`. The binary
-contraction is performed by first permuting the two input tensors into a form such that the
-contraction becomes equivalent to one matrix multiplication on the whole data, followed by a
-final permutation to bring the indices of the output tensor into the desired order. This
-approach allows to use the highly efficient matrix multiplication kernel (`gemm`) from BLAS,
-which is multithreaded by default. There is also a native contraction implementation that is
-used for e.g. arrays with an `eltype` that is not `<:LinearAlgebra.BlasFloat`. It performs
-the contraction directly without the additional permutations, but still in a cache-friendly
-and multithreaded way (again relying on `JULIA_NUM_THREADS>1`). This implementation can also
-be used for `BlasFloat` types (but will typically be slower), and the use of BLAS can be
-controlled by explicitly switching the backend between `StridedBLAS` and `StridedNative`.
+used which could benefit from multithreading if `JULIA_NUM_THREADS>1`.
+
+The binary contraction is performed by first permuting the two input tensors into a form
+such that the contraction becomes equivalent to one matrix multiplication on the whole data,
+followed by a final permutation to bring the indices of the output tensor into the desired
+order. This approach allows to use the highly efficient matrix multiplication kernel
+(`gemm`) from BLAS, which is multithreaded by default. There is also a native contraction
+implementation that is used for e.g. arrays with an `eltype` that is not
+`<:LinearAlgebra.BlasFloat`. It performs the contraction directly without the additional
+permutations, but still in a cache-friendly and multithreaded way (again relying on
+`JULIA_NUM_THREADS>1`). This implementation can also be used for `BlasFloat` types (but will
+typically be slower), and the use of BLAS can be controlled by explicitly switching the
+backend between `StridedBLAS` and `StridedNative`.
 
 The primitive tensor operations are also implemented for `CuArray` objects of the
 [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation is essentially a
 simple wrapper over the cuTENSOR library of NVidia, and will only be loaded when the
-`cuTENSOR` library is loaded. The `@tensor` macro will then automatically work for
+`cuTENSOR.jl` package is loaded. The `@tensor` macro will then automatically work for
 operations between GPU arrays.
 
 Mixed operations between host arrays (e.g. `Array`) and device arrays (e.g. `CuArray`) will
-fail however. If one wants to harness the computing power of the GPU to perform all tensor
+fail. However, if one wants to harness the computing power of the GPU to perform all tensor
 operations, there is a dedicated macro `@cutensor`. This will transfer all host arrays to
 the GPU before performing the requested operations. If the output is an existing host array,
 the result will be copied back. If a new result array is created (i.e. using `:=`), it will
