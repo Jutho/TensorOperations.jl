@@ -18,7 +18,8 @@ amounts to replacing all assignments (`=`) with definitions (`:=`) within the co
 
 !!! warning "Experimental"
 
-    While some rudimentary tests are run, this feature is currently not incredibly well-tested.
-    Because of the way it is implemented, the use of AD will tacitly replace mutating operations
-    with a non-mutating variant. This might lead to unwanted bugs that are hard to track down.
-    Additionally, for mixed scalar types their also might be unexpected or unwanted behaviour.
+    While some rudimentary tests are run, the AD support is currently not incredibly
+    well-tested. Because of the way it is implemented, the use of AD will tacitly replace
+    mutating operations with a non-mutating variant. This might lead to unwanted bugs that
+    are hard to track down. Additionally, for mixed scalar types their also might be
+    unexpected or unwanted behaviour.

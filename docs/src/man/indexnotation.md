@@ -34,20 +34,21 @@ end
 
 The first thing to note is the use of two different assignment operators within the body of
 the `@tensor` call. The regular assignment operator `=` stores the result of the tensor
-expression in the right hand side in an existing tensor `D`, whereas the alternative
-assignment operator `:=` results in a new tensor `E` with the correct properties to be
-created. However, the contents of `D` and `E` will be equal.
+expression in the right hand side in an existing tensor `D`, whereas the 'definition'
+operator `:=` results in a new tensor `E` with the correct properties to be created.
+However, the contents of `D` and `E` will be equal.
 
 Following Einstein's summation convention, these contents are computed in a number of steps
 involving the three primitive tensor operators. In this particular example, the first step
-involves tracing/ contracting the 3rd and 5th index of array `A`. The resulting array will
-then be contracted with array `B` by contracting its 2nd index with the last index of `B`
-and its last index with the first index of `B`. The resulting array has three remaining
-indices, which correspond to the indices `a` and `c` of array `A` and index `b` of array `B`
-(in that order). To this, the array `C` (scaled with `α`) is added, where its first two
-indices will be permuted to fit with the order `a, c, b`. The result will then be stored in
-array `D` (or `E`), which requires a second permutation to bring the indices in the
-requested order `a, b, c`.
+involves tracing/contracting the 3rd and 5th index of array `A`, the result of which is
+stored in a temporary array which thus needs to be created. This resulting array will then
+be contracted with array `B` by contracting its 2nd index with the last index of `B` and its
+last index with the first index of `B`. The result is stored in `D` in the first line, or in
+a newly allocated array which will end up being `E` in the second line. Note that the index
+order of `D` and `E` is such that its first index corresponds to the first index of `A`, the
+second index corresponds to the second index of `B`, whereas the third index corresponds to
+the fourth index of `A`. Finally, the array `C` (scaled with `α`) is added to this result
+(in place), which requires a further index permutation.
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
 tensor operations, i.e. [`tensoradd!`](@ref), [`tensortrace!`](@ref) and
@@ -81,7 +82,7 @@ order.
     (between two indices of two different tensors) or an inner contraction (a.k.a. trace,
     between two indices of a single tensor). More liberal use of the index notation, such as
     simultaneous summutation over three or more indices, or a open index appearing
-    simultaneously in different tensor factors, are not supported by TensorOperations.jl
+    simultaneously in different tensor factors, are not supported by TensorOperations.jl.
 
 2.  Aside from valid Julia identifiers, index labels can also be specified using literal
     integer constants or using a combination of integers and symbols. Furthermore, it is
@@ -89,26 +90,42 @@ order.
     indices, including using multiple subsequent primes. The following expression thus
     computes the same result as the example above:
 
-    ```julia
-    @tensor D[å'', ß, clap'] = A[å'', 1, -3, clap', -3, 2] * B[2, ß, 1] + α * C[c', å'', ß]
+    ```
+    @tensor D[å'', ß, clap'] = A[å'', 1, -3, clap', -3, 2] * B[2, ß, 1] + α * C[clap', å'', ß]
     ```
 
 3.  If only integers are used for specifying index labels, this can be used to control the
-    pairwise contraction order, by using the well-known NCON convention, where 'open
-    indices' (appearing) in the left hand side are labelled by negative integers `-1`, `-2`,
-    `-3`, whereas contraction indices are labelled with positive integers `1`, `2`, … Since
-    the index order of the left hand side is in that case clear from the right hand side
-    expression, the left hand side can be indexed with `[:]`, which is automatically
-    replaced with all negative integers appearing in the right hand side, in decreasing
-    order. The value of the labels for the contraction indices determines the pairwise
-    contraction order. If multiple tensors need to be contracted, a first temporary will be
-    created consisting of the contraction of the pair of tensors that share contraction
-    index `1`, then the pair of tensors that share contraction index `2` (if not contracted
-    away in the first pair) will be contracted, and so forth. The next subsection explains
-    contraction order in more detail and gives some useful examples, as the example above
-    only includes a single pair of tensors to be contracted.
+    pairwise contraction order, by using the well-known NCON convention, where open indices
+    in the left hand side are labelled by negative integers `-1`, `-2`, `-3`, whereas
+    contraction indices are labelled with positive integers `1`, `2`, … Since the index
+    order of the left hand side is in that case clear from the right hand side expression,
+    the left hand side can be indexed with `[:]`, which is automatically replaced with all
+    negative integers appearing in the right hand side, in decreasing order. The value of
+    the labels for the contraction indices determines the pairwise contraction order. If
+    multiple tensors need to be contracted, a first temporary will be created consisting of
+    the contraction of the pair of tensors that share contraction index `1`, then the pair
+    of tensors that share contraction index `2` (if not contracted away in the first pair)
+    will be contracted, and so forth. The next subsection explains contraction order in more
+    detail and gives some useful examples, as the example above only includes a single pair
+    of tensors to be contracted.
 
-4.  Index expressions `[...]` are only interpreted as index notation on the highest level.
+4.  Index labels always appear in square brackets `[ ... ]` but can be separated by either
+    commas, as in `D[a, b, c]`, (yielding a `:ref` expression) or by spaces, as in
+    `D[a b c]`, (yielding a `:typed_hcat` expression).
+    
+    There is also the option to separate the indices into two groups using a semicolon. This
+    can be useful for tensor types which have two distinct set of indices, but has no effect
+    when using Julia `AbstractArray` objects. While in principle both spaces and commas can
+    be used within the two groups, e.g. as in `D[a, b; c]` or `D[a b; c]`, there are some
+    restrictions because of accepted Julia syntax. Both groups of indices should use the
+    same convention. If there is only a single index in the first group, the second group
+    should use spaces to constitute a valid expression. Finally, having no indices in the
+    first group is only possible by writing an empty tuple. The second group can then use
+    spaces, or also contain the indices as a tuple, i.e. both `D[(); a b c]` or `D[(); (a,
+    b, c)]`. Writing the two groups of indices within a tuple, with both tuples seperated by
+    a semicolon is always valid syntax, irrespective of the number of indices in that group.
+
+5.  Index expressions `[...]` are only interpreted as index notation on the highest level.
     For example, if you want to mulitply two matrices which are stored in a list, you can
     write
     
@@ -131,7 +148,7 @@ order.
     or, if you want to avoid additional allocations
 
     ```
-    @tensor result[i,j] := view(list, :,:,1)[i,k] * view(list, :,:,2)[k,j]
+    @tensor result[i,j] := view(list,:,:,1)[i,k] * view(list,:,:,2)[k,j]
     ```
 
 Note, finally, that the `@tensor` specifier can be put in front of a single tensor
@@ -163,7 +180,7 @@ to right order, i.e. as `(A[a, b, c, d, e] * B[b, e, f, g]) * C[c, f, i, j]`. Th
 however different strategies to modify this order.
 
 1.  Explicit parenthesis can be used to group subnetworks within a tensor network that will
-    be evaluated first. Parentheses around subexpressions are thus always respected by the
+    be evaluated first. Parentheses around subexpressions are always respected by the
     `@tensor` macro.
 
 2.  As explained in the previous subsection, if one respects the
