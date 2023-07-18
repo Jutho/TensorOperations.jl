@@ -6,12 +6,34 @@ tensorop(args...) = +(*(args...), *(args...))
 promote_contract(args...) = Base.promote_op(tensorop, args...)
 promote_add(args...) = Base.promote_op(+, args...)
 
+"""
+    tensoralloc_add(TC, pC, A, conjA, istemp=false, backend::Backend...)
+
+Allocate a tensor `C` of scalar type `TC` that would be the result of
+
+    `tensoradd!(C, pC, A, conjA)`
+
+The `istemp` argument is used to indicate that a tensor wlil not be used after the `@tensor`
+block, and thus will be followed by an explicit call to `tensorfree!`. The `backend` can be
+used to implement different allocation strategies.
+"""
 function tensoralloc_add(TC, pC, A, conjA, istemp=false, backend::Backend...)
     ttype = tensoradd_type(TC, pC, A, conjA)
     structure = tensoradd_structure(pC, A, conjA)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
 end
 
+"""
+    tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB, istemp=false, backend::Backend...)
+
+Allocate a tensor `C` of scalar type `TC` that would be the result of
+
+    `tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB)`
+
+The `istemp` argument is used to indicate that a tensor wlil not be used after the `@tensor`
+block, and thus will be followed by an explicit call to `tensorfree!`. The `backend` can be
+used to implement different allocation strategies.
+"""
 function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB,
                               istemp=false, backend::Backend...)
     ttype = tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
