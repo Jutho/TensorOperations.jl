@@ -6,8 +6,8 @@
     tensoradd!(C, pC, A, conjA, α=true, β=true [, backend])
 
 Compute `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
-temporary.  The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj`
-if  `conjA` equals `:C`. Optionally specify a backend implementation to use.
+temporary. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj`
+if `conjA` equals `:C`. Optionally specify a backend implementation to use.
 
 !!! warning
     The permutation needs to be trivial or `C` must not be aliased with `A`.
@@ -114,7 +114,7 @@ function tensorcontract_type end
 
 Allocate memory for a tensor of type `ttype` and structure `structure`. The optional third
 argument can be used to indicate that the result is used as a temporary tensor, for which
-in some cases and with some backends (the optional foruth argument) a different allocation
+in some cases and with some backends (the optional fourth argument) a different allocation
 strategy might be used.
 """
 function tensoralloc end
@@ -142,9 +142,9 @@ function tensorcost end
 """
     checkcontractible(A, iA, conjA, B, iB, conjB, label)
 
-Verify whether two tensors `opA(A)` and `opB(B)` are compatible for having their 
-respective index `iA` and `iB` contracted, and throws an error if not. The operation `opA`
-acts as `identity` if `conjA` equals `:N` and as `conj` if `conjA` equals `:C`; the operation
-`opB` is determined by `conjB` analogously.
+Verify whether two tensors `opA(A)` and `opB(B)` are compatible for having their respective
+index `iA` and `iB` contracted, and throws an error if not. The operation `opA` acts as
+`identity` if `conjA` equals `:N` and as `conj` if `conjA` equals `:C`; the operation `opB`
+is determined by `conjB` analogously.
 """
 function checkcontractible end
