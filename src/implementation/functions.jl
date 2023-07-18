@@ -186,14 +186,6 @@ should be handled first with `tensortrace`, so that every label can appear only 
 or `IB` seperately, and once (for an open index) or twice (for a contracted index) in the
 union of `IA` and `IB`.
 
-The contraction can be performed by a native Julia algorithm without creating any
-temporaries, or by first permuting the tensors such that the contraction becomes equivalent
-to a matrix product, which is then performed by BLAS. The latter is typically faster for
-large arrays with `BlasFloat` elements, while the former offers more flexibility when these
-conditions are not met. The choice of method is globally controlled by the methods
-[`enable_blas()`](@ref) and [`disable_blas()`](@ref), but the native algorithm is always
-used when BLAS is not available.
-
 Optionally, the symbols `conjA` and `conjB` can be used to specify that the input tensors
 should be conjugated.
 
