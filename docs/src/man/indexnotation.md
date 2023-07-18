@@ -166,6 +166,10 @@ be written as
 end
 ```
 
+```@docs
+@notensor
+```
+
 ## Contraction order specification and optimisation
 
 A contraction of several (more than two) tensors, as in
@@ -189,9 +193,9 @@ however different strategies to modify this order.
     different factors will be reordered and so that the pairwise tensor contractions
     contract over indices with smaller integer label first. For example,
 
-    ```
-    @tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
-    ```
+   ```julia
+   @tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
+   ```
 
     will be evaluated as `(A[-1, 3, 1, -2, 2] * C[1, 4, -4, -3]) * B[3, 2, 4, -5]`.
     Furthermore, in that case the indices of the output tensor (`D` in this case) do not
@@ -199,10 +203,10 @@ however different strategies to modify this order.
     `(-1, -2, -3, -4, -5)`. Note that if two tensors are contracted, all contraction indices
     among them will be contracted, even if there are additional contraction indices whose
     label is a higher positive number. For example,
-
-    ```
-    @tensor D[:] := A[-1, 3, 2, -2, 1] * B[3, 1, 4, -5] * C[2, 4, -4, -3]
-    ```
+    
+   ```julia
+   @tensor D[:] := A[-1, 3, 2, -2, 1] * B[3, 1, 4, -5] * C[2, 4, -4, -3]
+   ```
 
     amounts to the original left to right order, because `A` and `B` share the first
     contraction index `1`. When `A` and `B` are contracted, also the contraction with label
@@ -214,11 +218,11 @@ however different strategies to modify this order.
     order that they should be dealt with, e.g. the default order could be changed to first
     contract `A` with `C` using
     
-    ```
-    @tensor order=(c,b,e,f) begin
-        D[a, d, j, i, g] := A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j]
-    end
-    ```
+   ```julia
+   @tensor order=(c, b, e, f) begin
+       D[a, d, j, i, g] := A[a, b, c, d, e] * B[b, e, f, g] * C[c, f, i, j]
+   end
+   ```
 
     Here, the same comment as in the NCON style applies; once two tensors are contracted
     because they share an index label which is next in the `order` list, all other indices
@@ -246,32 +250,36 @@ with every index can be specified in various ways, either using integers or floa
 numbers or some arbitrary univariate polynomial of an abstract variable, e.g. `χ`. In the
 latter case, the optimization assumes the asymptotic limit of large `χ`.
 
+```@docs
+@tensoropt
+@tensoropt_verbose
+```
+
+As an final remark, the optimization can also be accessed directly from `@tensor` by
+specifying the additional keyword argument `opt=true`, which will then use the default cost
+model, or `opt=optex` to further specify the costs.
+
 ```julia
-@tensoropt D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-@tensor opt=true D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 # cost χ for all indices (a, b, c, d, e, f)
+@tensor opt=true D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 
-@tensoropt (a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-@tensor opt=(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 # cost χ for indices (a, b, c, e), other indices (d, f) have cost 1
+@tensor opt=(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 
-@tensoropt !(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-@tensor opt=!(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 # cost 1 for indices (a, b, c, e), other indices (d, f) have cost χ
+@tensor opt=!(a, b, c, e) D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 
-@tensoropt (a => χ, b => χ^2, c => 2 * χ, e => 5) begin
-    D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-end
+# cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
 @tensor opt=(a => χ, b => χ^2, c => 2 * χ, e => 5) begin
     D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
 end
-# cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
+
 ```
 
 ## Dynamical tensor network contractions with `ncon` and `@ncon`
 
 Tensor network practicioners are probably more familiar with the network contractor function
-`ncon` to perform a tensor network contraction, as e.g. described in
+[`ncon`](@ref) to perform a tensor network contraction, as e.g. described in
 [NCON](https://arxiv.org/abs/1402.0939). In particular, a graphical application
 [TensorTrace](https://www.tensortrace.com) was recently introduced to facilitate the
 generation of such `ncon` calls. TensorOperations.jl provides compatibility with this
@@ -283,7 +291,7 @@ ncon(list_of_tensor_objects, list_of_index_lists)
 
 e.g. the example of above is equivalent to
 
-```@example
+```julia
 @tensor D[:] := A[-1, 3, 1, -2, 2] * B[3, 2, 4, -5] * C[1, 4, -4, -3]
 D ≈ ncon((A, B, C), ([-1, 3, 1, -2, 2], [3, 2, 4, -5], [1, 4, -4, -3]))
 ```
@@ -338,90 +346,10 @@ ncon(Any[A, B, C], indexlist, [false, true, false]; order=..., output=...)
 so as to get the advantages of just-in-time conjugation (pun intended) using the familiar
 looking `ncon` syntax.
 
-As a proof of principle, let us study the following method for computing the environment to
-the `W` isometry in a MERA, as taken from [Tensors.net](https://www.tensors.net/mera),
-implemented in three different ways:
-
-```julia
-function IsoEnvW1(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
-    indList1 = Any[[7, 8, -1, 9], [4, 3, -3, 2], [7, 5, 4], [9, 10, -2, 11], [8, 10, 5, 6],
-                   [1, 11, 2], [1, 6, 3]]
-    indList2 = Any[[1, 2, 3, 4], [10, 7, -3, 6], [-1, 11, 10], [3, 4, -2, 8], [1, 2, 11, 9],
-                   [5, 8, 6], [5, 9, 7]]
-    indList3 = Any[[5, 7, 3, 1], [10, 9, -3, 8], [-1, 11, 10], [4, 3, -2, 2], [4, 5, 11, 6],
-                   [1, 2, 8], [7, 6, 9]]
-    indList4 = Any[[3, 7, 2, -1], [5, 6, 4, -3], [2, 1, 4], [3, 1, 5], [7, -2, 6]]
-    wEnv = ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList1) +
-           ncon(Any[hamBA, rhoBA, conj(w), u, conj(u), v, conj(v)], indList2) +
-           ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList3) +
-           ncon(Any[hamBA, rhoAB, v, conj(v), conj(w)], indList4)
-    return wEnv
-end
-
-function IsoEnvW2(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
-    indList1 = Any[[7, 8, -1, 9], [4, 3, -3, 2], [7, 5, 4], [9, 10, -2, 11], [8, 10, 5, 6],
-                   [1, 11, 2], [1, 6, 3]]
-    indList2 = Any[[1, 2, 3, 4], [10, 7, -3, 6], [-1, 11, 10], [3, 4, -2, 8], [1, 2, 11, 9],
-                   [5, 8, 6], [5, 9, 7]]
-    indList3 = Any[[5, 7, 3, 1], [10, 9, -3, 8], [-1, 11, 10], [4, 3, -2, 2], [4, 5, 11, 6],
-                   [1, 2, 8], [7, 6, 9]]
-    indList4 = Any[[3, 7, 2, -1], [5, 6, 4, -3], [2, 1, 4], [3, 1, 5], [7, -2, 6]]
-    wEnv = @ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList1) +
-           @ncon(Any[hamBA, rhoBA, conj(w), u, conj(u), v, conj(v)], indList2) +
-           @ncon(Any[hamAB, rhoBA, conj(w), u, conj(u), v, conj(v)], indList3) +
-           @ncon(Any[hamBA, rhoAB, v, conj(v), conj(w)], indList4)
-    return wEnv
-end
-
-function IsoEnvW3(hamAB, hamBA, rhoBA, rhoAB, w, v, u)
-    @tensor wEnv[-1, -2, -3] := hamAB[7, 8, -1, 9] * rhoBA[4, 3, -3, 2] * conj(w[7, 5, 4]) *
-                                u[9, 10, -2, 11] * conj(u[8, 10, 5, 6]) * v[1, 11, 2] *
-                                conj(v[1, 6, 3]) +
-                                hamBA[1, 2, 3, 4] * rhoBA[10, 7, -3, 6] * conj(w[-1, 11, 10]) *
-                                u[3, 4, -2, 8] * conj(u[1, 2, 11, 9]) * v[5, 8, 6] *
-                                conj(v[5, 9, 7]) +
-                                hamAB[5, 7, 3, 1] * rhoBA[10, 9, -3, 8] * conj(w[-1, 11, 10]) *
-                                u[4, 3, -2, 2] * conj(u[4, 5, 11, 6]) * v[1, 2, 8] *
-                                conj(v[7, 6, 9]) +
-                                hamBA[3, 7, 2, -1] * rhoAB[5, 6, 4, -3] * v[2, 1, 4] *
-                                conj(v[3, 1, 5]) * conj(w[7, -2, 6])
-    return wEnv
-end
+```@docs
+ncon
+@ncon
 ```
-
-All indices appearing in this problem are of size `χ`. For tensors with `ComplexF64` eltype
-and values of `χ` in `2:2:32`, the reported minimal times using the `@belapsed` macro from
-[BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl) are given by
-
-| χ  | IsoEnvW1: ncon | IsoEnvW2: @ncon | IsoEnvW3: @tensor |
-|:-- |:-------------- |:--------------- |:----------------- |
-| 2  | 0.000154413    | 0.000348091     | 6.4897e-5         |
-| 4  | 0.000208224    | 0.000400065     | 9.5601e-5         |
-| 6  | 0.000558442    | 0.00076453      | 0.000354621       |
-| 8  | 0.00138887     | 0.00150175      | 0.000982109       |
-| 10 | 0.00506386     | 0.00365188      | 0.00288137        |
-| 12 | 0.0126571      | 0.00959403      | 0.00818371        |
-| 14 | 0.0292822      | 0.0216231       | 0.0184712         |
-| 16 | 0.0531353      | 0.0410914       | 0.0359749         |
-| 18 | 0.225333       | 0.0774705       | 0.0688475         |
-| 20 | 0.43358        | 0.139873        | 0.129315          |
-| 22 | 0.601685       | 0.243468        | 0.221995          |
-| 24 | 0.902662       | 0.459746        | 0.427615          |
-| 26 | 1.2379         | 0.66722         | 0.622856          |
-| 28 | 1.84234        | 1.08766         | 1.0322            |
-| 30 | 2.58548        | 1.53826         | 1.44854           |
-| 32 | 3.85758        | 2.44087         | 2.34229           |
-
-Throughout this range of `χ` values, method 3 that uses the `@tensor` macro is consistenly
-the fastest, both at small `χ`, where the type stability and the fact that the contraction
-pattern is analyzed at compile time matters, and at large `χ`, where the caching of
-temporaries matters. The direct `ncon` call has neither of those two features (unless the
-fourth positional argument is specified, which was not the case here). The `@ncon` solution
-provides a hook into the cache and thus is competitive with `@tensor` for large `χ`, where
-the cost is dominated by matrix multiplication and allocations. For small `χ`, `@ncon` is
-also plagued by the runtime analysis of the contraction, but is even worse then
-`ncon`. For small `χ`, the unavoidable type instabilities in `ncon` implementation seem to
-make the interaction with the cache hurtful rather than advantageous.
 
 ## Index compatibility and checks
 
@@ -494,3 +422,7 @@ remain on the GPU device and it is up to the user to transfer it back. Arrays ar
 to the GPU just before they are first used, and in a complicated tensor expression, this
 might have the benefit that transer of the later arrays overlaps with computation of earlier
 operations.
+
+```@docs
+@cutensor
+```
