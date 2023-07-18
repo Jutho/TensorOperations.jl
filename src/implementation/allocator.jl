@@ -3,7 +3,18 @@
 # ------------------------------------------------------------------------------------------
 
 tensorop(args...) = +(*(args...), *(args...))
+"""
+    promote_contract(args...)
+
+Promote the scalar types of a tensor contraction to a common type.
+"""
 promote_contract(args...) = Base.promote_op(tensorop, args...)
+
+"""
+    promote_add(args...)
+
+Promote the scalar types of a tensor addition to a common type.
+"""
 promote_add(args...) = Base.promote_op(+, args...)
 
 """
