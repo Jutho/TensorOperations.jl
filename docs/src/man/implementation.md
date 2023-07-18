@@ -1,5 +1,9 @@
 # Implementation
 
+```@meta
+CurrentModule = TensorOperations
+```
+
 TODO: read and fix some referencing issues
 
 
