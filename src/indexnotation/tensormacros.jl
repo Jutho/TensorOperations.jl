@@ -108,21 +108,26 @@ in the asympotic limit of large `χ`.
 The cost can be specified in the following ways:
 
 ```julia
-@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
-# asymptotic cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
-@tensoropt (a,b,c,e) C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
-# asymptotic cost χ for indices a,b,c,e, other indices (d,f) have cost 1
-@tensoropt !(a,b,c,e) C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
-# cost 1 for indices a,b,c,e; other indices (d,f) have asymptotic cost χ
-@tensoropt C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
-# asymptotic cost χ for all indices (a,b,c,d,e,f)
+# cost χ for all indices (a, b, c, d, e, f)
+@tensoropt D[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+
+# asymptotic cost χ for indices (a, b, c, e), other indices (d, f) have cost 1
+@tensoropt (a, b, c, e) C[a, b, c, d] := A[a, e, c, f, h] * B[f, g, e, b] * C[g, d, h]
+
+# cost 1 for indices (a, b, c, e); other indices (d, f) have asymptotic cost χ
+@tensoropt !(a, b, c, e) C[a, b, c, d] := A[a, e, c, f, h] * B[f, g, e, b] * C[g, d, h]
+
+# cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
+@tensoropt (a => χ, b => χ^2, c => 2 * χ, e => 5) begin
+    C[a, b, c, d] := A[a, e, c, f, h] * B[f, g, e, b] * C[g, d, h]
+end
 ```
 
 Note that `@tensoropt` will optimize any tensor contraction sequence it encounters
 in the (block of) expressions. It will however not break apart expressions that have
 been explicitly grouped with parenthesis, i.e. in
 ```julia
-@tensoroptC[a,b,c,d] := A[a,e,c,f,h]*(B[f,g,e,b]*C[g,d,h])
+@tensoropt C[a, b, c, d] := A[a, e, c, f, h] * (B[f, g, e, b] * C[g, d, h])
 ```
 it will always contract `B` and `C` first. For a single tensor contraction sequence,
 the optimal contraction order and associated (asymptotic) cost can be obtained using
@@ -147,7 +152,7 @@ end
     @tensoropt_verbose(optex, block)
     @tensoropt_verbose(block)
 
-Similar to `@tensoropt`, but prints information details regarding the optimization process to the standard output.
+Similar to [`@tensoropt`](@ref), but prints information details regarding the optimization process to the standard output.
 """
 macro tensoropt_verbose(expressions...)
     if length(expressions) == 1
