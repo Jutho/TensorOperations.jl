@@ -31,6 +31,8 @@ Additional keyword arguments may be passed to control the behavior of the parser
     Adds runtime checks to ensure that the contraction order is optimal. Can be either `:warn` or `:cache`. The former will issues warnings when sub-optimal expressions are encountered, while the latter will cache the optimal contraction order for each tensor site and calling site.
 - `backend`: 
     Inserts a backend call for the different tensor operations.
+- `allocator`:
+    Inserts a backend call for the different tensor allocations.
 """
 macro tensor(args::Vararg{Expr})
     isempty(args) && throw(ArgumentError("No arguments passed to `@tensor`"))
@@ -70,8 +72,11 @@ macro tensor(args::Vararg{Expr})
         elseif name == :backend
             val isa Symbol ||
                 throw(ArgumentError("Backend should be a symbol."))
-            backend = val
-            push!(parser.postprocessors, ex -> insertbackend(ex, backend))
+            push!(parser.postprocessors, ex -> insert_operationbackend(ex, val))
+        elseif name == :allocator
+            val isa Symbol ||
+                throw(ArgumentError("Allocator should be a symbol."))
+            push!(parser.postprocessors, ex -> insert_allocatorbackend(ex, val))
         else
             throw(ArgumentError("Unknown keyword argument `name`."))
         end
@@ -286,6 +291,7 @@ macro cutensor(ex::Expr)
     haskey(Base.loaded_modules, Base.identify_package("cuTENSOR")) ||
         throw(ArgumentError("cuTENSOR not loaded: add `using cuTENSOR` or `import cuTENSOR` before using `@cutensor`"))
     parser = TensorParser()
-    push!(parser.postprocessors, ex -> insertbackend(ex, :cuTENSOR))
+    push!(parser.postprocessors, ex -> insert_operationbackend(ex, :cuTENSOR))
+    push!(parser.postprocessors, ex -> insert_allocatorbackend(ex, :cuTENSOR))
     return esc(parser(ex))
 end
