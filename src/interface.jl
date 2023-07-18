@@ -11,6 +11,8 @@ if `conjA` equals `:C`. Optionally specify a backend implementation to use.
 
 !!! warning
     The permutation needs to be trivial or `C` must not be aliased with `A`.
+
+See also [`tensoradd`](@ref).
 """
 function tensoradd! end
 # insert default α and β arguments
@@ -29,6 +31,8 @@ to `pC`. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `c
 
 !!! warning
     The object `C` must not be aliased with `A`.
+
+See also [`tensortrace`](@ref).
 """
 function tensortrace! end
 # insert default α and β arguments
@@ -48,6 +52,8 @@ equals `:N` and as `conj` if `conjA` equals `:C`; the operation `opB` is determi
 
 !!! warning 
     The object `C` must not be aliased with `A` or `B`.
+
+See also [`tensorcontract`](@ref).
 """
 function tensorcontract! end
 # insert default α and β arguments
@@ -116,6 +122,8 @@ Allocate memory for a tensor of type `ttype` and structure `structure`. The opti
 argument can be used to indicate that the result is used as a temporary tensor, for which
 in some cases and with some backends (the optional fourth argument) a different allocation
 strategy might be used.
+
+See also [`tensoralloc_add`](@ref), [`tensoralloc_contract`](@ref) and [`tensorfree!`](@ref).
 """
 function tensoralloc end
 
@@ -123,6 +131,8 @@ function tensoralloc end
     tensorfree!(C)
 
 Provide a hint that the allocated memory of `C` can be released.
+
+See also [`tensoralloc`](@ref).
 """
 tensorfree!(C) = nothing
 

@@ -27,6 +27,8 @@ Allocate a tensor `C` of scalar type `TC` that would be the result of
 The `istemp` argument is used to indicate that a tensor wlil not be used after the `@tensor`
 block, and thus will be followed by an explicit call to `tensorfree!`. The `backend` can be
 used to implement different allocation strategies.
+
+See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
 function tensoralloc_add(TC, pC, A, conjA, istemp=false, backend::Backend...)
     ttype = tensoradd_type(TC, pC, A, conjA)
@@ -44,6 +46,8 @@ Allocate a tensor `C` of scalar type `TC` that would be the result of
 The `istemp` argument is used to indicate that a tensor wlil not be used after the `@tensor`
 block, and thus will be followed by an explicit call to `tensorfree!`. The `backend` can be
 used to implement different allocation strategies.
+
+See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
 function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB,
                               istemp=false, backend::Backend...)
