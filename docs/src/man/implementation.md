@@ -4,29 +4,28 @@
 CurrentModule = TensorOperations
 ```
 
-TODO: read and fix some referencing issues
-
-
-The macros [`@tensor`](@ref) and the related [`@tensoropt`](@ref) work as
-parsers for indexed tensor expressions. They transform these into a sequence of
-calls to the primitive tensor operations. This allows the support of custom
-types that implement the [Interface](@ref). The actual implementation is
-achieved through the use of `TensorParser`, which provides the general framework
-to parse tensor expressions. The `@tensor` macro is then just a wrapper around
-this, which configures the default behavior and handles keyword arguments of the
+The [`@tensor`](@ref) macro and its relatives work as parsers for indexed tensor
+expressions. They transform these into a sequence of calls to the primitive tensor
+operations. This allows the support of custom types that implement the [Interface](@ref).
+The actual implementation is achieved through the use of `TensorParser`, which provides the
+general framework to parse tensor expressions. The `@tensor` macro is then just a wrapper
+around this, which configures the default behavior and handles keyword arguments of the
 parser.
 
-The `TensorParser` works by breaking down the parsing into three main phases.
-First, a basic check of the supplied expression is performed, to ensure that it
-is a valid tensor expression. Then, a number of preprocessing steps can be
-performed, which are used to standardize expressions, allow for syntactic sugar
-features, and can also be used as a hook for writing custom parsers. Then, the
-actual processing of the contractions is performed, which rewrites the
-expression into a set of binary rooted trees, which is then used to generate the
-actual calls to the primitive tensor operations. Finally, a number of
-postprocessing steps can be added, which are mostly used to clean up the
-resulting expression by flattening and by removing line number nodes, but also
-to incorporate the custom backend system.
+The `TensorParser` works by breaking down the parsing into three main phases. First, a basic
+check of the supplied expression is performed, to ensure that it is a valid tensor
+expression. Then, a number of preprocessing steps can be performed, which are used to
+standardize expressions, allow for syntactic sugar features, and can also be used as a hook
+for writing custom parsers. Then, the different contractions within the tensor expression
+are analysed and processed, which rewrites the expression into a set of binary rooted trees.
+Then, the main step can be executed, namely transforming the whole expression into actual
+calls to the primitive tensor operations [`tensoradd!`](@ref), [`tensortrace!`](@ref) and
+[`tensorcontract!`](@ref), as well as calls to [`tensoralloc_add`](@ref) and
+[`tensoralloc_contract`](@ref) to allocate the temporary and final tensors. For those, also
+the resulting scalar type needs to be determined. Finally, a number of postprocessing steps
+can be added, which are mostly used to clean up the resulting expression by flattening and
+by removing line number nodes, but also to incorporate the custom backend and allocation
+system.
 
 ## Verifiers
 
@@ -46,6 +45,9 @@ TensorOperations.isscalarexpr
 
 ## Preprocessing
 
+The following functions exist as preprocessors and are enabled in the default `TensorParser`
+objects.
+
 ```@docs
 TensorOperations.normalizeindices
 TensorOperations.expandconj
@@ -57,12 +59,18 @@ TensorOperations.insertcontractionchecks
 
 ## Processing
 
+The following functions implement the main steps in parsing the tensor expression, and are
+always performed by any `TensorParser` object.
+
 ```@docs
 TensorOperations.processcontractions
 TensorOperations.tensorify
 ```
 
 ## Postprocessing
+
+The following functions exist as postprocessors and are enabled in the default `TensorParser`
+objects.
 
 ```@docs
 TensorOperations._flatten

@@ -49,7 +49,7 @@ end
 """
     normalizeindices(ex::Expr)
 
-Normalize indices of an expression by replacing all indices with a prime expression (') by indices with a unicode prime "′".
+Normalize indices of an expression by replacing all indices with a prime expression `i'` by indices with a unicode prime 'i′'.
 """
 normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
@@ -143,7 +143,8 @@ end
     extracttensorobjects(ex)
     
 Extract all tensor objects which are not simple symbols with newly generated symbols, and
-assign them before the expression and after the expression as necessary.
+assign them before the expression and after the expression as necessary, in order to avoid
+multiple evaluations of the expression constituting the tensor object.
 """
 function extracttensorobjects(ex)
     inputtensors = filter!(obj -> !isa(obj, Symbol), getinputtensorobjects(ex))

@@ -19,11 +19,12 @@ The TensorOperations.jl package is centered around the following features:
 
   - A macro [`@tensor`](@ref) for conveniently specifying tensor contractions and index
     permutations via Einstein's index notation convention. The index notation is analyzed at
-    compile time and lowered into primitive tensor operations. The macro supports several
-    keyword arguments to customize the lowering process, e.g. to insert additional checks
-    that help with debugging, to specify contraction order or to have this determined
-    automatically based on specified costs, to select different backends to evaluate those
-    primitive operations.
+    compile time and lowered into primitive tensor operations, namely (permuted) linear
+    combinations and inner and outer contractions. The macro supports several keyword
+    arguments to customize the lowering process, namely to insert additional checks that
+    help with debugging, to specify contraction order or to automatically determine optimal
+    contraction order for given costs (see next bullet), and finally, to select different
+    backends to evaluate those primitive operations.
   - The ability to optimize pairwise contraction order in complicated tensor contraction
     networks according to the algorithm in [this
     paper](https://doi.org/10.1103/PhysRevE.90.033315), where custom (compile time) costs
@@ -65,9 +66,9 @@ TensorOperations.jl supports 3 basic tensor operations, i.e. primitives in which
 complicated tensor expression is deconstructed.
 
  1. **addition:** Add a (possibly scaled version of) one tensor to another tensor, where the
-    indices of both arrays might appear in different orders. This operation combines
-    normal tensor addition and index permutation. It includes as a special case copying one
-    tensor into another with permuted indices.
+    indices of both arrays might appear in different orders. This operation combines normal
+    tensor addition (or linear combination more generally) and index permutation. It
+    includes as a special case copying one tensor into another with permuted indices.
  2. **trace or inner contraction:** Perform a trace/contraction over pairs of indices of a
     single tensor array, where the result is a lower-dimensional array.
  3. **(outer) contraction:** Perform a general contraction of two tensors, where some
