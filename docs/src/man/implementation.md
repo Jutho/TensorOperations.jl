@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = TensorOperations
+```
+
 # Implementation
 
 ```@meta
@@ -17,7 +21,7 @@ check of the supplied expression is performed, to ensure that it is a valid tens
 expression. Then, a number of preprocessing steps can be performed, which are used to
 standardize expressions, allow for syntactic sugar features, and can also be used as a hook
 for writing custom parsers. Then, the different contractions within the tensor expression
-are analysed and processed, which rewrites the expression into a set of binary rooted trees.
+are analyzed and processed, which rewrites the expression into a set of binary rooted trees.
 Then, the main step can be executed, namely transforming the whole expression into actual
 calls to the primitive tensor operations [`tensoradd!`](@ref), [`tensortrace!`](@ref) and
 [`tensorcontract!`](@ref), as well as calls to [`tensoralloc_add`](@ref) and

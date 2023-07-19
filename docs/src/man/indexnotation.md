@@ -91,9 +91,9 @@ order.
     indices, including using multiple subsequent primes. The following expression thus
     computes the same result as the example above:
 
-    ```
-    @tensor D[å'', ß, clap'] = A[å'', 1, -3, clap', -3, 2] * B[2, ß, 1] + α * C[clap', å'', ß]
-    ```
+   ```julia
+   @tensor D[å'', ß, clap'] = A[å'', 1, -3, clap', -3, 2] * B[2, ß, 1] + α * C[clap', å'', ß]
+   ```
 
 3.  If only integers are used for specifying index labels, this can be used to control the
     pairwise contraction order, by using the well-known NCON convention, where open indices
@@ -131,27 +131,27 @@ order.
     For example, if you want to mulitply two matrices which are stored in a list, you can
     write
     
-    ```
-    @tensor result[i,j] := list[1][i,k] * list[2][k,j]
-    ```
+   ```julia
+   @tensor result[i,j] := list[1][i,k] * list[2][k,j]
+   ```
 
     However, if both are stored as a the slices of a 3-way array, you cannot write
 
-    ```
-    @tensor result[i,j] := list[i,k,1] * list[k,j,2]
-    ```
+   ```julia
+   @tensor result[i,j] := list[i,k,1] * list[k,j,2]
+   ```
 
     Rather, you should use
 
-    ```
-    @tensor result[i,j] := list[:,:,1][i,k] * list[:,:,2][k,j]
-    ```
+   ```julia
+   @tensor result[i,j] := list[:,:,1][i,k] * list[:,:,2][k,j]
+   ```
 
     or, if you want to avoid additional allocations
 
-    ```
-    @tensor result[i,j] := view(list,:,:,1)[i,k] * view(list,:,:,2)[k,j]
-    ```
+   ```julia
+   @tensor result[i,j] := view(list,:,:,1)[i,k] * view(list,:,:,2)[k,j]
+   ```
 
 Note, finally, that the `@tensor` specifier can be put in front of a single tensor
 expression, or in front of a `begin ... end` block to group and evaluate different
@@ -232,10 +232,10 @@ however different strategies to modify this order.
     with shared label among them will be contracted, irrespective of their order.
 
 In the case of more complex tensor networks, the optimal contraction order cannot always
-easily be guessed or determined on plain sight. It is then useful to be able to optimise the
+easily be guessed or determined on plain sight. It is then useful to be able to optimize the
 contraction order automatically, given a model for the complexity of contracting the
 different tensors in a particular order. This functionality is provided where the cost
-function being minimised models the computational complexity by counting the number of
+function being minimized models the computational complexity by counting the number of
 scalar multiplications. This minimisation problem is solved using the algorithm that was
 described in
 [Physical Review E 90, 033315 (2014)](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.90.033315).
@@ -378,7 +378,7 @@ factors against the optimal order based on the current tensor size. More general
 function [`tensorcost`](@ref) is part of the interface and associated a cost value with
 every index of a tensor, which is then used in the cost model. With `costcheck=:warn`, a
 warning will be spawned for every tensor network where the actual contraction order (even
-when optimised using abstract costs) does not match with the ideal contraction order given
+when optimized using abstract costs) does not match with the ideal contraction order given
 the current `tensorcost` values. With `costcheck = :cache`, the tensor networks with
 non-optimal contraction order are stored in a global package variable
 `TensorOperations.costcache`. However, when a tensor network is evaluated several times with
@@ -406,8 +406,8 @@ order. This approach allows to use the highly efficient matrix multiplication ke
 implementation that is used for e.g. arrays with an `eltype` that is not
 `<:LinearAlgebra.BlasFloat`. It performs the contraction directly without the additional
 permutations, but still in a cache-friendly and multithreaded way (again relying on
-`JULIA_NUM_THREADS>1`). This implementation can also be used for `BlasFloat` types (but will
-typically be slower), and the use of BLAS can be controlled by explicitly switching the
+`JULIA_NUM_THREADS > 1`). This implementation can also be used for `BlasFloat` types (but
+will typically be slower), and the use of BLAS can be controlled by explicitly switching the
 backend between `StridedBLAS` and `StridedNative`. Similarly, when different allocation
 strategies are available, their backend can be controlled with the `allocator` keyword.
 

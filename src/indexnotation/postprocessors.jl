@@ -69,7 +69,8 @@ end
 """
     insertbackend(ex, backend, operations)
 
-Insert a backend into a tensor operation, e.g. any operation in `operations` will be replaced by `operation(args..., Backend{:backend}())`.
+Insert a backend into a tensor operation, e.g. for any `op` ∈ `operations`, transform
+`TensorOperations.op(args...)` -> `TensorOperations.op(args..., Backend{:backend}())`
 """
 function insertbackend(ex, backend, operations)
     if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
