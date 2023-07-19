@@ -208,6 +208,8 @@ function TO.tensorcontract_type(TC, pC::Index2Tuple,
     return CuArray{TC,TO.numind(pC)}
 end
 
+TO.tensorfree!(C::CuArray) = CUDA.unsafe_free!(C)
+
 #-------------------------------------------------------------------------------------------
 # Backend
 #-------------------------------------------------------------------------------------------
@@ -287,5 +289,7 @@ function TO.tensoralloc_contract(TC, pC,
     structure = TO.tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
     return tensoralloc(ttype, structure, istemp)::ttype
 end
+
+TO.tensorfree!(C::CuArray, ::cuTENSORBackend) = tensorfree!(C)
 
 end
