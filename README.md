@@ -38,11 +38,12 @@ Fast tensor operations using a convenient Einstein index notation.
 
 - The interface for custom types has been changed and thoroughly documented, making it easier to know what to implement. This has as a consequence that more general element types of tensors are now also possible.
 
-- There is a new interface to work with backends, to allow for dynamic switching between different implementations of the TensorOperations interface.
+- There is a new interface to work with backends, to allow for dynamic switching between different implementations of the primitive tensor operations or between different strategies for allocating new tensor objects.
 
-- Support for `CuArray` objects is moved to a package extension, to avoid unnecessary CUDA dependencies for Julia versions >= 1.9
+- The support for `CuArray` objects is moved to a package extension, to avoid unnecessary CUDA dependencies for Julia versions >= 1.9
 
 - The cache for temporaries has been removed due to its inconsistent and intricate interplay with multithreading.
+  However, the new feature of specifying custom allocation strategies can be used to experiment with novel cache-like behaviour in the future.
 
 > **WARNING:** TensorOperations 4.0 contains seveal breaking changes and cannot generally be expected to be compatible with previous versions.
 
