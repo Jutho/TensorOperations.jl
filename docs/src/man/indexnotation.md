@@ -32,11 +32,11 @@ D = zeros(5, 5, 5)
 end
 ```
 
-The first thing to note is the use of two different assignment operators within the body of
-the `@tensor` call. The regular assignment operator `=` stores the result of the tensor
-expression in the right hand side in an existing tensor `D`, whereas the 'definition'
+The first important observation is the use of two different assignment operators within the
+body of the `@tensor` call. The regular assignment operator `=` stores the result of the
+tensor expression in the right hand side in an existing tensor `D`, whereas the 'definition'
 operator `:=` results in a new tensor `E` with the correct properties to be created.
-However, the contents of `D` and `E` will be equal.
+Nonetheless, the contents of `D` and `E` will be equal.
 
 Following Einstein's summation convention, that contents is computed in a number of steps
 involving the three primitive tensor operators. In this particular example, the first step
@@ -122,8 +122,9 @@ order.
     should use spaces to constitute a valid expression. Finally, having no indices in the
     first group is only possible by writing an empty tuple. The second group can then use
     spaces, or also contain the indices as a tuple, i.e. both `D[(); a b c]` or `D[(); (a,
-    b, c)]`. Writing the two groups of indices within a tuple, with both tuples seperated by
-    a semicolon is always valid syntax, irrespective of the number of indices in that group.
+    b, c)]`. Writing the two groups of indices within a tuple (which uses a comma as natural
+    separator), with both tuples seperated by a semicolon is always valid syntax,
+    irrespective of the number of indices in that group.
 
 5.  Index expressions `[...]` are only interpreted as index notation on the highest level.
     For example, if you want to mulitply two matrices which are stored in a list, you can
@@ -154,9 +155,14 @@ order.
 Note, finally, that the `@tensor` specifier can be put in front of a single tensor
 expression, or in front of a `begin ... end` block to group and evaluate different
 expressions at once. Within an `@tensor begin ... end` block, the `@notensor` macro can be
-used to annotate indexing expressions that need to be interpreted literally. The previous
-matrix multiplication example with matrices stored in a 3-way array could for example also
-be written as
+used to annotate indexing expressions that need to be interpreted literally. 
+
+```@docs
+@notensor
+```
+
+As in illustration, note that the previous code examples about the matrix multiplication
+with matrices stored in a 3-way array can now also be written as
 
 ```julia
 @tensor begin
@@ -164,10 +170,6 @@ be written as
     @notensor B = list[:,:,2]
     result[i,j] = A[i,k] * B[k,j]
 end
-```
-
-```@docs
-@notensor
 ```
 
 ## Contraction order specification and optimisation

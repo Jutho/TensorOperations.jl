@@ -11,9 +11,16 @@ conjugated (`:C`) or used as-is (`:N`).
 ## Operations
 
 The three primitive tensor operations have already been described in the previous section,
-and correspond to [`tensoradd!`](@ref), [`tensortrace!`](@ref) and
-[`tensorcontract!`](@ref). There is one more necessary tensor operation, which is to convert
-back from a rank zero tensor to a scalar quantity.
+and correspond to
+
+* [`tensoradd!`](@ref),
+* [`tensortrace!`](@ref),
+* [`tensorcontract!`](@ref).
+
+All other functions described in the previous section are
+implemented in terms of those. Hence, those are the only methods that need to be overloaded
+to support e.g. a new tensor type of to implement a new backend. There is one more necessary
+tensor operation, which is to convert back from a rank zero tensor to a scalar quantity.
 
 ```@docs
 tensorscalar

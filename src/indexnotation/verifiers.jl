@@ -6,7 +6,7 @@ const prime = Symbol("'")
 """
     isindex(ex)
 
-Test for a valid index. This means a symbol or integer, or an expression of the form `i′` where `i` is a valid index.
+Test for a valid index, namely a symbol or integer, or an expression of the form `i′` where `i` is itself a valid index.
 """
 function isindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
@@ -25,7 +25,9 @@ end
 Test for a simple tensor object indexed by valid indices. This means an expression of the form:
     
     A[i, j, k, ...]
+    A[i j k ...]
     A[i j k ...; l m ...]
+    A[(i, j, k, ...); (l, m, ...)]
     
 where `i`, `j`, `k`, ... are valid indices.
 """
