@@ -2,10 +2,17 @@
     processcontractions(ex, treebuilder, treesorter, costcheck)
 
 Process the contractions in `ex` using the given `treebuilder` and `treesorter` functions.
-This is done by first extracting a network representation from the expression, then
-building and sorting the contraction trees with a given `treebuilder` and `treesorter`
-function, and finally inserting the contraction trees back into the expression. When the 
-`costcheck` function is provided, the cost of each contraction is computed and comp
+This is done by first extracting a network representation from the expression, then building
+and sorting the contraction trees with a given `treebuilder` and `treesorter` function, and
+finally inserting the contraction trees back into the expression. When the `costcheck`
+argument equals `:warn` or `:cache` (as opposed to `:nothing`), the optimal contraction
+order is computed at runtime using the actual values of [`tensorcost`](@ref) and this
+optimal order is compared to the contraction order that was determined at compile time. If
+the compile time order deviated from the optimal order, a warning will be printed (in case
+of `costcheck == :warn`) or this particular contraction will be recorded in
+`TensorOperations.costcache` (in case of `costcheck == :cache`). Both the warning or the 
+recorded cache entry contain a `order` suggestion that can be passed to the `@tensor` macro
+in order to encode the optimal contraction order at compile time..
 """
 function processcontractions(ex, treebuilder, treesorter, costcheck)
     if isexpr(ex, :block)

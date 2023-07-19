@@ -1,7 +1,7 @@
 """
     _flatten(ex)
 
-Flatten nested structure of an expression, returning a flat line of expressions.
+Flatten nested structure of an expression, returning an unnested `Expr(:block, …)`.
 """
 function _flatten(ex)
     if isa(ex, Expr) # prewalk

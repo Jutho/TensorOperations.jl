@@ -43,10 +43,12 @@ end
     verifytensorexpr(ex)
 
 Check that `ex` is a valid tensor expression and throw an `ArgumentError` if not.
-Valid tensor expressions are characterized by one of the following properties:
+Valid tensor expressions satisfy one of the following (recursive) rules):
 - The expression is a scalar expression or a tensor expression.
 - The expression is an assignment or a definition, and the left hand side and right hand side are valid tensor expressions or scalars.
 - The expression is a block, and all subexpressions are valid tensor expressions or scalars.
+
+See also [`istensorexpr`](@ref) and [`isscalarexpr`](@ref).
 """
 function verifytensorexpr(ex)
     if isexpr(ex, :block)
@@ -73,7 +75,8 @@ end
 """
     tensorify(ex)
 
-Parse `ex` into a series of tensor operations' building blocks.
+Main parsing step to transform a tensor expression `ex` into a series of function calls associated
+with the primitive building blocks (tensor operations and allocations).
 """
 function tensorify(ex::Expr)
     if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
