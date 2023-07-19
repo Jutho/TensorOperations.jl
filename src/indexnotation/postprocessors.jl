@@ -86,7 +86,7 @@ function insertbackend(ex, backend, operations)
 end
 
 const operators = (:tensoradd!, :tensorcontract!, :tensortrace!)
-const allocators = (:tensoralloc_add, :tensoralloc_contract)
+const allocators = (:tensoralloc_add, :tensoralloc_contract, :tensorfree!)
 
 insert_operationbackend(ex, backend) = insertbackend(ex, backend, operators)
 insert_allocatorbackend(ex, backend) = insertbackend(ex, backend, allocators)
