@@ -408,8 +408,9 @@ implementation that is used for e.g. arrays with an `eltype` that is not
 permutations, but still in a cache-friendly and multithreaded way (again relying on
 `JULIA_NUM_THREADS > 1`). This implementation can also be used for `BlasFloat` types (but
 will typically be slower), and the use of BLAS can be controlled by explicitly switching the
-backend between `StridedBLAS` and `StridedNative`. Similarly, when different allocation
-strategies are available, their backend can be controlled with the `allocator` keyword.
+backend between `StridedBLAS` and `StridedNative` using the `backend` keyword to
+[`@tensor`](@ref). Similarly, different allocation strategies, when available, can be
+selected using the `allocator` keyword of [`@tensor`](@ref).
 
 The primitive tensor operations are also implemented for `CuArray` objects of the
 [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation is essentially a

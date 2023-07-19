@@ -28,11 +28,14 @@ Additional keyword arguments may be passed to control the behavior of the parser
 - `contractcheck`:
     Boolean flag to enable runtime check for contractibility of indices with clearer error messages.
 - `costcheck`:
-    Adds runtime checks to ensure that the contraction order is optimal. Can be either `:warn` or `:cache`. The former will issues warnings when sub-optimal expressions are encountered, while the latter will cache the optimal contraction order for each tensor site and calling site.
+    Can be either `:warn` or `:cache` and adds runtime checks to compare the compile-time contraction order to the optimal order computed for the actual run time tensor costs.
+    If `costcheck == :warn`, warnings are printed for every sub-optimal contraction that is encountered.
+    If `costcheck == :cache`, only the most costly run of a particular sub-optimal contraction will be cached in `TensorOperations.costcache`.
+    In both cases, a suggestion for the `order` keyword argument is computed to switch to the optimal contraction order.
 - `backend`: 
-    Inserts a backend call for the different tensor operations.
+    Inserts an implementation backend as a final argument in the different tensor operation calls in the generated code.
 - `allocator`:
-    Inserts a backend call for the different tensor allocations.
+    Inserts an allocation strategy as a final argument in the tensor allocation calls in the generated code.
 """
 macro tensor(args::Vararg{Expr})
     isempty(args) && throw(ArgumentError("No arguments passed to `@tensor`"))
