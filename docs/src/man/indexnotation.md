@@ -59,6 +59,7 @@ operate pairwise on the input tensors. The generated code can easily be inspecte
 using TensorOperations
 @macroexpand @tensor E[a, b, c] := A[a, e, f, c, f, g] * B[g, b, e] + α * C[c, a, b]
 ```
+
 The different functions in which this tensor expression is decomposed are discussed in more
 detail in the [Implementation](@ref) section of this manual.
 
@@ -376,14 +377,14 @@ are inserted that compare the contraction order of any tensor contraction of thr
 factors against the optimal order based on the current tensor size. More generally, the
 function [`tensorcost`](@ref) is part of the interface and associated a cost value with
 every index of a tensor, which is then used in the cost model. With `costcheck=:warn`, a
-warning will be spawn for every tensor network where the actual contraction order (even when
-optimised using abstract costs) does not match with the ideal contraction order given the
-current `tensorcost` values. With `costcheck = :cache`, the tensor networks with non-optimal
-contraction order are stored in a global package variable `TensorOperations.costcache`.
-However, when a tensor network is evaluated several times with different tensor sizes or
-tensor costs, only the evaluation giving rise to the largest total contraction cost for that
-network will appear in the cache (provided the actual contraction order deviates from the
-optimal order in that largest case).
+warning will be spawned for every tensor network where the actual contraction order (even
+when optimised using abstract costs) does not match with the ideal contraction order given
+the current `tensorcost` values. With `costcheck = :cache`, the tensor networks with
+non-optimal contraction order are stored in a global package variable
+`TensorOperations.costcache`. However, when a tensor network is evaluated several times with
+different tensor sizes or tensor costs, only the evaluation giving rise to the largest total
+contraction cost for that network will appear in the cache (provided the actual contraction
+order deviates from the optimal order in that largest case).
 
 ## Backends, multithreading and GPUs
 
