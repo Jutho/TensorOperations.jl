@@ -1,5 +1,7 @@
 <img src="https://github.com/Jutho/TensorOperations.jl/blob/master/docs/src/assets/logo.svg" width="150">
+
 # TensorOperations.jl
+
 Fast tensor operations using a convenient Einstein index notation.
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
