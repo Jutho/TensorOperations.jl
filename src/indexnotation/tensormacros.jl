@@ -48,7 +48,6 @@ macro tensor(args::Vararg{Expr})
 end
 
 function tensorparser(tensorexpr, kwargs...)
-
     parser = TensorParser()
 
     for param in kwargs
@@ -102,8 +101,10 @@ function parse_tensor_kwargs(args)
 
     # @tensor kw1=val1 kw2=val2 ... tensorexpr
     function kw_to_pair(ex)
-        return (isexpr(ex, :(=), 2) || isexpr(ex, :kw, 2)) ? Pair(ex.args[1], ex.args[2]) : ex
-               throw(ArgumentError("unknown keyword expression `$ex`"))
+        if (isexpr(ex, :(=), 2) || isexpr(ex, :kw, 2))
+            return Pair(ex.args[1], ex.args[2])
+        end
+        throw(ArgumentError("unknown keyword expression `$ex`"))
     end
     return kw_to_pair.(args)
 end
