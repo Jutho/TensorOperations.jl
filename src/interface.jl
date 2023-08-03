@@ -128,7 +128,7 @@ See also [`tensoralloc_add`](@ref), [`tensoralloc_contract`](@ref) and [`tensorf
 function tensoralloc end
 
 """
-    tensorfree!(C)
+    tensorfree!(C, [backend::Backend])
 
 Provide a hint that the allocated memory of `C` can be released.
 

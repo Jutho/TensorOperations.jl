@@ -122,8 +122,6 @@ function getinputtensorobjects(ex)
             end
             append!(list, list2)
         end
-    elseif isexpr(ex, [:for, :while])
-        append!(list, getinputtensorobjects(ex.args[2]))
     elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
         append!(list, gettensorobjects(ex.args[2]))
     end
@@ -146,8 +144,6 @@ function getoutputtensorobjects(ex)
             end
             append!(list, list2)
         end
-    elseif isexpr(ex, [:for, :while])
-        append!(list, getoutputtensorobjects(ex.args[2]))
     end
     return unique!(list)
 end
@@ -163,8 +159,6 @@ function getnewtensorobjects(ex)
         for e in ex.args
             append!(list, getnewtensorobjects(e))
         end
-    elseif isexpr(ex, [:for, :while])
-        append!(list, getnewtensorobjects(ex.args[2]))
     end
     return unique!(list)
 end

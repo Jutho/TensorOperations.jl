@@ -4,7 +4,7 @@ using VectorInterface
 using TupleTools: TupleTools, isperm, invperm
 
 using LinearAlgebra
-using LinearAlgebra: mul!, BLAS.BlasFloat
+using LinearAlgebra: mul!, BlasFloat
 using Strided
 using LRUCache
 
