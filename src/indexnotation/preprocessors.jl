@@ -119,10 +119,9 @@ end
 Group all scalar factors of a tensor expression into a single scalar factor at the start of the expression.
 """
 function groupscalarfactors(ex)
-    if isa(ex, Expr) # prewalk
-        ex = Expr(ex.head, map(groupscalarfactors, ex.args)...)
-    end
-    if istensorexpr(ex) && ex.args[1] == :*
+    if istensor(ex) || (isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor"))
+        return ex
+    elseif istensorexpr(ex) && ex.args[1] == :*
         args = ex.args[2:end]
         scalarpos = findall(isscalarexpr, args)
         length(scalarpos) == 0 && return ex
@@ -133,6 +132,8 @@ function groupscalarfactors(ex)
             scalar = Expr(:call, :*, args[scalarpos]...)
         end
         return Expr(:call, :*, scalar, args[tensorpos]...)
+    elseif isa(ex, Expr)
+        return Expr(ex.head, map(groupscalarfactors, ex.args)...)
     end
     return ex
 end

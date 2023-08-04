@@ -125,7 +125,7 @@ function isscalarexpr(ex)
     elseif isexpr(ex, :call)
         return all(isscalarexpr, ex.args[2:end])
     else
-        return false
+        return true # assume everything else is valid scalar code
     end
 end
 

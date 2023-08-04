@@ -113,7 +113,17 @@ function tensorify(ex::Expr)
                                        ExistingTensor)
                 end
             else
-                return instantiate(dst, false, rhs, true, leftind, rightind, NewTensor)
+                # deal with the case that dst can be an existing variable while also a new value is assigned to it
+                if dst ∈ getinputtensorobjects(rhs)
+                    dst2 = gensym(dst)
+                    return quote
+                        $dst2 = $dst
+                        $(instantiate(dst2, false, rhs, true, leftind, rightind, NewTensor))
+                        $dst = $dst2
+                    end
+                else
+                    return instantiate(dst, false, rhs, true, leftind, rightind, NewTensor)
+                end
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
@@ -135,12 +145,6 @@ function tensorify(ex::Expr)
     end
     if ex.head == :block # @tensor begin ... end
         return Expr(ex.head, map(tensorify, ex.args)...)
-    end
-    if ex.head == :for # @tensor for ... end
-        return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
-    end
-    if ex.head == :function # @tensor function ... end
-        return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
     end
     # constructions of the form: a = @tensor ...
     if isscalarexpr(ex)

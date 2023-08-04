@@ -418,6 +418,15 @@ using LinearAlgebra
         @test res ≈ -(mat1 * vec + mat2 * vec)
     end
 
+    @testset "Handling definitions" begin
+        vec = rand(2)
+        veccopy = copy(vec)
+        mat1 = rand(2, 2)
+        mat2 = rand(2, 2)
+        @tensor vec[a] := (mat1[a, b] * mat2[b, c]) * vec[c]
+        @test vec ≈ mat1 * mat2 * veccopy
+    end
+
     # @testset "Issue 136" begin
     #     A = rand(2, 2)
     #     B = rand(2, 2)
