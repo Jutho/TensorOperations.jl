@@ -145,7 +145,7 @@ function blas_contract!(C, pC, A, pA, conjA, B, pB, conjB, α, β)
         C_ = C
         _unsafe_blas_contract!(C_, ipC, A_, pA, conjA, B_, pB, conjB, α, β)
     else
-        C_ = StridedView(TensorOperations.tensoralloc_add(TC, ipC, C, :N))
+        C_ = StridedView(TensorOperations.tensoralloc_add(TC, ipC, C, :N, true))
         ipC = trivialpermutation(ipC)
         _unsafe_blas_contract!(C_, ipC, A_, pA, conjA, B_, pB, conjB, one(TC), zero(TC))
         tensoradd!(C, pC, C_, :N, α, β)
