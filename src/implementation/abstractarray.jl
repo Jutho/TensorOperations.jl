@@ -184,6 +184,6 @@ end
 function flag2op(flag::Symbol)
     op = flag == :N ? identity :
          flag == :C ? conj :
-         throw(ArgumentError("unknown conjuagation flag $flag"))
+         throw(ArgumentError("unknown conjugation flag $flag"))
     return op
 end
