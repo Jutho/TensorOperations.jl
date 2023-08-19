@@ -204,7 +204,7 @@ end
         E2 = sqrt(abs((@cutensor tensorscalar(D2[d, f, h] * conj(D2[d, f, h])))))
         @test E1 ≈ E2
     end
-    
+
     @testset "views" begin
         p = [3, 1, 4, 2]
         Abig = CUDA.randn(Float32, (30, 30, 30, 30))
@@ -226,7 +226,7 @@ end
             @tensor C[1, 1, 2, 3] = A[1, 2, 3, 4]
         end
     end
-    
+
     @testset "views 2" begin
         p = [3, 1, 4, 2]
         Abig = CUDA.randn(ComplexF32, (30, 30, 30, 30))

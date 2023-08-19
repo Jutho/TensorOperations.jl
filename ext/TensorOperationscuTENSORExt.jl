@@ -74,8 +74,8 @@ end
 # Operations
 #-------------------------------------------------------------------------------------------
 
-function TO.tensoradd!(C::AnyCuArray, pC::Index2Tuple, A::AnyCuArray, conjA::Symbol, α::Number,
-                       β::Number)
+function TO.tensoradd!(C::AnyCuArray, pC::Index2Tuple, A::AnyCuArray, conjA::Symbol,
+                       α::Number, β::Number)
     return tensoradd!(C, pC, A, conjA, α, β, StridedCUDA())
 end
 function TO.tensoradd!(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, conjA::Symbol,
