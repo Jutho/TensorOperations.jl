@@ -12,6 +12,8 @@ end
 
 using TensorOperations
 using TupleTools
+using Strided
+
 using cuTENSOR: CUDA, handle, CuTensorDescriptor, cudaDataType_t,
                 cutensorContractionDescriptor_t,
                 cutensorContractionFind_t, cutensorContractionPlan_t,
@@ -23,8 +25,8 @@ using cuTENSOR: CUDA, handle, CuTensorDescriptor, cudaDataType_t,
                 cutensorComputeType, cutensorGetAlignmentRequirement,
                 cutensorInitContractionDescriptor, cutensorInitContractionFind,
                 cutensorContractionGetWorkspace, cutensorInitContractionPlan,
-                cutensorContraction
-using cuTENSOR.CUDA: CUDA, CuArray
+                cutensorContraction, CUTENSORError
+using cuTENSOR.CUDA: CUDA, CuArray, AnyCuArray
 using cuTENSOR.CUDA.CUBLAS: CublasFloat, CublasReal
 using cuTENSOR.CUDA: with_workspace, default_stream
 
@@ -32,12 +34,33 @@ using cuTENSOR.CUDA: with_workspace, default_stream
 using cuTENSOR.CUDA.Adapt: adapt
 
 const TO = TensorOperations
-function TO.tensorscalar(C::CuArray)
+const CuStridedView{T,N,A<:CuArray{T,N},F} = StridedView{T,N,A,F}
+const StridedCUDA = TO.Backend{:StridedCUDA}
+
+#-------------------------------------------------------------------------------------------
+# Utility
+#-------------------------------------------------------------------------------------------
+
+function TO.tensorscalar(C::AnyCuArray)
     return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
 end
 
 @inline function tensorop(T::Type{<:Number}, op::Symbol)
     return (T <: Real || op == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+end
+
+function cuTENSOR.CuTensorDescriptor(a::CuStridedView{T}; size=size(a), strides=strides(a),
+                                     eltype=T) where {T}
+    return cuTENSOR.CuTensorDescriptor(parent(a); size, strides, eltype,
+                                       op=T <: Real ? CUTENSOR_OP_IDENTITY :
+                                          _strideop_to_cuop(a.op))
+end
+
+_strideop_to_cuop(::typeof(identity)) = CUTENSOR_OP_IDENTITY
+_strideop_to_cuop(::typeof(conj)) = CUTENSOR_OP_CONJ
+
+function Base.unsafe_convert(::Type{CUDA.CuPtr{T}}, a::CuStridedView{T}) where {T}
+    return pointer(a.parent, a.offset + 1)
 end
 
 function tensordescriptor(T::Type{<:Number}, A::CuArray, pA::Index2Tuple, conjA::Symbol)
@@ -51,76 +74,118 @@ end
 # Operations
 #-------------------------------------------------------------------------------------------
 
-function TO.tensoradd!(C::CuArray, pC::Index2Tuple, A::CuArray, conjA::Symbol,
-                       α::Number, β::Number)
+function TO.tensoradd!(C::AnyCuArray, pC::Index2Tuple, A::AnyCuArray, conjA::Symbol, α::Number,
+                       β::Number)
+    return tensoradd!(C, pC, A, conjA, α, β, StridedCUDA())
+end
+function TO.tensoradd!(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, conjA::Symbol,
+                       α::Number, β::Number, backend::StridedCUDA)
+    tensoradd!(StridedView(C), pC, StridedView(A), conjA, α, β, backend)
+    return C
+end
+function TO.tensoradd!(C::CuStridedView, pC::Index2Tuple, A::CuStridedView, conjA::Symbol,
+                       α::Number, β::Number, ::StridedCUDA)
+    # TODO: check if these checks are necessary
+    # -- in principle cuTENSOR already checks this, but the error messages are less clear
     TO.argcheck_tensoradd(C, pC, A)
+    TO.dimcheck_tensoradd(C, pC, A)
 
-    T = eltype(C)
-    conjA == :N || conjA == :C ||
-        throw(ArgumentError("Value of conjA should be :N or :C instead of $conjA"))
-    opA = (T <: Real || conjA == :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
-    opAC = CUTENSOR_OP_ADD
-
-    descA = CuTensorDescriptor(A; op=opA)
-    descC = CuTensorDescriptor(C; op=CUTENSOR_OP_IDENTITY)
-
-    typeCompute = convert(cudaDataType_t, T)
-    modeA = collect(Cint, 1:ndims(A))
+    TC = eltype(C)
+    descC = CuTensorDescriptor(C)
     modeC = collect(Cint, linearize(pC))
+
+    A′ = TO.flag2op(conjA)(A)
+    descA = CuTensorDescriptor(A′)
+    modeA = collect(Cint, 1:ndims(A′))
+
+    T = convert(cudaDataType_t, TC)
     stream = default_stream()
+    h = handle()
+
     if β == zero(β)
-        cutensorPermutation(handle(), T[α], A, descA, modeA, C, descC, modeC,
-                            typeCompute, stream)
+        cutensorPermutation(h, TC[α], A′, descA, modeA, C, descC,
+                            modeC, T, stream)
     else
-        cutensorElementwiseBinary(handle(), T[α], A, descA, modeA, T[β], C, descC,
-                                  modeC, C, descC, modeC, opAC, typeCompute, stream)
+        cutensorElementwiseBinary(h, TC[α],
+                                  A′, descA, modeA,
+                                  TC[β],
+                                  C, descC, modeC,
+                                  C, descC, modeC,
+                                  CUTENSOR_OP_ADD, T, stream)
     end
 
     return C
 end
 
-function TO.tensorcontract!(C::CuArray, pC::Index2Tuple,
-                            A::CuArray, pA::Index2Tuple, conjA::Symbol,
-                            B::CuArray, pB::Index2Tuple, conjB::Symbol,
+function TO.tensorcontract!(C::AnyCuArray, pC::Index2Tuple,
+                            A::AnyCuArray, pA::Index2Tuple, conjA::Symbol,
+                            B::AnyCuArray, pB::Index2Tuple, conjB::Symbol,
                             α, β)
+    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedCUDA())
+end
+function TO.tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+                            A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                            B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                            α, β, backend::StridedCUDA)
+    tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB, α, β, backend)
+    return C
+end
+function TO.tensorcontract!(C::CuStridedView{T}, pC::Index2Tuple,
+                            A::CuStridedView, pA::Index2Tuple, conjA::Symbol,
+                            B::CuStridedView, pB::Index2Tuple, conjB::Symbol,
+                            α, β, ::StridedCUDA) where {T}
+    # TODO: check if these checks are necessary
+    # -- in principle cuTENSOR already checks this, but the error messages are less clear
     TO.argcheck_tensorcontract(C, pC, A, pA, B, pB)
     TO.dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
-    conjA == :N || conjA == :C ||
-        throw(ArgumentError("Value of conjA should be :N or :C instead of $conjA"))
-    conjB == :N || conjB == :C ||
-        throw(ArgumentError("Value of conjB should be :N or :C instead of $conjB"))
+    A′ = permutedims(TO.flag2op(conjA)(A), linearize(pA))
+    B′ = permutedims(TO.flag2op(conjB)(B), linearize(pB))
 
-    T = eltype(C)
+    desc = _contraction_descriptor(C, pC, A′, pA, B′, pB)
+    find = Ref{cutensorContractionFind_t}()
+    cutensorInitContractionFind(handle(), find, CUTENSOR_ALGO_DEFAULT)
 
-    descA = tensordescriptor(T, A, pA, conjA)
-    descB = tensordescriptor(T, B, reverse(pB), conjB)
+    function workspacesize()
+        out = Ref{UInt64}(C_NULL)
+        cutensorContractionGetWorkspace(handle(), desc, find,
+                                        CUTENSOR_WORKSPACE_RECOMMENDED, out)
+        return out[]
+    end
+    with_workspace(workspacesize, 1 << 27) do workspace
+        plan_ref = Ref{cutensorContractionPlan_t}()
+        cutensorInitContractionPlan(handle(), plan_ref, desc, find, sizeof(workspace))
+
+        return cutensorContraction(handle(), plan_ref, T[α], A′, B′, T[β],
+                                   C, C,
+                                   workspace, sizeof(workspace), default_stream())
+    end
+
+    return C
+end
+
+function _contraction_descriptor(C::CuStridedView, pC::Index2Tuple, A::CuStridedView,
+                                 pA::Index2Tuple, B::CuStridedView, pB::Index2Tuple)
     descC = CuTensorDescriptor(C)
+    # pA′ = linearize(pA)
+    descA = CuTensorDescriptor(A)
+    #    size=TupleTools.getindices(size(A), pA′),
+    #    strides=TupleTools.getindices(strides(A), pA′))
+    # pB′ = linearize(pB)
+    descB = CuTensorDescriptor(B)
+    #    size=TupleTools.getindices(size(B), pB′),
+    #    strides=TupleTools.getindices(strides(B), pB′))
 
-    typeCompute = cutensorComputeType(T)
+    modeC, modeA, modeB = _indextuple_to_mode(pC, pA, pB)
 
-    NoA = TO.numout(pA)
-    NoB = TO.numin(pB)
-    Nc = TO.numin(pA)
-
-    modeoA = ntuple(n -> n, NoA)
-    modeoB = ntuple(n -> NoA + n, NoB)
-    modec = ntuple(n -> NoA + NoB + n, Nc)
-
-    modeA = collect(Cint, (modeoA..., modec...))
-    modeB = collect(Cint, (modeoB..., modec...))
-    modeC = collect(Cint, linearize(pC))
-
-    algo = CUTENSOR_ALGO_DEFAULT
-    stream = default_stream()
-    pref = CUTENSOR_WORKSPACE_RECOMMENDED
-
+    alignmentRequirementC = Ref{UInt32}(C_NULL)
+    cutensorGetAlignmentRequirement(handle(), C, descC, alignmentRequirementC)
     alignmentRequirementA = Ref{UInt32}(C_NULL)
     cutensorGetAlignmentRequirement(handle(), A, descA, alignmentRequirementA)
     alignmentRequirementB = Ref{UInt32}(C_NULL)
     cutensorGetAlignmentRequirement(handle(), B, descB, alignmentRequirementB)
-    alignmentRequirementC = Ref{UInt32}(C_NULL)
-    cutensorGetAlignmentRequirement(handle(), C, descC, alignmentRequirementC)
+
     desc = Ref{cutensorContractionDescriptor_t}()
     cutensorInitContractionDescriptor(handle(),
                                       desc,
@@ -128,58 +193,63 @@ function TO.tensorcontract!(C::CuArray, pC::Index2Tuple,
                                       descB, modeB, alignmentRequirementB[],
                                       descC, modeC, alignmentRequirementC[],
                                       descC, modeC, alignmentRequirementC[],
-                                      typeCompute)
+                                      cutensorComputeType(eltype(C)))
 
-    find = Ref{cutensorContractionFind_t}()
-    cutensorInitContractionFind(handle(), find, algo)
-
-    function workspacesize()
-        out = Ref{UInt64}(C_NULL)
-        cutensorContractionGetWorkspace(handle(), desc, find, pref, out)
-        return out[]
-    end
-    with_workspace(workspacesize, 1 << 27) do workspace
-        plan_ref = Ref{cutensorContractionPlan_t}()
-        cutensorInitContractionPlan(handle(), plan_ref, desc, find, sizeof(workspace))
-
-        return cutensorContraction(handle(), plan_ref, T[α], A, B, T[β], C, C,
-                                   workspace, sizeof(workspace), stream)
-    end
-
-    return C
+    return desc
 end
 
-function TO.tensortrace!(C::CuArray, pC::Index2Tuple,
-                         A::CuArray, pA::Index2Tuple, conjA::Symbol, α, β)
+function _indextuple_to_mode(pC::Index2Tuple, pA::Index2Tuple, pB::Index2Tuple)
+    NoA = TO.numout(pA)
+    NoB = TO.numin(pB)
+    Nc = TO.numin(pA)
+
+    modec = ntuple(n -> NoA + NoB + n, Nc)
+    modeoA = ntuple(n -> n, NoA)
+    modeoB = ntuple(n -> NoA + n, NoB)
+
+    modeC = collect(Cint, linearize(pC))
+    modeA = collect(Cint, (modeoA..., modec...))
+    modeB = collect(Cint, (modec..., modeoB...))
+
+    return modeC, modeA, modeB
+end
+
+function TO.tensortrace!(C::AnyCuArray, pC::Index2Tuple,
+                         A::AnyCuArray, pA::Index2Tuple, conjA::Symbol, α, β)
+    return tensortrace!(C, pC, A, pA, conjA, α, β, StridedCUDA())
+end
+function TO.tensortrace!(C::AbstractArray, pC::Index2Tuple,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β,
+                         backend::StridedCUDA)
+    tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
+    return C
+end
+function TO.tensortrace!(C::CuStridedView, pC::Index2Tuple,
+                         A::CuStridedView, pA::Index2Tuple, conjA::Symbol, α, β,
+                         ::StridedCUDA)
+    # TODO: check if these checks are necessary
+    # -- in principle cuTENSOR already checks this, but the error messages are less clear
     TO.argcheck_tensortrace(C, pC, A, pA)
+    TO.dimcheck_tensortrace(C, pC, A, pA)
+
+    descC = CuTensorDescriptor(C)
+    modeC = collect(Cint, 1:ndims(C))
+    descA = CuTensorDescriptor(TO.flag2op(conjA)(A);
+                               size=(size(C)..., TupleTools.getindices(size(A), pA[1])...),
+                               strides=(TupleTools.getindices(strides(A), linearize(pC))...,
+                                        (TupleTools.getindices(strides(A), pA[1]) .+
+                                         TupleTools.getindices(strides(A), pA[2]))...))
+    modeA = collect(Cint, 1:ndims(A))
+
     T = eltype(C)
-    NA, NC = ndims(A), ndims(C)
-
-    opA = tensorop(T, conjA)
-    opReduce = CUTENSOR_OP_ADD
-
-    sizeA = i -> size(A, i)
-    strideA = i -> stride(A, i)
-    tracesize = sizeA.(pA[1])
-    tracesize == sizeA.(pA[2]) || throw(DimensionMismatch("non-matching trace sizes"))
-    size(C) == sizeA.(linearize(pC)) || throw(DimensionMismatch("non-matching sizes"))
-
-    newstrides = (strideA.(linearize(pC))..., (strideA.(pA[1]) .+ strideA.(pA[2]))...)
-    newsize = (size(C)..., tracesize...)
-    descA = CuTensorDescriptor(A; op=opA, size=newsize, strides=newstrides)
-    descC = CuTensorDescriptor(C; op=CUTENSOR_OP_IDENTITY)
-    # descD = descC
     typeCompute = cutensorComputeType(T)
-    modeA = collect(Cint, 1:NA)
-    modeC = collect(Cint, 1:NC)
-    stream = default_stream()
     function workspacesize()
         out = Ref{UInt64}(C_NULL)
         cutensorReductionGetWorkspace(handle(),
                                       A, descA, modeA,
                                       C, descC, modeC,
                                       C, descC, modeC,
-                                      opReduce, typeCompute,
+                                      CUTENSOR_OP_ADD, typeCompute,
                                       out)
         return out[]
     end
@@ -188,8 +258,8 @@ function TO.tensortrace!(C::CuArray, pC::Index2Tuple,
                                  T[α], A, descA, modeA,
                                  T[β], C, descC, modeC,
                                  C, descC, modeC,
-                                 opReduce, typeCompute,
-                                 workspace, sizeof(workspace), stream)
+                                 CUTENSOR_OP_ADD, typeCompute,
+                                 workspace, sizeof(workspace), default_stream())
     end
     return C
 end
@@ -198,13 +268,13 @@ end
 # Allocations
 #-------------------------------------------------------------------------------------------
 
-function TO.tensoradd_type(TC, pC::Index2Tuple, ::CuArray, conjA::Symbol)
+function TO.tensoradd_type(TC, pC::Index2Tuple, ::AnyCuArray, conjA::Symbol)
     return CuArray{TC,TO.numind(pC)}
 end
 
 function TO.tensorcontract_type(TC, pC::Index2Tuple,
-                                ::CuArray, pA::Index2Tuple, conjA::Symbol,
-                                ::CuArray, pB::Index2Tuple, conjB::Symbol)
+                                ::AnyCuArray, pA::Index2Tuple, conjA::Symbol,
+                                ::AnyCuArray, pB::Index2Tuple, conjB::Symbol)
     return CuArray{TC,TO.numind(pC)}
 end
 

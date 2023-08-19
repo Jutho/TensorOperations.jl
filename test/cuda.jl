@@ -155,7 +155,7 @@ end
         @tensor C1[3, 1, 4, 2] := A[3, 1, 4, 2] + B[1, 2, 3, 4]
         @cutensor C2[3, 1, 4, 2] := A[3, 1, 4, 2] + B[1, 2, 3, 4]
         @test C1 ≈ collect(C2)
-        @test_throws CUTENSORError begin
+        @test_throws DimensionMismatch begin
             @cutensor C[1, 2, 3, 4] := A[1, 2, 3, 4] + B[1, 2, 3, 4]
         end
 
@@ -203,5 +203,92 @@ end
         E1 = sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
         E2 = sqrt(abs((@cutensor tensorscalar(D2[d, f, h] * conj(D2[d, f, h])))))
         @test E1 ≈ E2
+    end
+    
+    @testset "views" begin
+        p = [3, 1, 4, 2]
+        Abig = CUDA.randn(Float32, (30, 30, 30, 30))
+        A = view(Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6), 4 .+ 3 .* (0:8))
+        Cbig = CUDA.zeros(Float32, (50, 50, 50, 50))
+        C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
+        Acopy = copy(A)
+        Ccopy = copy(C)
+        @tensor C[3, 1, 4, 2] = A[1, 2, 3, 4]
+        @tensor Ccopy[3, 1, 4, 2] = Acopy[1, 2, 3, 4]
+        @test copy(C) ≈ Ccopy
+        @test_throws TensorOperations.IndexError begin
+            @tensor C[3, 1, 4, 2] = A[1, 2, 3]
+        end
+        @test_throws DimensionMismatch begin
+            @tensor C[3, 1, 4, 2] = A[3, 1, 4, 2]
+        end
+        @test_throws TensorOperations.IndexError begin
+            @tensor C[1, 1, 2, 3] = A[1, 2, 3, 4]
+        end
+    end
+    
+    @testset "views 2" begin
+        p = [3, 1, 4, 2]
+        Abig = CUDA.randn(ComplexF32, (30, 30, 30, 30))
+        A = view(Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6), 4 .+ 3 .* (0:8))
+        Cbig = CUDA.zeros(ComplexF32, (50, 50, 50, 50))
+        C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
+        Acopy = permutedims(copy(A), p)
+        Ccopy = copy(C)
+        α = randn(Float64)
+        β = randn(Float64)
+        @tensor C[3, 1, 4, 2] = β * C[3, 1, 4, 2] + α * A[1, 2, 3, 4]
+        Ccopy = β * Ccopy + α * Acopy
+        @test copy(C) ≈ Ccopy
+        @test_throws IndexError begin
+            @tensor C[3, 1, 4, 2] = 0.5 * C[3, 1, 4, 2] + 1.2 * A[1, 2, 3]
+        end
+        @test_throws DimensionMismatch begin
+            @tensor C[3, 1, 4, 2] = 0.5 * C[3, 1, 4, 2] + 1.2 * A[3, 1, 2, 4]
+        end
+        @test_throws IndexError begin
+            @tensor C[1, 1, 2, 3] = 0.5 * C[1, 1, 2, 3] + 1.2 * A[1, 2, 3, 4]
+        end
+    end
+
+    @testset "views 3" begin
+        Abig = CUDA.rand(ComplexF64, (30, 30, 30, 30))
+        A = view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6), 7 .+ 2 .* (0:8))
+        Bbig = CUDA.rand(ComplexF64, (50, 50))
+        B = view(Bbig, 13 .+ (0:14), 3 .+ 5 .* (0:6))
+        Acopy = copy(A)
+        Bcopy = copy(B)
+        α = randn(Float64)
+        @tensor B[b, c] += α * A[a, b, c, a]
+        @tensor Bcopy[b, c] += α * Acopy[a, b, c, a]
+        @test copy(B) ≈ Bcopy
+        @test_throws IndexError begin
+            @tensor B[b, c] += α * A[a, b, c]
+        end
+        @test_throws DimensionMismatch begin
+            @tensor B[c, b] += α * A[a, b, c, a]
+        end
+        @test_throws IndexError begin
+            @tensor B[c, b] += α * A[a, b, a, a]
+        end
+        @test_throws DimensionMismatch begin
+            @tensor B[c, b] += α * A[a, b, a, c]
+        end
+    end
+
+    @testset "views 4" begin
+        Abig = CUDA.rand(ComplexF32, (30, 30, 30, 30))
+        A = view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6), 7 .+ 2 .* (0:8))
+        Bbig = CUDA.rand(ComplexF32, (50, 50, 50))
+        B = view(Bbig, 3 .+ 5 .* (0:6), 7 .+ 2 .* (0:7), 13 .+ (0:14))
+        Cbig = CUDA.rand(ComplexF32, (40, 40, 40))
+        C = view(Cbig, 3 .+ 2 .* (0:8), 13 .+ (0:8), 7 .+ 3 .* (0:7))
+        Acopy = copy(A)
+        Bcopy = copy(B)
+        Ccopy = copy(C)
+        α = randn(Float64)
+        @tensor C[d, a, e] -= α * A[a, b, c, d] * conj(B[c, e, b])
+        @tensor Ccopy[d, a, e] -= α * Acopy[a, b, c, d] * conj(Bcopy[c, e, b])
+        @test copy(C) ≈ Ccopy
     end
 end
