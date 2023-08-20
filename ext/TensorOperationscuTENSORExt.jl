@@ -34,7 +34,7 @@ using cuTENSOR.CUDA: with_workspace, default_stream
 using cuTENSOR.CUDA.Adapt: adapt
 
 const TO = TensorOperations
-const CuStridedView{T,N,A<:CuArray{T,N},F} = StridedView{T,N,A,F}
+const CuStridedView{T,N,A} = StridedView{T,N,A} where {T,N,A<:CuArray{T}}
 const StridedCUDA = TO.Backend{:StridedCUDA}
 
 #-------------------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ function TO.tensoradd!(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, conj
     return C
 end
 function TO.tensoradd!(C::CuStridedView, pC::Index2Tuple, A::CuStridedView, conjA::Symbol,
-                       α::Number, β::Number, ::StridedCUDA)
+                       α::Number, β::Number, ::StridedCUDA=StridedCUDA())
     # TODO: check if these checks are necessary
     # -- in principle cuTENSOR already checks this, but the error messages are less clear
     TO.argcheck_tensoradd(C, pC, A)
@@ -120,13 +120,13 @@ end
 function TO.tensorcontract!(C::AnyCuArray, pC::Index2Tuple,
                             A::AnyCuArray, pA::Index2Tuple, conjA::Symbol,
                             B::AnyCuArray, pB::Index2Tuple, conjB::Symbol,
-                            α, β)
+                            α::Number, β::Number)
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedCUDA())
 end
 function TO.tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                             A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                             B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                            α, β, backend::StridedCUDA)
+                            α::Number, β::Number, backend::StridedCUDA)
     tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
                     StridedView(B), pB, conjB, α, β, backend)
     return C
@@ -134,7 +134,7 @@ end
 function TO.tensorcontract!(C::CuStridedView{T}, pC::Index2Tuple,
                             A::CuStridedView, pA::Index2Tuple, conjA::Symbol,
                             B::CuStridedView, pB::Index2Tuple, conjB::Symbol,
-                            α, β, ::StridedCUDA) where {T}
+                            α::Number, β::Number, ::StridedCUDA=StridedCUDA()) where {T}
     # TODO: check if these checks are necessary
     # -- in principle cuTENSOR already checks this, but the error messages are less clear
     TO.argcheck_tensorcontract(C, pC, A, pA, B, pB)
@@ -215,18 +215,19 @@ function _indextuple_to_mode(pC::Index2Tuple, pA::Index2Tuple, pB::Index2Tuple)
 end
 
 function TO.tensortrace!(C::AnyCuArray, pC::Index2Tuple,
-                         A::AnyCuArray, pA::Index2Tuple, conjA::Symbol, α, β)
+                         A::AnyCuArray, pA::Index2Tuple, conjA::Symbol,
+                         α::Number, β::Number)
     return tensortrace!(C, pC, A, pA, conjA, α, β, StridedCUDA())
 end
 function TO.tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol, α, β,
-                         backend::StridedCUDA)
+                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                         α::Number, β::Number, backend::StridedCUDA)
     tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
     return C
 end
 function TO.tensortrace!(C::CuStridedView, pC::Index2Tuple,
-                         A::CuStridedView, pA::Index2Tuple, conjA::Symbol, α, β,
-                         ::StridedCUDA)
+                         A::CuStridedView, pA::Index2Tuple, conjA::Symbol,
+                         α::Number, β::Number, ::StridedCUDA=StridedCUDA())
     # TODO: check if these checks are necessary
     # -- in principle cuTENSOR already checks this, but the error messages are less clear
     TO.argcheck_tensortrace(C, pC, A, pA)
@@ -304,7 +305,7 @@ end
 function TO.tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                             A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                             B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                            α, β, backend::cuTENSORBackend)
+                            α::Number, β::Number, backend::cuTENSORBackend)
     C_cuda = adapt(CuArray, C)
     tensorcontract!(C_cuda, pC, A, pA, conjA, B, pB, conjB, α, β, backend)
     copyto!(C, collect(C_cuda))
@@ -313,14 +314,14 @@ end
 function TO.tensorcontract!(C::CuArray, pC::Index2Tuple,
                             A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                             B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                            α, β, ::cuTENSORBackend)
+                            α::Number, β::Number, ::cuTENSORBackend)
     return tensorcontract!(C, pC, adapt(CuArray, A), pA, conjA, adapt(CuArray, B), pB,
                            conjB, α, β)
 end
 
 function TO.tensortrace!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         α, β, backend::cuTENSORBackend)
+                         α::Number, β::Number, backend::cuTENSORBackend)
     C_cuda = adapt(CuArray, C)
     tensortrace!(C_cuda, pC, A, pA, conjA, α, β, backend)
     copyto!(C, collect(C_cuda))
@@ -328,7 +329,7 @@ function TO.tensortrace!(C::AbstractArray, pC::Index2Tuple,
 end
 function TO.tensortrace!(C::CuArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         α, β, ::cuTENSORBackend)
+                         α::Number, β::Number, ::cuTENSORBackend)
     return tensortrace!(C, pC, adapt(CuArray, A), pA, conjA, α, β)
 end
 
