@@ -127,7 +127,7 @@ function tensorify(ex::Expr)
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                tempvar = gensym()
+                tempvar = gensym(string(lhs))
                 returnvar = gensym()
                 scalar_expr = quote
                     $(instantiate(tempvar, false, rhs, true, [], [], TemporaryTensor))
