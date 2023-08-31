@@ -47,21 +47,22 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
         dA = @thunk begin
             ipC = invperm(linearize(pC))
             _dA = zerovector(A, promote_type(scalartype(ΔC), typeof(α)))
-            _dA = tensoradd!(_dA, (ipC, ()), ΔC, conjA, conjA == :N ? conj(α) : α, false, backend...)
+            _dA = tensoradd!(_dA, (ipC, ()), ΔC, conjA, conjA == :N ? conj(α) : α, false,
+                             backend...)
             return projectA(_dA)
         end
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(((), ()), A, ((), linearize(pC)),
-                                                _conj(conjA), ΔC,
-                                                (trivtuple(numind(pC)),
-                                                 ()), :N, backend...))
+                                              _conj(conjA), ΔC,
+                                              (trivtuple(numind(pC)),
+                                               ()), :N, backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(((), ()), C,
-                                                ((), trivtuple(numind(pC))), :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N,
-                                                backend...))
+                                              ((), trivtuple(numind(pC))), :C, ΔC,
+                                              (trivtuple(numind(pC)), ()), :N,
+                                              backend...))
             return projectβ(_dβ)
         end
         dbackend = map(x -> NoTangent(), backend)
@@ -87,7 +88,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
     function pullback(ΔC)
         ipC = invperm(linearize(pC))
         pΔC = (TupleTools.getindices(ipC, trivtuple(numout(pA))),
-            TupleTools.getindices(ipC, numout(pA) .+ trivtuple(numin(pB))))
+               TupleTools.getindices(ipC, numout(pA) .+ trivtuple(numin(pB))))
         dC = @thunk projectC(conj(β) * ΔC)
         dA = @thunk begin
             ipA = (invperm(linearize(pA)), ())
@@ -113,19 +114,19 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
         end
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(((), ()),
-                                                tensorcontract(pC, A, pA, conjA, B, pB,
-                                                               conjB),
-                                                ((), trivtuple(numind(pC))),
-                                                :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N,
-                                                backend...))
+                                              tensorcontract(pC, A, pA, conjA, B, pB,
+                                                             conjB),
+                                              ((), trivtuple(numind(pC))),
+                                              :C, ΔC,
+                                              (trivtuple(numind(pC)), ()), :N,
+                                              backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(((), ()), C,
-                                                ((), trivtuple(numind(pC))), :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N,
-                                                backend...))
+                                              ((), trivtuple(numind(pC))), :C, ΔC,
+                                              (trivtuple(numind(pC)), ()), :N,
+                                              backend...))
             return projectβ(_dβ)
         end
         dbackend = map(x -> NoTangent(), backend)
@@ -154,28 +155,30 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
         dA = @thunk begin
             ipC = invperm((linearize(pC)..., pA[1]..., pA[2]...))
             Es = map(pA[1], pA[2]) do i1, i2
-                one(TensorOperations.tensoralloc_add(scalartype(A), ((i1,), (i2,)), A, conjA))
+                return one(TensorOperations.tensoralloc_add(scalartype(A), ((i1,), (i2,)),
+                                                            A, conjA))
             end
             E = _kron(Es, backend...)
             _dA = zerovector(A, promote_type(scalartype(ΔC), typeof(α)))
             _dA = tensorproduct!(_dA, (ipC, ()), ΔC, (trivtuple(numind(pC)), ()), conjA, E,
-            ((), trivtuple(numind(pA))), conjA, conjA == :N ? conj(α) : α, false, backend...)
+                                 ((), trivtuple(numind(pA))), conjA,
+                                 conjA == :N ? conj(α) : α, false, backend...)
             return projectA(_dA)
         end
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(((), ()),
-                                                tensortrace(pC, A, pA, conjA),
-                                                ((), trivtuple(numind(pC))),
-                                                _conj(conjA), ΔC,
-                                                (trivtuple(numind(pC)), ()), :N,
-                                                backend...))
+                                              tensortrace(pC, A, pA, conjA),
+                                              ((), trivtuple(numind(pC))),
+                                              _conj(conjA), ΔC,
+                                              (trivtuple(numind(pC)), ()), :N,
+                                              backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(((), ()), C,
-                                                ((), trivtuple(numind(pC))), :C, ΔC,
-                                                (trivtuple(numind(pC)), ()), :N,
-                                                backend...))
+                                              ((), trivtuple(numind(pC))), :C, ΔC,
+                                              (trivtuple(numind(pC)), ()), :N,
+                                              backend...))
             return projectβ(_dβ)
         end
         dbackend = map(x -> NoTangent(), backend)
@@ -190,9 +193,9 @@ _kron(Es::NTuple{1}, backend...) = Es[1]
 function _kron(Es::NTuple{N,Any}, backend...) where {N}
     E1 = Es[1]
     E2 = _kron(Base.tail(Es), backend...)
-    p2 = ((), trivtuple(2*N-2))
-    p = ((1, (2 .+ trivtuple(N-1))...), (2, ((N+1) .+ trivtuple(N-1))...))
-    return tensorproduct(p, E1, ((1,2),()), :N, E2, p2, :N, true, backend...)
+    p2 = ((), trivtuple(2 * N - 2))
+    p = ((1, (2 .+ trivtuple(N - 1))...), (2, ((N + 1) .+ trivtuple(N - 1))...))
+    return tensorproduct(p, E1, ((1, 2), ()), :N, E2, p2, :N, true, backend...)
 end
 
 end
