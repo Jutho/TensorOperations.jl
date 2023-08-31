@@ -6,6 +6,7 @@ using VectorInterface: VectorInterface
 const PolyTypes = Union{<:AbstractPolynomialLike,<:AbstractTermLike,<:AbstractMonomialLike}
 # not clear if this is really the true `scalartype` we want
 VectorInterface.scalartype(T::Type{<:PolyTypes}) = T
+VectorInterface.zerovector!!(v::PolyTypes) = zero(v)
 function VectorInterface.add!!(w::PolyTypes, v::PolyTypes, α::Number, β::Number)
     return w * β + v * α
 end

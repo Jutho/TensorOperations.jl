@@ -88,7 +88,7 @@ function tensoralloc(ttype, structure, istemp=false, backend::Backend...)
     C = ttype(undef, structure)
     # fix an issue with undefined references for strided arrays
     if !isbitstype(scalartype(ttype))
-        C = fill!(C, zero(scalartype(ttype)))
+        C = zerovector!!(C)
     end
     return C
 end
