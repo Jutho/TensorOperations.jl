@@ -3,7 +3,7 @@
 #-------------------------------------------------------------------------------------------
 
 """
-    tensoradd!(C, pC, A, conjA, α=true, β=true [, backend])
+    tensoradd!(C, pC, A, conjA, α=1, β=1 [, backend])
 
 Compute `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
 temporary. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj`
@@ -17,11 +17,11 @@ See also [`tensoradd`](@ref).
 function tensoradd! end
 # insert default α and β arguments
 function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol)
-    return tensoradd!(C, pC, A, conjA, true, true)
+    return tensoradd!(C, pC, A, conjA, _one, _one)
 end
 
 """
-    tensortrace!(C, pC, A, pA, conjA, α=true, β=false [, backend])
+    tensortrace!(C, pC, A, pA, conjA, α=1, β=0 [, backend])
 
 Compute `C = β * C + α * permutedims(partialtrace(opA(A)), pC)` without creating the
 intermediate temporary, where `A` is partially traced, such that indices in `pA[1]` are
@@ -37,11 +37,11 @@ See also [`tensortrace`](@ref).
 function tensortrace! end
 # insert default α and β arguments
 function tensortrace!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol)
-    return tensortrace!(C, pC, A, pA, conjA, true, false)
+    return tensortrace!(C, pC, A, pA, conjA, _one, _zero)
 end
 
 """
-    tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α=true, β=false [, backend])
+    tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α=1, β=0 [, backend])
 
 Compute `C = β * C + α * permutedims(contract(opA(A), opB(B)), pC)` without creating the
 intermediate temporary, where `A` and `B` are contracted such that the indices `pA[2]` of
@@ -60,7 +60,7 @@ function tensorcontract! end
 function tensorcontract!(C, pC::Index2Tuple,
                          A, pA::Index2Tuple, conjA::Symbol,
                          B, pB::Index2Tuple, conjB::Symbol)
-    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, true, false)
+    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, _one, _zero)
 end
 
 """
