@@ -40,10 +40,9 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          α, β, ::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
-
     if numin(pA) == 1 # matrix multiplication
-        if β != one(β) # multiplication only takes care of diagonal elements of C
-            rmul!(C, β)
+        if !isone(β) # multiplication only takes care of diagonal elements of C
+            iszero(β) ? zerovector!(C) : scale!(C, β)
             β = one(β)
         end
 
@@ -60,11 +59,11 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         C2 = sreshape(StridedView(C), (1,))
 
     else # outer product
-        if β != 1
-            rmul!(C, β)
-            β = 1
+        if !isone(β)
+            iszero(β) ? zerovector!(C) : scale!(C, β)
+            β = one(β)
         end
-
+        @assert !any(isnan.(C))
         A2 = sreshape(StridedView(A.diag), (length(A.diag), 1))
         B2 = sreshape(StridedView(B.diag), (1, length(A.diag)))
 
@@ -75,8 +74,8 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
 
-    op1 = α == 1 ? (*) : (x, y) -> α * x * y
-    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
+    op1 = isone(α) ? (*) : (x, y) -> α * x * y
+    op2 = iszero(β) ? zero : isone(β) ? nothing : y -> β * y
     Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
 
     return C
@@ -120,9 +119,9 @@ function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
         C2 = permutedims(C, invperm(linearize(pC)))
 
     else # numout(pB) == 2 # direct product
-        if β != 1
-            rmul!(C, β)
-            β = 1
+        if !isone(β)
+            iszero(β) ? zerovector!(C) : scale!(C, β)
+            β = one(β)
         end
         A2 = flag2op(conjA)(sreshape(permutedims(A, linearize(pA)), (osizeA..., 1)))
         B2 = flag2op(conjB)(sreshape(Bdiag, ((one.(osizeA))..., length(Bdiag))))
@@ -134,8 +133,8 @@ function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
         C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
 
-    op1 = α == 1 ? (*) : (x, y) -> α * x * y
-    op2 = β == 0 ? zero : β == 1 ? nothing : y -> β * y
+    op1 = isone(α) ? (*) : (x, y) -> α * x * y
+    op2 = iszero(β) ? zero : isone(β) ? nothing : y -> β * y
     Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
 
     return C
