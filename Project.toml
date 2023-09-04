@@ -23,7 +23,7 @@ TensorOperationsChainRulesCoreExt = "ChainRulesCore"
 TensorOperationscuTENSORExt = "cuTENSOR"
 
 [compat]
-Aqua = "0.6"
+Aqua = "0.6, 0.7"
 CUDA = "4"
 ChainRulesCore = "1"
 DynamicPolynomials = "0.5"
