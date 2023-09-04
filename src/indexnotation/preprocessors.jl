@@ -89,6 +89,8 @@ end
 function conjexpr(ex)
     if isgeneraltensor(ex) || isscalarexpr(ex) || isa(ex, Symbol)
         return Expr(:call, :conj, ex)
+    elseif ex === _one || ex === _zero
+        return ex
     elseif isa(ex, Number)
         return conj(ex)
     elseif isexpr(ex, :call) && ex.args[1] == :conj
