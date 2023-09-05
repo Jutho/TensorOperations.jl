@@ -92,7 +92,26 @@ function tensorcontract!(C::Diagonal, pC::Index2Tuple,
     B2 = flag2op(conjB)(StridedView(B.diag))
     C2 = StridedView(C.diag)
 
-    C2 .= α .* A2 .* B2 .+ β .* C2
+    if iszero(β)
+        if isone(α)
+            C2 .= A2 .* B2
+        else
+            C2 .= α .* A2 .* B2
+        end
+    elseif isone(β)
+        if isone(α)
+            C2 .+= .+A2 .* B2
+        else
+            C2 .+= .+α .* A2 .* B2
+        end
+    else
+        if isone(α)
+            C2 .= β .* C2 .+ A2 .* B2
+        else
+            C2 .= β .* C2 .+ α .* A2 .* B2
+        end
+    end
+
     return C
 end
 
