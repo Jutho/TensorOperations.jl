@@ -37,7 +37,8 @@ function instantiate_scalar(ex::Expr)
         tempvar = gensym()
         returnvar = gensym()
         return quote
-            $tempvar = $(instantiate(tempvar, _zero, ex.args[2], _one, [], [], TemporaryTensor))
+            $tempvar = $(instantiate(tempvar, _zero, ex.args[2], _one, [], [],
+                                     TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
             $returnvar

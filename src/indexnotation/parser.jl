@@ -107,7 +107,8 @@ function tensorify(ex::Expr)
                     return instantiate(dst, _zero, rhs, _one, leftind, rightind,
                                        ExistingTensor)
                 elseif ex.head == :(+=)
-                    return instantiate(dst, _one, rhs, _one, leftind, rightind, ExistingTensor)
+                    return instantiate(dst, _one, rhs, _one, leftind, rightind,
+                                       ExistingTensor)
                 else
                     return instantiate(dst, _one, rhs, -_one, leftind, rightind,
                                        ExistingTensor)

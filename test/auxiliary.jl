@@ -89,7 +89,8 @@ using TensorOperations: _one
               (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(($_one / y) * x)), false)
         @test isgeneraltensor(:(x / y * a[5][a, b, c] * y / x))
         @test decomposegeneraltensor(:(x / y * a[5][a, b, c] / y * x)) ==
-              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(((((x / y) * $_one) / y) * x))),
+              (:(a[5]), [:a, :b, :c], [],
+               instantiate_scalar(:(((((x / y) * $_one) / y) * x))),
                false)
         @test isgeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3])))
         @test decomposegeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3]))) ==
