@@ -49,7 +49,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
     projectβ = ProjectTo(β)
 
     function pullback(ΔC)
-        dC = @thunk projectC(_conj(β) * ΔC)
+        dC = @thunk projectC(scale(ΔC, _conj(β)))
         dA = @thunk begin
             ipC = invperm(linearize(pC))
             TA = (α === _one || α === _zero) ? scalartype(ΔC) :
@@ -97,7 +97,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
         ipC = invperm(linearize(pC))
         pΔC = (TupleTools.getindices(ipC, trivtuple(numout(pA))),
                TupleTools.getindices(ipC, numout(pA) .+ trivtuple(numin(pB))))
-        dC = @thunk projectC(_conj(β) * ΔC)
+        dC = @thunk projectC(scale(ΔC, _conj(β)))
         dA = @thunk begin
             ipA = (invperm(linearize(pA)), ())
             conjΔC = conjA == :C ? :C : :N
@@ -159,7 +159,7 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
     projectβ = ProjectTo(β)
 
     function pullback(ΔC)
-        dC = @thunk projectC(_conj(β) * ΔC)
+        dC = @thunk projectC(scale(ΔC, _conj(β)))
         dA = @thunk begin
             ipC = invperm((linearize(pC)..., pA[1]..., pA[2]...))
             Es = map(pA[1], pA[2]) do i1, i2
