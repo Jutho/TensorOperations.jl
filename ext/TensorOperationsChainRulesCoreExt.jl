@@ -167,7 +167,7 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
         end
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(((), ()),
-                                              tensortrace(pC, A, pA, conjA),
+                                              tensortrace(pC, A, pA),
                                               ((), trivtuple(numind(pC))),
                                               _conj(conjA), ΔC,
                                               (trivtuple(numind(pC)), ()), :N,

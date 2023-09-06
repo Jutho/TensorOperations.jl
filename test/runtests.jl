@@ -23,7 +23,7 @@ end
     include("tensor.jl")
 end
 
-@testset "ad" begin
+@testset "ad" verbose = true begin
     include("ad.jl")
 end
 

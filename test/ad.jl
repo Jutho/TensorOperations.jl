@@ -110,6 +110,7 @@ end
 end
 
 @testset "tensortrace" begin
+    # single trace index, homogeneous scalar type, no conjugation
     @testset for T in (Float64, ComplexF64)
         A = rand(T, 2, 3, 4, 2)
         C = rand(T, 4, 3)
@@ -120,6 +121,30 @@ end
         pC = ((3, 2), ())
 
         conjA = :N
+
+        D, pullback = Zygote.pullback(tensortrace!, C, pC, A, pA, conjA, α, β)
+        D′, pullback′ = Zygote.pullback(LinAlg_tensortrace, C, pC, A, pA, conjA, α, β)
+        @test D ≈ D′ rtol = precision(T)
+
+        ΔD = rand(T, size(D))
+        ΔC, ΔpC, ΔA, ΔpA, ΔconjA, Δα, Δβ = pullback(ΔD)
+        ΔC′, ΔpC′, ΔA′, ΔpA′, ΔconjA′, Δα′, Δβ′ = pullback′(ΔD)
+        @test ΔC ≈ ΔC′ rtol = precision(T)
+        @test ΔA ≈ ΔA′ rtol = precision(T)
+        @test Δα ≈ Δα′ rtol = precision(T)
+        @test Δβ ≈ Δβ′ rtol = precision(T)
+    end
+    # multiple trace indices, mixed scalar types, conjugation
+    @testset for T in (Float64, ComplexF64)
+        A = rand(T, 2, 4, 3, 3, 4, 2, 3, 4)
+        C = rand(T, 4, 3)
+        α = rand(T)
+        β = rand(real(T))
+
+        pA = ((1, 2, 7), (6, 8, 3))
+        pC = ((5, 4), ())
+
+        conjA = :C
 
         D, pullback = Zygote.pullback(tensortrace!, C, pC, A, pA, conjA, α, β)
         D′, pullback′ = Zygote.pullback(LinAlg_tensortrace, C, pC, A, pA, conjA, α, β)
