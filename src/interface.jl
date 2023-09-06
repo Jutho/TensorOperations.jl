@@ -17,7 +17,7 @@ See also [`tensoradd`](@ref).
 function tensoradd! end
 # insert default α and β arguments
 function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol)
-    return tensoradd!(C, pC, A, conjA, _one, _one)
+    return tensoradd!(C, pC, A, conjA, One(), One())
 end
 
 """
@@ -37,7 +37,7 @@ See also [`tensortrace`](@ref).
 function tensortrace! end
 # insert default α and β arguments
 function tensortrace!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol)
-    return tensortrace!(C, pC, A, pA, conjA, _one, _zero)
+    return tensortrace!(C, pC, A, pA, conjA, One(), Zero())
 end
 
 """
@@ -60,7 +60,7 @@ function tensorcontract! end
 function tensorcontract!(C, pC::Index2Tuple,
                          A, pA::Index2Tuple, conjA::Symbol,
                          B, pB::Index2Tuple, conjB::Symbol)
-    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, _one, _zero)
+    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, One(), Zero())
 end
 
 """

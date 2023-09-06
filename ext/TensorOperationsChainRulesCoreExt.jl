@@ -6,24 +6,18 @@ if !isdefined(Base, :get_extension)
     using ..ChainRulesCore
     using ..TupleTools
     using ..VectorInterface
-    using ..VectorInterface: _one, _zero
 else
     using TensorOperations
     using TensorOperations: numind, numin, numout, promote_contract
     using ChainRulesCore
     using TupleTools
     using VectorInterface
-    using VectorInterface: _one, _zero
 end
 
 using TupleTools: invperm
 using LinearAlgebra
 
-_conj(x) = conj(x)
-# StaticInt and Symbols don't work with conj because of invalidations
-_conj(x::Union{typeof(_one),typeof(VectorInterface._zero)}) = x
 _conj(conjA::Symbol) = conjA == :C ? :N : :C
-
 trivtuple(N) = ntuple(identity, N)
 
 @non_differentiable TensorOperations.tensorstructure(args...)
@@ -49,13 +43,11 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
     projectβ = ProjectTo(β)
 
     function pullback(ΔC)
-        dC = @thunk projectC(scale(ΔC, _conj(β)))
+        dC = @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk begin
             ipC = invperm(linearize(pC))
-            TA = (α === _one || α === _zero) ? scalartype(ΔC) :
-                 promote_type(scalartype(ΔC), typeof(α))
-            _dA = zerovector(A, TA)
-            _dA = tensoradd!(_dA, (ipC, ()), ΔC, conjA, conjA == :N ? _conj(α) : α, _zero,
+            _dA = zerovector(A, VectorInterface.promote_add(ΔC, α))
+            _dA = tensoradd!(_dA, (ipC, ()), ΔC, conjA, conjA == :N ? conj(α) : α, Zero(),
                              backend...)
             return projectA(_dA)
         end
@@ -97,7 +89,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
         ipC = invperm(linearize(pC))
         pΔC = (TupleTools.getindices(ipC, trivtuple(numout(pA))),
                TupleTools.getindices(ipC, numout(pA) .+ trivtuple(numin(pB))))
-        dC = @thunk projectC(scale(ΔC, _conj(β)))
+        dC = @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk begin
             ipA = (invperm(linearize(pA)), ())
             conjΔC = conjA == :C ? :C : :N
@@ -106,7 +98,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
             _dA = tensorcontract!(_dA, ipA,
                                   ΔC, pΔC, conjΔC,
                                   B, reverse(pB), conjB′,
-                                  conjA == :C ? α : _conj(α), _zero, backend...)
+                                  conjA == :C ? α : conj(α), Zero(), backend...)
             return projectA(_dA)
         end
         dB = @thunk begin
@@ -117,7 +109,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
             _dB = tensorcontract!(_dB, ipB,
                                   A, reverse(pA), conjA′,
                                   ΔC, pΔC, conjΔC,
-                                  conjB == :C ? α : _conj(α), _zero, backend...)
+                                  conjB == :C ? α : conj(α), Zero(), backend...)
             return projectB(_dB)
         end
         dα = @thunk begin
@@ -159,7 +151,7 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
     projectβ = ProjectTo(β)
 
     function pullback(ΔC)
-        dC = @thunk projectC(scale(ΔC, _conj(β)))
+        dC = @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk begin
             ipC = invperm((linearize(pC)..., pA[1]..., pA[2]...))
             Es = map(pA[1], pA[2]) do i1, i2
@@ -170,7 +162,7 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
             _dA = zerovector(A, promote_type(scalartype(ΔC), typeof(α)))
             _dA = tensorproduct!(_dA, (ipC, ()), ΔC, (trivtuple(numind(pC)), ()), conjA, E,
                                  ((), trivtuple(numind(pA))), conjA,
-                                 conjA == :N ? _conj(α) : α, _zero, backend...)
+                                 conjA == :N ? conj(α) : α, Zero(), backend...)
             return projectA(_dA)
         end
         dα = @thunk begin
@@ -203,7 +195,7 @@ function _kron(Es::NTuple{N,Any}, backend...) where {N}
     E2 = _kron(Base.tail(Es), backend...)
     p2 = ((), trivtuple(2 * N - 2))
     p = ((1, (2 .+ trivtuple(N - 1))...), (2, ((N + 1) .+ trivtuple(N - 1))...))
-    return tensorproduct(p, E1, ((1, 2), ()), :N, E2, p2, :N, _one, backend...)
+    return tensorproduct(p, E1, ((1, 2), ()), :N, E2, p2, :N, One(), backend...)
 end
 
 end

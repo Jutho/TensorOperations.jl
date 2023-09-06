@@ -1,5 +1,3 @@
-using TensorOperations: _one
-
 @testset "macro methods" begin
     @testset "tensorexpressions" begin
         using TensorOperations: isassignment, isdefinition, getlhs, getrhs, isindex,
@@ -8,6 +6,7 @@ using TensorOperations: _one
                                 hastraceindices, getindices, getallindices,
                                 normalizeindex, instantiate_scalar, instantiate_scalartype,
                                 decomposetensor, decomposegeneraltensor
+        using VectorInterface: One
 
         @test isassignment(:(a[-1, -2, -3] = b[-1, -2, 1] * c[1, -3] + d[-2, -3, -1]))
         @test isassignment(:(a[-1, -2, -3] += b[-1, -2, 1] * c[1, -3] + d[-2, -3, -1]))
@@ -74,28 +73,29 @@ using TensorOperations: _one
 
         @test isgeneraltensor(:(conj(a[1, 2, 3])))
         @test decomposegeneraltensor(:(conj(a[1, 2, 3]))) ==
-              (:a, [1, 2, 3], [], _one, true)
+              (:a, Any[1, 2, 3], [], One(), true)
         @test isgeneraltensor(:(x * a[5][a b c]))
         @test decomposegeneraltensor(:(x * a[5][a b c])) ==
-              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(x * $_one)), false)
+              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(x * $(One()))), false)
         @test isgeneraltensor(:(x * x * a[5][a, b, c]))
         @test decomposegeneraltensor(:(x * x * a[5][a, b, c])) ==
-              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(x * x * $_one)), false)
+              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(x * x * $(One()))), false)
         @test isgeneraltensor(:(x * a[5][a, b, c] * x))
         @test decomposegeneraltensor(:(x * a[5][a, b, c] * x)) ==
-              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(x * $_one * x)), false)
+              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(x * $(One()) * x)), false)
         @test isgeneraltensor(:(a[5][a, b, c] * x / y))
         @test decomposegeneraltensor(:(a[5][a, b, c] / y * x)) ==
-              (:(a[5]), [:a, :b, :c], [], instantiate_scalar(:(($_one / y) * x)), false)
+              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(($(One()) / y) * x)),
+               false)
         @test isgeneraltensor(:(x / y * a[5][a, b, c] * y / x))
         @test decomposegeneraltensor(:(x / y * a[5][a, b, c] / y * x)) ==
-              (:(a[5]), [:a, :b, :c], [],
-               instantiate_scalar(:(((((x / y) * $_one) / y) * x))),
+              (:(a[5]), Any[:a, :b, :c], [],
+               instantiate_scalar(:(((((x / y) * $(One())) / y) * x))),
                false)
         @test isgeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3])))
         @test decomposegeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3]))) ==
               (:(cos(y)), Any[:a, :b, :c], Any[1, 2, 3],
-               instantiate_scalar(:(3 * conj(a * $_one))), true)
+               instantiate_scalar(:(3 * conj(a * $(One())))), true)
         @test !isgeneraltensor(:(1 / a[1, 2, 3]))
         @test !isgeneraltensor(:(a[1 2 3; 4 5 6] \ x))
         @test !isgeneraltensor(:(cos(y)[a b c; 1 2 3] * b[4, 5]))

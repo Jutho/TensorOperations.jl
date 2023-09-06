@@ -37,7 +37,7 @@ function instantiate_scalar(ex::Expr)
         tempvar = gensym()
         returnvar = gensym()
         return quote
-            $tempvar = $(instantiate(tempvar, _zero, ex.args[2], _one, [], [],
+            $tempvar = $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [],
                                      TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
@@ -52,9 +52,9 @@ end
 instantiate_scalar(ex::Symbol) = ex
 instantiate_scalar(ex) = ex
 function simplify_scalarmul(exa, exb)
-    if exa === _one
+    if exa === One()
         return exb
-    elseif exb === _one
+    elseif exb === One()
         return exa
     end
     if exa isa Number && exb isa Number
@@ -120,7 +120,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         istemporary = (alloc === TemporaryTensor)
-        Tval = α === _one ? instantiate_scalartype(ex) :
+        Tval = α === One() ? instantiate_scalartype(ex) :
                instantiate_scalartype(Expr(:call, :*, α, ex))
         out = Expr(:block, Expr(:(=), TC, Tval),
                    :($dst = tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary)))
@@ -158,7 +158,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         push!(out.args, Expr(:(=), TC, instantiate_scalartype(ex)))
-        α′ = (α === _one) ? Expr(:call, :one, TC) :
+        α′ = (α === One()) ? Expr(:call, :one, TC) :
              Expr(:call, :*, Expr(:call, :one, TC), α)
         push!(out.args, instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc))
     else
@@ -166,12 +166,12 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
     end
     if ex.args[1] == :- && length(ex.args) == 3
         push!(out.args,
-              instantiate(dst, _one, ex.args[3], Expr(:call, :-, α), leftind, rightind,
+              instantiate(dst, One(), ex.args[3], Expr(:call, :-, α), leftind, rightind,
                           ExistingTensor))
     elseif ex.args[1] == :+
         for k in 3:length(ex.args)
             push!(out.args,
-                  instantiate(dst, _one, ex.args[k], α, leftind, rightind, ExistingTensor))
+                  instantiate(dst, One(), ex.args[k], α, leftind, rightind, ExistingTensor))
         end
     else
         throw(ArgumentError("unable to instantiate linear combination: $ex"))
@@ -193,7 +193,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     out = Expr(:block)
     if !isgeneraltensor(exA) || hastraceindices(exA)
         A = gensym(string(dst) * "_A")
-        push!(out.args, instantiate(A, _zero, exA, _one, oindA, cind, TemporaryTensor))
+        push!(out.args, instantiate(A, Zero(), exA, One(), oindA, cind, TemporaryTensor))
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
         conjA = :(:N)
@@ -209,7 +209,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     end
     if !isgeneraltensor(exB) || hastraceindices(exB)
         B = gensym(string(dst) * "_B")
-        push!(out.args, instantiate(B, _zero, exB, _one, cind, oindB, TemporaryTensor))
+        push!(out.args, instantiate(B, Zero(), exB, One(), cind, oindB, TemporaryTensor))
         poB = length(cind) .+ ((1:length(oindB))...,)
         pcB = ((1:length(cind))...,)
         conjB = :(:N)
@@ -243,7 +243,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         TCsym = gensym("T_" * string(dst))
         TCval = Expr(:call, :promote_contract, Expr(:call, :scalartype, A),
                      Expr(:call, :scalartype, B))
-        if α !== _one
+        if α !== One()
             TCval = Expr(:call, :(Base.promote_op), :*, instantiate_scalartype(α), TCval)
         end
         istemporary = alloc === TemporaryTensor

@@ -1,7 +1,6 @@
 module TensorOperations
 
 using VectorInterface
-using VectorInterface: _one, _zero
 using TupleTools: TupleTools, isperm, invperm
 
 using LinearAlgebra

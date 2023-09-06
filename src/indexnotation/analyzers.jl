@@ -38,7 +38,7 @@ object, the left and right indices, the scalar factor, and the conjugation flag.
 function decomposegeneraltensor(ex)
     if istensor(ex)
         object, leftind, rightind = decomposetensor(ex)
-        return (object, leftind, rightind, _one, false)
+        return (object, leftind, rightind, One(), false)
     elseif isexpr(ex, :call)
         if ex.args[1] == :+ && length(ex.args) == 2 # unary plus: pass on
             return decomposegeneraltensor(ex.args[2])
@@ -47,7 +47,7 @@ function decomposegeneraltensor(ex)
             return (object, leftind, rightind, Expr(:call, :-, α), conj)
         elseif ex.args[1] == :conj && length(ex.args) == 2 # conjugation: flip conjugation flag and conjugate scalar factor
             (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
-            return (object, leftind, rightind, α === _one ? α : Expr(:call, :conj, α),
+            return (object, leftind, rightind, α === One() ? α : Expr(:call, :conj, α),
                     !conj)
         elseif ex.args[1] == :* && length(ex.args) >= 3 &&
                count(a -> isgeneraltensor(a), ex.args) == 1 # scalar multiplication: multiply scalar factors

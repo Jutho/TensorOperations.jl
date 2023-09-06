@@ -104,13 +104,13 @@ function tensorify(ex::Expr)
             end
             if isassignment(ex)
                 if ex.head == :(=)
-                    return instantiate(dst, _zero, rhs, _one, leftind, rightind,
+                    return instantiate(dst, Zero(), rhs, One(), leftind, rightind,
                                        ExistingTensor)
                 elseif ex.head == :(+=)
-                    return instantiate(dst, _one, rhs, _one, leftind, rightind,
+                    return instantiate(dst, One(), rhs, One(), leftind, rightind,
                                        ExistingTensor)
                 else
-                    return instantiate(dst, _one, rhs, -_one, leftind, rightind,
+                    return instantiate(dst, One(), rhs, -One(), leftind, rightind,
                                        ExistingTensor)
                 end
             else
@@ -119,11 +119,11 @@ function tensorify(ex::Expr)
                     dst2 = gensym(dst)
                     return quote
                         $dst2 = $dst
-                        $(instantiate(dst2, _zero, rhs, _one, leftind, rightind, NewTensor))
+                        $(instantiate(dst2, Zero(), rhs, One(), leftind, rightind, NewTensor))
                         $dst = $dst2
                     end
                 else
-                    return instantiate(dst, _zero, rhs, _one, leftind, rightind, NewTensor)
+                    return instantiate(dst, Zero(), rhs, One(), leftind, rightind, NewTensor)
                 end
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
@@ -131,7 +131,7 @@ function tensorify(ex::Expr)
                 tempvar = gensym(string(lhs))
                 returnvar = gensym()
                 scalar_expr = quote
-                    $(instantiate(tempvar, _zero, rhs, _one, [], [], TemporaryTensor))
+                    $(instantiate(tempvar, Zero(), rhs, One(), [], [], TemporaryTensor))
                     $returnvar = tensorscalar($tempvar)
                     tensorfree!($tempvar)
                     $returnvar
@@ -159,7 +159,7 @@ function tensorify(ex::Expr)
         tempvar = gensym()
         returnvar = gensym()
         return quote
-            $(instantiate(tempvar, _zero, ex, _one, [], [], TemporaryTensor))
+            $(instantiate(tempvar, Zero(), ex, One(), [], [], TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
             $returnvar
