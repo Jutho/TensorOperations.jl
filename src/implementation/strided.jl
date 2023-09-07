@@ -7,29 +7,14 @@ function tensoradd!(C::StridedView, pC::Index2Tuple,
                     backend::Union{StridedNative,StridedBLAS}=StridedNative())
     argcheck_tensoradd(C, pC, A)
     dimcheck_tensoradd(C, pC, A)
-
-    p = linearize(pC)
     if !istrivialpermutation(pC) && Base.mightalias(C, A)
         throw(ArgumentError("output tensor must not be aliased with input tensor"))
     end
+
     A′ = permutedims(flag2op(conjA)(A), linearize(pC))
-    if isone(α)
-        if iszero(β)
-            return Strided._mapreducedim!(identity, +, zero, size(C), (C, A′))
-        elseif isone(β)
-            Strided._mapreducedim!(identity, +, nothing, size(C), (C, A′))
-        else
-            Strided._mapreducedim!(identity, +, y -> β * y, size(C), (C, A′))
-        end
-    else
-        if iszero(β)
-            Strided._mapreducedim!(x -> α * x, +, zero, size(C), (C, A′))
-        elseif isone(β)
-            Strided._mapreducedim!(x -> α * x, +, nothing, size(C), (C, A′))
-        else
-            Strided._mapreducedim!(x -> α * x, +, y -> β * y, size(C), (C, A′))
-        end
-    end
+    op1 = Base.Fix2(scale, α)
+    op2 = Base.Fix2(scale, β)
+    Strided._mapreducedim!(op1, +, op2, size(C), (C, A′))
     return C
 end
 
@@ -48,24 +33,11 @@ function tensortrace!(C::StridedView, pC::Index2Tuple,
     tracesize = sizeA.(pA[1])
     newstrides = (strideA.(linearize(pC))..., (strideA.(pA[1]) .+ strideA.(pA[2]))...)
     newsize = (size(C)..., tracesize...)
+
     A′ = flag2op(conjA)(StridedView(A.parent, newsize, newstrides, A.offset, A.op))
-    if isone(α)
-        if iszero(β)
-            return Strided._mapreducedim!(identity, +, zero, newsize, (C, A′))
-        elseif isone(β)
-            Strided._mapreducedim!(identity, +, nothing, newsize, (C, A′))
-        else
-            Strided._mapreducedim!(identity, +, y -> β * y, newsize, (C, A′))
-        end
-    else
-        if iszero(β)
-            Strided._mapreducedim!(x -> α * x, +, zero, newsize, (C, A′))
-        elseif isone(β)
-            Strided._mapreducedim!(x -> α * x, +, nothing, newsize, (C, A′))
-        else
-            Strided._mapreducedim!(x -> α * x, +, y -> β * y, newsize, (C, A′))
-        end
-    end
+    op1 = Base.Fix2(scale, α)
+    op2 = Base.Fix2(scale, β)
+    Strided._mapreducedim!(op1, +, op2, newsize, (C, A′))
     return C
 end
 
@@ -135,41 +107,17 @@ function tensorcontract!(C::StridedView, pC::Index2Tuple,
     osizeA = TupleTools.getindices(sizeA, pA[1])
     osizeB = TupleTools.getindices(sizeB, pB[2])
 
-    let opA = flag2op(conjA), opB = flag2op(conjB), α = α
-        AS = sreshape(permutedims(A, linearize(pA)),
-                      (osizeA..., one.(osizeB)..., csizeA...))
-        BS = sreshape(permutedims(B, linearize(reverse(pB))),
-                      (one.(osizeA)..., osizeB..., csizeB...))
-        CS = sreshape(permutedims(C, invperm(linearize(pC))),
-                      (osizeA..., osizeB..., one.(csizeA)...))
-        tsize = (osizeA..., osizeB..., csizeA...)
+    AS = sreshape(permutedims(flag2op(conjA)(A), linearize(pA)),
+                  (osizeA..., one.(osizeB)..., csizeA...))
+    BS = sreshape(permutedims(flag2op(conjB)(B), linearize(reverse(pB))),
+                  (one.(osizeA)..., osizeB..., csizeB...))
+    CS = sreshape(permutedims(C, invperm(linearize(pC))),
+                  (osizeA..., osizeB..., one.(csizeA)...))
+    tsize = (osizeA..., osizeB..., csizeA...)
 
-        if α != 1
-            op1 = (x, y) -> α * opA(x) * opB(y)
-            if β == 0
-                Strided._mapreducedim!(op1, +, zero, tsize, (CS, AS, BS))
-            elseif β == 1
-                Strided._mapreducedim!(op1, +, nothing, tsize, (CS, AS, BS))
-            else
-                Strided._mapreducedim!(op1, +, y -> β * y, tsize, (CS, AS, BS))
-            end
-        else
-            op2 = (x, y) -> opA(x) * opB(y)
-            if β == 0
-                if isbitstype(eltype(C))
-                    Strided._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
-                else
-                    fill!(C, zero(eltype(C)))
-                    Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
-                end
-            elseif β == 1
-                Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
-            else
-                Strided._mapreducedim!(op2, +, y -> β * y, tsize, (CS, AS, BS))
-            end
-        end
-    end
-
+    op1 = (x, y) -> scale(x * y, α)
+    op2 = Base.Fix2(scale, β)
+    Strided._mapreducedim!(op1, +, op2, tsize, (CS, AS, BS))
     return C
 end
 
@@ -224,7 +172,7 @@ end
     flagA = isblascontractable(A, pA, conjA) && eltype(A) == TC
     if !flagA
         A_ = StridedView(TensorOperations.tensoralloc_add(TC, pA, A, conjA, true))
-        A = tensoradd!(A_, pA, A, conjA, one(TC), zero(TC))
+        A = tensoradd!(A_, pA, A, conjA, One(), Zero())
         conjA = :N
         pA = trivialpermutation(pA)
     end
