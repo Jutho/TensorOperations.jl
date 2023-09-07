@@ -158,7 +158,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         push!(out.args, Expr(:(=), TC, instantiate_scalartype(ex)))
-        α′ = (α === One()) ? Expr(:call, :one, TC) :
+        α′ = (α === One()) ? α :
              Expr(:call, :*, Expr(:call, :one, TC), α)
         push!(out.args, instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc))
     else
