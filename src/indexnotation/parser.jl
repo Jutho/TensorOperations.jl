@@ -119,11 +119,13 @@ function tensorify(ex::Expr)
                     dst2 = gensym(dst)
                     return quote
                         $dst2 = $dst
-                        $(instantiate(dst2, Zero(), rhs, One(), leftind, rightind, NewTensor))
+                        $(instantiate(dst2, Zero(), rhs, One(), leftind, rightind,
+                                      NewTensor))
                         $dst = $dst2
                     end
                 else
-                    return instantiate(dst, Zero(), rhs, One(), leftind, rightind, NewTensor)
+                    return instantiate(dst, Zero(), rhs, One(), leftind, rightind,
+                                       NewTensor)
                 end
             end
         elseif isassignment(ex) && isscalarexpr(lhs)

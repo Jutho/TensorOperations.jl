@@ -218,7 +218,8 @@ function tensorcontract(IC, A, IA, conjA::Symbol, B, IB, conjB::Symbol, α::Numb
 end
 # expert mode
 function tensorcontract(pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol, B,
-                        pB::Index2Tuple, conjB::Symbol, α::Number=One(), backend::Backend...)
+                        pB::Index2Tuple, conjB::Symbol, α::Number=One(),
+                        backend::Backend...)
     TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
     C = tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB)
     return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, Zero(), backend...)
