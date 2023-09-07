@@ -159,7 +159,7 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
                                                             A, conjA))
             end
             E = _kron(Es, backend...)
-            _dA = zerovector(A, promote_type(scalartype(ΔC), typeof(α)))
+            _dA = zerovector(A, VectorInterface.promote_scale(ΔC, α))
             _dA = tensorproduct!(_dA, (ipC, ()), ΔC, (trivtuple(numind(pC)), ()), conjA, E,
                                  ((), trivtuple(numind(pA))), conjA,
                                  conjA == :N ? conj(α) : α, Zero(), backend...)
