@@ -3,7 +3,8 @@
 #-------------------------------------------------------------------------------------------
 function tensoradd!(C::StridedView, pC::Index2Tuple,
                     A::StridedView, conjA::Symbol,
-                    α, β, backend::Union{StridedNative,StridedBLAS}=StridedNative())
+                    α::Number, β::Number,
+                    backend::Union{StridedNative,StridedBLAS}=StridedNative())
     argcheck_tensoradd(C, pC, A)
     dimcheck_tensoradd(C, pC, A)
 
@@ -34,7 +35,8 @@ end
 
 function tensortrace!(C::StridedView, pC::Index2Tuple,
                       A::StridedView, pA::Index2Tuple, conjA::Symbol,
-                      α, β, backend::Union{StridedNative,StridedBLAS}=StridedNative())
+                      α::Number, β::Number,
+                      backend::Union{StridedNative,StridedBLAS}=StridedNative())
     argcheck_tensortrace(C, pC, A, pA)
     dimcheck_tensortrace(C, pC, A, pA)
 
@@ -70,7 +72,7 @@ end
 function tensorcontract!(C::StridedView{T}, pC::Index2Tuple,
                          A::StridedView, pA::Index2Tuple, conjA::Symbol,
                          B::StridedView, pB::Index2Tuple, conjB::Symbol,
-                         α, β,
+                         α::Number, β::Number,
                          backend::StridedBLAS=StridedBLAS()) where {T<:LinearAlgebra.BlasFloat}
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
@@ -98,7 +100,7 @@ end
 function tensorcontract!(C::StridedView{T,2}, pC::Index2Tuple{1,1},
                          A::StridedView{T,2}, pA::Index2Tuple{1,1}, conjA::Symbol,
                          B::StridedView{T,2}, pB::Index2Tuple{1,1}, conjB::Symbol,
-                         α, β,
+                         α::Number, β::Number,
                          backend::StridedBLAS=StridedBLAS()) where {T<:LinearAlgebra.BlasFloat}
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
@@ -121,7 +123,7 @@ end
 function tensorcontract!(C::StridedView, pC::Index2Tuple,
                          A::StridedView, pA::Index2Tuple, conjA::Symbol,
                          B::StridedView, pB::Index2Tuple, conjB::Symbol,
-                         α, β,
+                         α::Number, β::Number,
                          backend::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)

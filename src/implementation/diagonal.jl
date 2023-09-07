@@ -4,7 +4,7 @@
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,
-                         α, β, ::StridedNative)
+                         α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
@@ -16,7 +16,7 @@ end
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::Diagonal, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                         α, β, ::StridedNative)
+                         α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
@@ -37,7 +37,7 @@ end
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::Diagonal, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,
-                         α, β, ::StridedNative)
+                         α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
     if numin(pA) == 1 # matrix multiplication
@@ -83,7 +83,7 @@ end
 function tensorcontract!(C::Diagonal, pC::Index2Tuple,
                          A::Diagonal, pA::Index2Tuple, conjA::Symbol,
                          B::Diagonal, pB::Index2Tuple, conjB::Symbol,
-                         α, β, ::StridedNative)
+                         α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
@@ -91,15 +91,14 @@ function tensorcontract!(C::Diagonal, pC::Index2Tuple,
     B2 = flag2op(conjB)(StridedView(B.diag))
     C2 = StridedView(C.diag)
 
-    C2 .= β .* C2 .+ α .* A2 .* B2
-
+    C2 .= C2 .* β .+ A2 .* B2 .* α
     return C
 end
 
 function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
                               A::StridedView, pA::Index2Tuple, conjA::Symbol,
                               Bdiag::StridedView, pB::Index2Tuple, conjB::Symbol,
-                              α, β)
+                              α::Number, β::Number)
     sizeA = i -> size(A, i)
     csizeA = sizeA.(pA[2])
     osizeA = sizeA.(pA[1])
