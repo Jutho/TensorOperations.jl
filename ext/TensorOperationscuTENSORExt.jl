@@ -1,20 +1,7 @@
 module TensorOperationscuTENSORExt
 
-if !isdefined(Base, :get_extension)
-    using ..TensorOperations
-    using ..cuTENSOR: cuTENSOR
-    # import ..cuTENSOR.CUDA as CUDA
-else
-    using TensorOperations
-    using cuTENSOR: cuTENSOR
-    # import cuTENSOR.CUDA as CUDA
-end
-
 using TensorOperations
-using TupleTools
-using Strided
-
-using cuTENSOR: CUDA, handle, CuTensorDescriptor, cudaDataType_t,
+using cuTENSOR: cuTENSOR, CUDA, handle, CuTensorDescriptor, cudaDataType_t,
                 cutensorContractionDescriptor_t,
                 cutensorContractionFind_t, cutensorContractionPlan_t,
                 CUTENSOR_OP_IDENTITY,
@@ -26,12 +13,13 @@ using cuTENSOR: CUDA, handle, CuTensorDescriptor, cudaDataType_t,
                 cutensorInitContractionDescriptor, cutensorInitContractionFind,
                 cutensorContractionGetWorkspace, cutensorInitContractionPlan,
                 cutensorContraction, CUTENSORError
-using cuTENSOR.CUDA: CUDA, CuArray, AnyCuArray
+using cuTENSOR.CUDA: CUDA, CuArray, AnyCuArray, with_workspace, default_stream
 using cuTENSOR.CUDA.CUBLAS: CublasFloat, CublasReal
-using cuTENSOR.CUDA: with_workspace, default_stream
-
 # this might be dependency-piracy, but removes a dependency from the main package
 using cuTENSOR.CUDA.Adapt: adapt
+using TensorOperations
+using TupleTools
+using Strided
 
 const TO = TensorOperations
 const CuStridedView{T,N,A} = StridedView{T,N,A} where {T,N,A<:CuArray{T}}
@@ -59,6 +47,7 @@ end
 _strideop_to_cuop(::typeof(identity)) = CUTENSOR_OP_IDENTITY
 _strideop_to_cuop(::typeof(conj)) = CUTENSOR_OP_CONJ
 
+# this is type piracy -> should be implemented in Strided.jl
 function Base.unsafe_convert(::Type{CUDA.CuPtr{T}}, a::CuStridedView{T}) where {T}
     return pointer(a.parent, a.offset + 1)
 end

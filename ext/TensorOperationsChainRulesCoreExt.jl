@@ -1,19 +1,10 @@
 module TensorOperationsChainRulesCoreExt
 
-if !isdefined(Base, :get_extension)
-    using ..TensorOperations
-    using ..TensorOperations: numind, numin, numout, promote_contract
-    using ..ChainRulesCore
-    using ..TupleTools
-    using ..VectorInterface
-else
-    using TensorOperations
-    using TensorOperations: numind, numin, numout, promote_contract
-    using ChainRulesCore
-    using TupleTools
-    using VectorInterface
-end
-
+using TensorOperations
+using TensorOperations: numind, numin, numout, promote_contract
+using ChainRulesCore
+using TupleTools
+using VectorInterface
 using TupleTools: invperm
 using LinearAlgebra
 

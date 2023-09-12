@@ -71,15 +71,9 @@ const costcache = LRU{Any,Any}(; maxsize=10^5)
 # Package extensions backwards compatibility
 #--------------------------------------------
 
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-@static if !isdefined(Base, :get_extension)
-    function __init__()
-        @require ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4" include("../ext/TensorOperationsChainRulesCoreExt.jl")
-        @require cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1" include("../ext/TensorOperationscuTENSORExt.jl")
-    end
+using PackageExtensionCompat
+function __init__()
+    @require_extensions
 end
 
 end # module
