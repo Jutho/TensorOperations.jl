@@ -115,7 +115,7 @@ function tensorcontract!(C::StridedView, pC::Index2Tuple,
                   (osizeA..., osizeB..., one.(csizeA)...))
     tsize = (osizeA..., osizeB..., csizeA...)
 
-    op1 = (x, y) -> scale(x * y, α)
+    op1 = Base.Fix2(scale, α) ∘ *
     op2 = Base.Fix2(scale, β)
     Strided._mapreducedim!(op1, +, op2, tsize, (CS, AS, BS))
     return C

@@ -70,7 +70,7 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
 
-    op1 = (x, y) -> scale(x * y, α)
+    op1 = Base.Fix2(scale, α) ∘ *
     op2 = Base.Fix2(scale, β)
     Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
 
@@ -127,7 +127,7 @@ function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
         C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
 
-    op1 = (x, y) -> scale(x * y, α)
+    op1 = Base.Fix2(scale, α) ∘ *
     op2 = Base.Fix2(scale, β)
     Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
 
