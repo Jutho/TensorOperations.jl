@@ -47,11 +47,6 @@ end
 _strideop_to_cuop(::typeof(identity)) = CUTENSOR_OP_IDENTITY
 _strideop_to_cuop(::typeof(conj)) = CUTENSOR_OP_CONJ
 
-# this is type piracy -> should be implemented in Strided.jl
-function Base.unsafe_convert(::Type{CUDA.CuPtr{T}}, a::CuStridedView{T}) where {T}
-    return pointer(a.parent, a.offset + 1)
-end
-
 function tensordescriptor(T::Type{<:Number}, A::CuArray, pA::Index2Tuple, conjA::Symbol)
     return CuTensorDescriptor(A;
                               op=tensorop(T, conjA),
