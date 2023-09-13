@@ -17,7 +17,7 @@ const StridedBLAS = Backend{:StridedBLAS}
 
 function tensoradd!(C::AbstractArray, pC::Index2Tuple,
                     A::AbstractArray, conjA::Symbol,
-                    α, β)
+                    α::Number, β::Number)
     return tensoradd!(C, pC, A, conjA, α, β, StridedNative())
 end
 
@@ -30,7 +30,7 @@ end
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                         α, β)
+                         α::Number, β::Number)
     if eltype(C) <: LinearAlgebra.BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
         return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedBLAS())
     else
@@ -44,14 +44,14 @@ end
 
 function tensoradd!(C::AbstractArray, pC::Index2Tuple,
                     A::AbstractArray, conjA::Symbol,
-                    α, β, backend::Union{StridedNative,StridedBLAS})
+                    α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
     tensoradd!(StridedView(C), pC, StridedView(A), conjA, α, β, backend)
     return C
 end
 
 function tensortrace!(C::AbstractArray, pC::Index2Tuple,
                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                      α, β, backend::Union{StridedNative,StridedBLAS})
+                      α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
     tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
     return C
 end
@@ -59,7 +59,7 @@ end
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                         α, β, ::StridedBLAS)
+                         α::Number, β::Number, ::StridedBLAS)
     tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
                     StridedView(B), pB, conjB, α, β, StridedBLAS())
     return C
@@ -68,7 +68,7 @@ end
 function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                         α, β, ::StridedNative)
+                         α::Number, β::Number, ::StridedNative)
     tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
                     StridedView(B), pB, conjB, α, β, StridedNative())
     return C

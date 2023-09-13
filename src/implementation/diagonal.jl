@@ -41,10 +41,8 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
     if numin(pA) == 1 # matrix multiplication
-        if !isone(β) # multiplication only takes care of diagonal elements of C
-            iszero(β) ? zerovector!(C) : scale!(C, β)
-            β = one(β)
-        end
+        scale!(C, β)
+        β = one(β)
 
         A2 = sreshape(flag2op(conjA)(StridedView(A.diag)), (length(A.diag), 1))
         B2 = sreshape(flag2op(conjB)(StridedView(B.diag)), (length(B.diag), 1))
@@ -59,10 +57,9 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         C2 = sreshape(StridedView(C), (1,))
 
     else # outer product
-        if !isone(β)
-            iszero(β) ? zerovector!(C) : scale!(C, β)
-            β = one(β)
-        end
+        scale!(C, β)
+        β = one(β)
+
         A2 = sreshape(StridedView(A.diag), (length(A.diag), 1))
         B2 = sreshape(StridedView(B.diag), (1, length(A.diag)))
 
@@ -73,8 +70,8 @@ function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
         C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
 
-    op1 = isone(α) ? (*) : (x, y) -> α * x * y
-    op2 = iszero(β) ? zero : isone(β) ? nothing : y -> β * y
+    op1 = Base.Fix2(scale, α) ∘ *
+    op2 = Base.Fix2(scale, β)
     Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
 
     return C
@@ -118,10 +115,8 @@ function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
         C2 = permutedims(C, invperm(linearize(pC)))
 
     else # numout(pB) == 2 # direct product
-        if !isone(β)
-            iszero(β) ? zerovector!(C) : scale!(C, β)
-            β = one(β)
-        end
+        scale!(C, β)
+        β = one(β)
         A2 = flag2op(conjA)(sreshape(permutedims(A, linearize(pA)), (osizeA..., 1)))
         B2 = flag2op(conjB)(sreshape(Bdiag, ((one.(osizeA))..., length(Bdiag))))
 
@@ -132,8 +127,8 @@ function _diagtensorcontract!(C::StridedView, pC::Index2Tuple,
         C2 = StridedView(C3.parent, totsize, newstrides, C3.offset, C3.op)
     end
 
-    op1 = isone(α) ? (*) : (x, y) -> α * x * y
-    op2 = iszero(β) ? zero : isone(β) ? nothing : y -> β * y
+    op1 = Base.Fix2(scale, α) ∘ *
+    op2 = Base.Fix2(scale, β)
     Strided._mapreducedim!(op1, +, op2, totsize, (C2, A2, B2))
 
     return C
