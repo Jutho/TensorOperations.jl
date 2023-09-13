@@ -1,8 +1,9 @@
-name: format-check
+name: FormatCheck
 
 on:
   push:
     branches:
+      - 'main'
       - 'master'
       - 'release-'
     tags: '*'
@@ -19,7 +20,8 @@ jobs:
     steps:
       - uses: julia-actions/setup-julia@latest
         with:
-          version: ${{ matrix.julia-version }}
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
 
       - uses: actions/checkout@v4
       - name: Install JuliaFormatter and format

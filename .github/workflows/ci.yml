@@ -1,11 +1,13 @@
 name: CI
 on:
-  workflow_dispatch:
   push:
     branches:
-      - master
+      - 'master'
+      - 'main'
+      - 'release-'
     tags: '*'
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
