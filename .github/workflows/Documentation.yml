@@ -14,9 +14,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1]
-        julia-arch: [x86]
-        os: [ubuntu-latest]
+        version:
+          - '1' # automatically expands to the latest stable 1.x release of Julia
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@latest
