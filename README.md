@@ -11,10 +11,6 @@ Fast tensor operations using a convenient Einstein index notation.
 [ci-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
 [ci-url]:
   https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3ACI
-[ci-julia-nightly-img]:
-  https://github.com/Jutho/TensorOperations.jl/workflows/CI%20(Julia%20nightly)/badge.svg
-[ci-julia-nightly-url]:
-  https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3A%22CI+%28Julia+nightly%29%22
 [codecov-img]:
   https://codecov.io/gh/Jutho/TensorOperations.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/Jutho/TensorOperations.jl
@@ -26,7 +22,7 @@ Fast tensor operations using a convenient Einstein index notation.
 
 |                             **Documentation**                             |                                                      **Build Status**                                                       |
 | :-----------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------: |
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![CI (Julia nightly)][ci-julia-nightly-img]][ci-julia-nightly-url] [![][codecov-img]][codecov-url] |
+| [![Docs-stable][docs-stable-img]][docs-stable-url] [![Docs-dev][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![Coverage][codecov-img]][codecov-url] |
 
 | **Digital Object Identifier** |                         **Downloads**                         |
 | :---------------------------: | :-----------------------------------------------------------: |
