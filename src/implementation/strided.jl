@@ -87,7 +87,7 @@ function tensorcontract!(C::StridedView{T,2}, pC::Index2Tuple{1,1},
     if pC == ((1,), (2,))
         mul!(C, A′, B′, α, β)
     elseif pC == ((2,), (1,))
-        mul!(C, transpose(A′), transpose(B′), α, β)
+        mul!(C, transpose(B′), transpose(A′), α, β)
     end
     return C
 end

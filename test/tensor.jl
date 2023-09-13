@@ -418,6 +418,36 @@ using LinearAlgebra
         @test res ≈ -(mat1 * vec + mat2 * vec)
     end
 
+    @testset "Issue 148" begin
+        # 5 x 6
+        A = [3.0 2.0 5.0 2.0 4.0 3.0;
+             1.0 5.0 3.0 3.0 8.0 4.0;
+             5.0 1.0 1.0 2.0 3.0 3.0;
+             7.0 1.0 3.0 3.0 1.0 1.0;
+             8.0 1.0 4.0 1.0 1.0 8.0]
+
+        # 3 x 4
+        B = [2.0 2.0 1.0 4.0;
+             3.0 2.0 3.0 3.0;
+             3.0 3.0 3.0 1.0]
+
+        # 6 x 4
+        X = [2.0 3.0 3.0 5.0;
+             1.0 2.0 1.0 2.0;
+             5.0 5.0 4.0 2.0;
+             1.0 2.0 3.0 7.0;
+             7.0 9.0 1.0 1.0;
+             6.0 7.0 3.0 2.0]
+
+        E = zeros(5, 3)
+
+        @tensor begin
+            E[i_1, i_2] = X[j_1, j_2] * A[i_1, j_1] * B[i_2, j_2]
+        end
+
+        @test E ≈ A * X * transpose(B)
+    end
+
     @testset "Handling definitions" begin
         vec = rand(2)
         veccopy = copy(vec)
