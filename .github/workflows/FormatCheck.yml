@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: julia-actions/setup-julia@latest
         with:
-          version: ${{ matrix.julia-version }}
+          version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
 
       - uses: actions/checkout@v4
