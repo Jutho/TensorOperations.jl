@@ -5,12 +5,12 @@
 Fast tensor operations using a convenient Einstein index notation.
 
 | **Documentation** | **Digital Object Identifier** |
-|:-----------------:|:----------------:|:------------:|:---------------------:|:--------------|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TupleTools Downloads][genie-img]][genie-url] |
+|:-----------------:|:-----------------------------:|
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] |
 
 | **Build Status** | **Coverage** | **Quality assurance** | **Downloads** |
 |:----------------:|:------------:|:---------------------:|:--------------|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TensorOperations Downloads][downloads-img]][downloads-url] |
+| [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TensorOperations Downloads][downloads-img]][downloads-url] |
 
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
