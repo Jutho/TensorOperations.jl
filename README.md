@@ -4,29 +4,38 @@
 
 Fast tensor operations using a convenient Einstein index notation.
 
+| **Documentation** | **Digital Object Identifier** |
+|:-----------------:|:----------------:|:------------:|:---------------------:|:--------------|
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TupleTools Downloads][genie-img]][genie-url] |
+
+| **Build Status** | **Coverage** | **Quality assurance** | **Downloads** |
+|:----------------:|:------------:|:---------------------:|:--------------|
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TensorOperations Downloads][downloads-img]][downloads-url] |
+
+
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://jutho.github.io/TensorOperations.jl/stable
+
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
+
+[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg
+[doi-url]: https://doi.org/10.5281/zenodo.3245497
+
 [ci-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
 [ci-url]:
   https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3ACI
+
 [codecov-img]:
   https://codecov.io/gh/Jutho/TensorOperations.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/Jutho/TensorOperations.jl
-[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg
-[doi-url]: https://doi.org/10.5281/zenodo.3245497
+
+[aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
+[aqua-url]: https://github.com/JuliaTesting/Aqua.jl
+
 [downloads-img]:
   https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
 [downloads-url]: https://pkgs.genieframework.com?packages=TensorOperations
-
-|                             **Documentation**                             |                                                      **Build Status**                                                       |
-| :-----------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------: |
-| [![Docs-stable][docs-stable-img]][docs-stable-url] [![Docs-dev][docs-dev-img]][docs-dev-url] | [![CI][ci-img]][ci-url] [![Coverage][codecov-img]][codecov-url] |
-
-| **Digital Object Identifier** |                         **Downloads**                         |
-| :---------------------------: | :-----------------------------------------------------------: |
-|  [![DOI][doi-img]][doi-url]   | [![TensorOperations Downloads][downloads-img]][downloads-url] |
 
 ## What's new in v4
 
