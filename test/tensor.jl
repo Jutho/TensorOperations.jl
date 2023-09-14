@@ -430,6 +430,21 @@ using LinearAlgebra
 
         @test E ≈ A * X * transpose(B)
     end
+    
+    @testset "Issue 149" for T in (Float64, ComplexF64)
+        v1 = rand(2)
+        v2 = rand(2)
+        m1 = rand(2, 2, 2)
+        m2 = rand(2, 2, 2)
+        
+        res1 = @tensor begin
+            (v1[a] * v1[b] * v1[c]) * m1[a, b, c] +
+            (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
+        end
+        res2 = @tensor (v1[a] * v1[b] * v1[c]) * m1[a, b, c]
+        res3 = @tensor (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
+        @test res1 ≈ res2 + res3
+    end
 
     @testset "Handling definitions" begin
         vec = rand(2)

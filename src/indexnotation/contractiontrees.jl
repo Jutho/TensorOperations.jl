@@ -55,7 +55,7 @@ function _processcontractions(ex, treebuilder, treesorter, costcheck)
         args = networkexprs[i].args[2:end]
         treeex = treesorter(args, tree)
         trees[i] = tree
-        treeexprdict[network] = treeex
+        treeexprdict[networkexprs[i]] = treeex
     end
     ex = insertcontractiontrees(ex, treeexprdict)
     if isnothing(costcheck)
@@ -151,9 +151,7 @@ end
 
 function insertcontractiontrees(ex, treeexprdict)
     if istensorcontraction(ex) && length(ex.args) > 3
-        args = ex.args[2:end]
-        network = map(getindices, args)
-        ex = treeexprdict[network]
+        ex = treeexprdict[ex]
     end
     if isexpr(ex, :call)
         args = ex.args
