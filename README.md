@@ -9,7 +9,7 @@ Fast tensor operations using a convenient Einstein index notation.
 | [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] |
 
 | **Build Status** | **Coverage** | **Quality assurance** | **Downloads** |
-|:----------------:|:------------:|:---------------------:|:--------------|
+|:----------------:|:------------:|:---------------------:|:-------------:|
 | [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TensorOperations Downloads][downloads-img]][downloads-url] |
 
 
