@@ -84,3 +84,7 @@ operator `:=` in order to define and allocate a new array `E` of the correct
 size. The contents of `D` and `E` will be equal.
 
 For more detailed information, please see the documentation.
+
+## Citing
+
+See [`CITATION.bib`](CITATION.bib) for the relevant reference(s).
