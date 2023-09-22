@@ -26,9 +26,13 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+          # - windows-latest # run on AppVeyor instead
         arch:
           - x64
+          - x86
+        exclude:
+          - os: macOS-latest
+            arch: x86
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1

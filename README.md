@@ -4,13 +4,13 @@
 
 Fast tensor operations using a convenient Einstein index notation.
 
-| **Documentation** | **Digital Object Identifier** |
-|:-----------------:|:-----------------------------:|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] |
+| **Documentation** | **Digital Object Identifier** | **Downloads** |
+|:-----------------:|:-----------------------------:|:-------------:|
+| [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![TensorOperations Downloads][downloads-img]][downloads-url] |
 
-| **Build Status** | **Coverage** | **Quality assurance** | **Downloads** |
-|:----------------:|:------------:|:---------------------:|:-------------:|
-| [![CI][ci-img]][ci-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] | [![TensorOperations Downloads][downloads-img]][downloads-url] |
+| **Build Status** | **PkgEval** | **Coverage** | **Quality assurance** |
+|:----------------:|:------------:|:------------:|:---------------------:|
+| [![CI][ci-img]][ci-url] | [![PkgEval][pkgeval-img]][pkgeval-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] |
 
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
@@ -19,12 +19,19 @@ Fast tensor operations using a convenient Einstein index notation.
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
 
-[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245497.svg
-[doi-url]: https://doi.org/10.5281/zenodo.3245497
+[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.8348121.svg
+[doi-url]: https://doi.org/10.5281/zenodo.8348121
+
+[downloads-img]:
+  https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
+[downloads-url]: https://pkgs.genieframework.com?packages=TensorOperations
 
 [ci-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
 [ci-url]:
   https://github.com/Jutho/TensorOperations.jl/actions?query=workflow%3ACI
+
+[pkgeval-img]: https://JuliaCI.github.io/NanosoldierReports/pkgeval_badges/T/TensorOperations.svg
+[pkgeval-url]: https://JuliaCI.github.io/NanosoldierReports/pkgeval_badges/T/TensorOperations.html
 
 [codecov-img]:
   https://codecov.io/gh/Jutho/TensorOperations.jl/branch/master/graph/badge.svg
@@ -32,10 +39,6 @@ Fast tensor operations using a convenient Einstein index notation.
 
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
-
-[downloads-img]:
-  https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
-[downloads-url]: https://pkgs.genieframework.com?packages=TensorOperations
 
 ## What's new in v4
 
