@@ -1,161 +1,63 @@
 using TensorOperations
 using Test
-using Zygote
-using LinearAlgebra
-using Base.Iterators: product
-Zygote.refresh()
+using ChainRulesTestUtils
 
-function LinAlg_tensoradd(A, pA, conjA, B, pB, conjB, α=true, β=true)
-    return α * permutedims(conjA == :N ? A : conj(A), linearize(pA)) +
-           β * permutedims(conjB == :N ? B : conj(B), linearize(pB))
-end
-function LinAlg_tensorcontract(C, pC, A, pA, conjA, B, pB, conjB, α=true, β=false)
-    szA(i) = size(A, i)
-    A′ = reshape(permutedims(conjA == :N ? A : conj(A), linearize(pA)), prod(szA.(pA[1])),
-                 prod(szA.(pA[2])))
-    szB(i) = size(B, i)
-    B′ = reshape(permutedims(conjB == :N ? B : conj(B), linearize(pB)), prod(szB.(pB[1])),
-                 prod(szB.(pB[2])))
-    C′ = reshape(A′ * B′, szA.(pA[1])..., szB.(pB[2])...)
-    return β * C + α * permutedims(C′, linearize(pC))
-end
-function LinAlg_tensortrace(C, pC, A, pA, conjA, α=true, β=false)
-    szA(i) = size(A, i)
-    A′ = reshape(permutedims(conjA == :N ? A : conj(A),
-                             (linearize(pC)..., pA[1]..., pA[2]...)),
-                 prod(szA.(linearize(pC))), prod(szA.(pA[1])), prod(szA.(pA[2])))
-    C′ = map(i -> tr(A′[i, :, :]), axes(A′, 1))
-    return β * C + α * reshape(C′, szA.(linearize(pC)))
+ChainRulesTestUtils.test_method_tables()
+
+precision(::Type{<:Union{Float32,Complex{Float32}}}) = 1e-2
+precision(::Type{<:Union{Float64,Complex{Float64}}}) = 1e-8
+
+@testset "tensortrace! ($T)" for T in (Float32, Float64, ComplexF64)
+    atol = precision(T)
+    rtol = precision(T)
+
+    pC = ((3, 5, 2), ())
+    pA = ((1,), (4,))
+    α = rand(T)
+    β = rand(T)
+    A = rand(T, (2, 3, 4, 2, 5))
+    C = rand(T, size.(Ref(A), pC[1]))
+    test_rrule(tensortrace!, C, pC, A, pA, :N, α, β; atol, rtol)
 end
 
-precision(T::Type{<:Complex}) = precision(real(T))
-precision(T::Type{<:Number}) = eps(T)^(3 / 4)
+@testset "tensoradd! ($T)" for T in (Float32, Float64, ComplexF64)
+    atol = precision(T)
+    rtol = precision(T)
 
-@testset "tensoradd" begin
-    f(A, B) = tensoradd(A, ((1, 2, 3), ()), :N, B, ((1, 3, 2), ()), :N)
-    f′(A, B) = LinAlg_tensoradd(A, ((1, 2, 3), ()), :N, B, ((1, 3, 2), ()), :N)
-
-    @testset for T in (Float64, ComplexF64)
-        A = rand(T, 2, 3, 4)
-        B = rand(T, 2, 4, 3)
-
-        C, pullback = Zygote.pullback(f, A, B)
-        C′, pullback′ = Zygote.pullback(f′, A, B)
-
-        @test C ≈ C′ rtol = precision(T)
-
-        ΔC = rand(T, size(C))
-        ΔA, ΔB = pullback(ΔC)
-        ΔA′, ΔB′ = pullback′(ΔC)
-        @test ΔA ≈ ΔA′ rtol = precision(T)
-        @test ΔB ≈ ΔB′ rtol = precision(T)
-
-        D = rand(T, 4, 2, 3, 2)
-        E = rand(T, 2, 3, 4, 2)
-        α = rand(T)
-        β = rand(T)
-
-        pD = ((2, 1, 4, 3), ())
-        pE = ((1, 3, 4, 2), ())
-
-        for conjD in (:N, :C), conjE in (:N, :C)
-            F, pullback2 = Zygote.pullback(tensoradd, D, pD, conjD, E, pE, conjE, α, β)
-            F′, pullback2′ = Zygote.pullback(LinAlg_tensoradd, D, pD, conjD, E, pE, conjE,
-                                             α, β)
-            @test F ≈ F′ rtol = precision(T)
-
-            ΔF = rand(T, size(F))
-            ΔD, ΔpD, ΔconjD, ΔE, ΔpE, ΔconjE, Δα, Δβ = pullback2(ΔF)
-            ΔD′, ΔpD′, ΔconjD′, ΔE′, ΔpE′, ΔconjE′, Δα′, Δβ′ = pullback2′(ΔF)
-            @test ΔD ≈ ΔD′ rtol = precision(T)
-            @test ΔE ≈ ΔE′ rtol = precision(T)
-            @test Δα ≈ Δα′ rtol = precision(T)
-            @test Δβ ≈ Δβ′ rtol = precision(T)
-        end
-    end
+    p = ((2, 1, 4, 3, 5), ())
+    A = rand(T, (2, 3, 4, 2, 1))
+    C = rand(T, size.(Ref(A), p[1]))
+    α = rand(T)
+    β = rand(T)
+    test_rrule(tensoradd!, C, p, A, :N, α, β; atol, rtol)
+    test_rrule(tensoradd!, C, p, A, :C, α, β; atol, rtol)
 end
 
-@testset "tensorcontract" begin
-    @testset for T in (Float64, ComplexF64)
-        A = rand(T, 2, 4, 3, 2)
-        B = rand(T, 1, 3, 2)
-        C = rand(T, 1, 4, 2)
+@testset "tensorcontract! ($T)" for T in (Float32, Float64, ComplexF64)
+    atol = precision(T)
+    rtol = precision(T)
 
-        α = rand(T)
-        β = rand(T)
+    pC = ((3, 2, 4, 1), ())
+    pA = ((2, 4, 5), (1, 3))
+    pB = ((2, 1), (3,))
 
-        pA = ((2, 4), (1, 3))
-        pB = ((3, 2), (1,))
-        pC = ((3, 1, 2), ())
+    A = rand(T, (2, 3, 4, 2, 5))
+    B = rand(T, (4, 2, 3))
+    C = rand(T, (5, 2, 3, 3))
+    α = randn(T)
+    β = randn(T)
 
-        for conjA in (:N, :C), conjB in (:N, :C)
-            D, pullback = Zygote.pullback(tensorcontract!, C, pC, A, pA, conjA, B, pB,
-                                          conjB, α,
-                                          β)
-            D′, pullback′ = Zygote.pullback(LinAlg_tensorcontract, C, pC, A, pA, conjA, B,
-                                            pB,
-                                            conjB, α, β)
-
-            @test D ≈ D′ rtol = precision(T)
-            ΔD = rand(T, size(D))
-            ΔC, ΔpC, ΔA, ΔpA, ΔconjA, ΔB, ΔpB, ΔconjB, Δα, Δβ = pullback(ΔD)
-            ΔC′, ΔpC′, ΔA′, ΔpA′, ΔconjA′, ΔB′, ΔpB′, ΔconjB′, Δα′, Δβ′ = pullback′(ΔD)
-            @test ΔC ≈ ΔC′ rtol = precision(T)
-            @test ΔA ≈ ΔA′ rtol = precision(T)
-            @test ΔB ≈ ΔB′ rtol = precision(T)
-            @test Δα ≈ Δα′ rtol = precision(T)
-            @test Δβ ≈ Δβ′ rtol = precision(T)
-        end
-    end
+    test_rrule(tensorcontract!, C, pC, A, pA, :N, B, pB, :N, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, pC, A, pA, :C, B, pB, :N, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, pC, A, pA, :N, B, pB, :C, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, pC, A, pA, :C, B, pB, :C, α, β; atol, rtol)
 end
 
-@testset "tensortrace" begin
-    # single trace index, homogeneous scalar type, no conjugation
-    @testset for T in (Float64, ComplexF64)
-        A = rand(T, 2, 3, 4, 2)
-        C = rand(T, 4, 3)
-        α = rand(T)
-        β = rand(T)
+@testset "tensorscalar ($T)" for T in (Float32, Float64, ComplexF64)
+    atol = precision(T)
+    rtol = precision(T)
 
-        pA = ((1,), (4,))
-        pC = ((3, 2), ())
-
-        conjA = :N
-
-        D, pullback = Zygote.pullback(tensortrace!, C, pC, A, pA, conjA, α, β)
-        D′, pullback′ = Zygote.pullback(LinAlg_tensortrace, C, pC, A, pA, conjA, α, β)
-        @test D ≈ D′ rtol = precision(T)
-
-        ΔD = rand(T, size(D))
-        ΔC, ΔpC, ΔA, ΔpA, ΔconjA, Δα, Δβ = pullback(ΔD)
-        ΔC′, ΔpC′, ΔA′, ΔpA′, ΔconjA′, Δα′, Δβ′ = pullback′(ΔD)
-        @test ΔC ≈ ΔC′ rtol = precision(T)
-        @test ΔA ≈ ΔA′ rtol = precision(T)
-        @test Δα ≈ Δα′ rtol = precision(T)
-        @test Δβ ≈ Δβ′ rtol = precision(T)
-    end
-    # multiple trace indices, mixed scalar types, conjugation
-    @testset for T in (Float64, ComplexF64)
-        A = rand(T, 2, 4, 3, 3, 4, 2, 3, 4)
-        C = rand(T, 4, 3)
-        α = rand(T)
-        β = rand(real(T))
-
-        pA = ((1, 2, 7), (6, 8, 3))
-        pC = ((5, 4), ())
-
-        conjA = :C
-
-        D, pullback = Zygote.pullback(tensortrace!, C, pC, A, pA, conjA, α, β)
-        D′, pullback′ = Zygote.pullback(LinAlg_tensortrace, C, pC, A, pA, conjA, α, β)
-        @test D ≈ D′ rtol = precision(T)
-
-        ΔD = rand(T, size(D))
-        ΔC, ΔpC, ΔA, ΔpA, ΔconjA, Δα, Δβ = pullback(ΔD)
-        ΔC′, ΔpC′, ΔA′, ΔpA′, ΔconjA′, Δα′, Δβ′ = pullback′(ΔD)
-        @test ΔC ≈ ΔC′ rtol = precision(T)
-        @test ΔA ≈ ΔA′ rtol = precision(T)
-        @test Δα ≈ Δα′ rtol = precision(T)
-        @test Δβ ≈ Δβ′ rtol = precision(T)
-    end
+    C = Array{T,0}(undef, ())
+    fill!(C, rand(T))
+    test_rrule(tensorscalar, C; atol, rtol)
 end
