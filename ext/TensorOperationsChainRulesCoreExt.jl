@@ -22,6 +22,14 @@ trivtuple(N) = ntuple(identity, N)
 
 # TODO: possibly use the non-inplace functions, to avoid depending on Base.copy
 
+function ChainRulesCore.rrule(::typeof(tensorscalar), C)
+    function tensorscalar_pullback(Δc)
+        ΔC = TensorOperations.tensoralloc(typeof(C), TensorOperations.tensorstructure(C))
+        return NoTangent(), fill!(ΔC, unthunk(Δc))
+    end
+    return tensorscalar(C), tensorscalar_pullback
+end
+
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
                               C, pC::Index2Tuple,
                               A, conjA::Symbol,
