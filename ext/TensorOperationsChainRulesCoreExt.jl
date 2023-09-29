@@ -22,6 +22,14 @@ trivtuple(N) = ntuple(identity, N)
 
 # TODO: possibly use the non-inplace functions, to avoid depending on Base.copy
 
+function ChainRulesCore.rrule(::typeof(tensorscalar), C)
+    function tensorscalar_pullback(Δc)
+        ΔC = TensorOperations.tensoralloc(typeof(C), TensorOperations.tensorstructure(C))
+        return NoTangent(), fill!(ΔC, unthunk(Δc))
+    end
+    return tensorscalar(C), tensorscalar_pullback
+end
+
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
                               C, pC::Index2Tuple,
                               A, conjA::Symbol,
@@ -33,7 +41,8 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
     projectα = ProjectTo(α)
     projectβ = ProjectTo(β)
 
-    function pullback(ΔC)
+    function pullback(ΔC′)
+        ΔC = unthunk(ΔC′)
         dC = @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk begin
             ipC = invperm(linearize(pC))
@@ -76,7 +85,8 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
     projectα = ProjectTo(α)
     projectβ = ProjectTo(β)
 
-    function pullback(ΔC)
+    function pullback(ΔC′)
+        ΔC = unthunk(ΔC′)
         ipC = invperm(linearize(pC))
         pΔC = (TupleTools.getindices(ipC, trivtuple(numout(pA))),
                TupleTools.getindices(ipC, numout(pA) .+ trivtuple(numin(pB))))
@@ -141,7 +151,8 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
     projectα = ProjectTo(α)
     projectβ = ProjectTo(β)
 
-    function pullback(ΔC)
+    function pullback(ΔC′)
+        ΔC = unthunk(ΔC′)
         dC = @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk begin
             ipC = invperm((linearize(pC)..., pA[1]..., pA[2]...))
