@@ -13,10 +13,10 @@ using cuTENSOR: cuTENSOR, CUDA, handle, CuTensorDescriptor, cudaDataType_t,
                 cutensorInitContractionDescriptor, cutensorInitContractionFind,
                 cutensorContractionGetWorkspace, cutensorInitContractionPlan,
                 cutensorContraction, CUTENSORError
-using cuTENSOR.CUDA: CUDA, CuArray, AnyCuArray, with_workspace, default_stream
-using cuTENSOR.CUDA.CUBLAS: CublasFloat, CublasReal
+using CUDA: CUDA, CuArray, AnyCuArray, with_workspace, default_stream
+using CUDA.CUBLAS: CublasFloat, CublasReal
 # this might be dependency-piracy, but removes a dependency from the main package
-using cuTENSOR.CUDA.Adapt: adapt
+using CUDA.Adapt: adapt
 using TensorOperations
 using TupleTools
 using Strided
