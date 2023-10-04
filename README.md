@@ -19,8 +19,8 @@ Fast tensor operations using a convenient Einstein index notation.
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://jutho.github.io/TensorOperations.jl/latest
 
-[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.8348121.svg
-[doi-url]: https://doi.org/10.5281/zenodo.8348121
+[doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245496.svg
+[doi-url]: https://doi.org/10.5281/zenodo.3245496
 
 [downloads-img]:
   https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
