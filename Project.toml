@@ -25,7 +25,7 @@ TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
 Aqua = "0.6, 0.7"
-CUDA = "4"
+CUDA = "4, 5"
 ChainRulesCore = "1"
 DynamicPolynomials = "0.5"
 LRUCache = "1"
