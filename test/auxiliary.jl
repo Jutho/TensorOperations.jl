@@ -76,26 +76,22 @@
               (:a, Any[1, 2, 3], [], One(), true)
         @test isgeneraltensor(:(x * a[5][a b c]))
         @test decomposegeneraltensor(:(x * a[5][a b c])) ==
-              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(x * $(One()))), false)
+              (:(a[5]), Any[:a, :b, :c], [], :x, false)
         @test isgeneraltensor(:(x * x * a[5][a, b, c]))
         @test decomposegeneraltensor(:(x * x * a[5][a, b, c])) ==
-              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(x * x * $(One()))), false)
+              (:(a[5]), Any[:a, :b, :c], [], :(x * x), false)
         @test isgeneraltensor(:(x * a[5][a, b, c] * x))
         @test decomposegeneraltensor(:(x * a[5][a, b, c] * x)) ==
-              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(x * $(One()) * x)), false)
+              (:(a[5]), Any[:a, :b, :c], [], :(x * x), false)
         @test isgeneraltensor(:(a[5][a, b, c] * x / y))
         @test decomposegeneraltensor(:(a[5][a, b, c] / y * x)) ==
-              (:(a[5]), Any[:a, :b, :c], [], instantiate_scalar(:(($(One()) / y) * x)),
-               false)
+              (:(a[5]), Any[:a, :b, :c], [], :((1/y) * x), false)
         @test isgeneraltensor(:(x / y * a[5][a, b, c] * y / x))
         @test decomposegeneraltensor(:(x / y * a[5][a, b, c] / y * x)) ==
-              (:(a[5]), Any[:a, :b, :c], [],
-               instantiate_scalar(:(((((x / y) * $(One())) / y) * x))),
-               false)
+              (:(a[5]), Any[:a, :b, :c], [], :(((x / y)/ y) * x), false)
         @test isgeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3])))
         @test decomposegeneraltensor(:(3 * conj(a * cos(y)[a b c; 1 2 3]))) ==
-              (:(cos(y)), Any[:a, :b, :c], Any[1, 2, 3],
-               instantiate_scalar(:(3 * conj(a * $(One())))), true)
+              (:(cos(y)), Any[:a, :b, :c], Any[1, 2, 3], :(3 * conj(a)), true)
         @test !isgeneraltensor(:(1 / a[1, 2, 3]))
         @test !isgeneraltensor(:(a[1 2 3; 4 5 6] \ x))
         @test !isgeneraltensor(:(cos(y)[a b c; 1 2 3] * b[4, 5]))

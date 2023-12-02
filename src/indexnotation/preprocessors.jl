@@ -119,22 +119,42 @@ end
 Group all scalar factors of a tensor expression into a single scalar factor at the start of the expression.
 """
 function groupscalarfactors(ex)
-    if istensor(ex) || (isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor"))
-        return ex
-    elseif istensorexpr(ex) && ex.args[1] == :*
-        args = ex.args[2:end]
-        scalarpos = findall(isscalarexpr, args)
-        length(scalarpos) == 0 && return ex
-        tensorpos = setdiff(1:length(args), scalarpos)
-        if length(scalarpos) == 1
-            scalar = args[scalarpos[1]]
-        else
-            scalar = Expr(:call, :*, args[scalarpos]...)
-        end
-        return Expr(:call, :*, scalar, args[tensorpos]...)
-    elseif isa(ex, Expr)
-        return Expr(ex.head, map(groupscalarfactors, ex.args)...)
-    end
+    # if istensor(ex) || (isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor"))
+    #     return ex
+    # elseif istensorexpr(ex) && ex.args[1] == :*
+    #     args = ex.args[2:end]
+    #     scalarpos = findall(isscalarexpr, args)
+    #     tensorpos = setdiff(1:length(args), scalarpos)
+    #     length(scalarpos) == 0 && return Expr(:call, :*, map(groupscalarfactors, args)...)
+    #     if length(scalarpos) == 1
+    #         scalar = args[scalarpos[1]]
+    #     else
+    #         scalar = Expr(:call, :*, args[scalarpos]...)
+    #     end
+    #     if length(tensorpos) == 0
+    #         return scalar
+    #     else
+    #         return Expr(:call, :*, scalar, map(groupscalarfactors, args[tensorpos])...)
+    #     end
+    # elseif istensorexpr(ex) && ex.args[1] == :/
+    #     xarg = Expr(:call, :/, 1, ex.args[3])
+    #     if istensorexpr(ex.args[2]) && ex.args[2].args[1] == :*
+    #         args = ex.args[2].args[2:end]
+    #         return groupscalarfactors(Expr(:call, :*, args..., xarg))
+    #     else
+    #         return Expr(:call, :*, groupscalarfactors(ex.args[2]), xarg)
+    #     end
+    # elseif istensorexpr(ex) && ex.args[1] == :\
+    #     xarg = Expr(:call, :/, 1, ex.args[2])
+    #     if istensorexpr(ex.args[3]) && ex.args[2].args[1] == :*
+    #         args = ex.args[3].args[2:end]
+    #         return groupscalarfactors(Expr(:call, :*, xarg, args...))
+    #     else
+    #         return Expr(:call, :*, xarg, groupscalarfactors(ex.args[2]))
+    #     end
+    # elseif isa(ex, Expr)
+    #     return Expr(ex.head, map(groupscalarfactors, ex.args)...)
+    # end
     return ex
 end
 

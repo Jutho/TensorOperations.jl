@@ -51,34 +51,6 @@ function instantiate_scalar(ex::Expr)
 end
 instantiate_scalar(ex::Symbol) = ex
 instantiate_scalar(ex) = ex
-function simplify_scalarmul(exa, exb)
-    if exa === One()
-        return exb
-    elseif exb === One()
-        return exa
-    end
-    if exa isa Number && exb isa Number
-        return exa * exb
-    end
-    if exa isa Number && isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
-        return Expr(:call, :*, exa * exb.args[2], exb.args[3:end]...)
-    end
-    if exb isa Number && isexpr(exa, :call) && exa.args[1] == :* && exa.args[2] isa Number
-        return Expr(:call, :*, exb * exa.args[2], exa.args[3:end]...)
-    end
-    if exa isa Number
-        return Expr(:call, :*, exa, exb)
-    end
-    if exb isa Number
-        return Expr(:call, :*, exb, exa)
-    end
-    if isexpr(exa, :call) && exa.args[1] == :* && exa.args[2] isa Number &&
-       isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
-        return Expr(:call, :*, exa.args[2] * exb.args[2], exa.args[3:end]...,
-                    exb.args[3:end]...)
-    end
-    return Expr(:call, :*, exa, exb)
-end
 
 @enum AllocationStrategy ExistingTensor NewTensor TemporaryTensor
 function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
@@ -102,6 +74,14 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
            istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
         α′ = simplify_scalarmul(α, ex.args[3])
+        return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
+    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 &&
+        isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
+        α′ = simplify_scalarmul(α, Expr(:call, :\, ex.args[2], 1))
+        return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc)
+    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 &&
+            istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
+        α′ = simplify_scalarmul(α, Expr(:call, :/, 1, ex.args[3]))
         return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
     end
     throw(ArgumentError("problem with parsing $ex"))
@@ -158,8 +138,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         push!(out.args, Expr(:(=), TC, instantiate_scalartype(ex)))
-        α′ = (α === One()) ? α :
-             Expr(:call, :*, Expr(:call, :one, TC), α)
+        α′ = (α === One()) ? α : Expr(:call, :*, Expr(:call, :one, TC), α)
         push!(out.args, instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc))
     else
         push!(out.args, instantiate(dst, β, ex.args[2], α, leftind, rightind, alloc))

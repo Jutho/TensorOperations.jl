@@ -57,6 +57,7 @@ end
 
 function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexprs,
                                  postexprs)
+    
     if isexpr(ex, :call)
         args = ex.args
         nargs = length(args)
