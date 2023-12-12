@@ -5,7 +5,7 @@ function instantiate_scalartype(ex::Expr)
     elseif isgeneraltensor(ex)
         (object, _, _, α, _) = decomposegeneraltensor(ex)
         return Expr(:call, :(Base.promote_op), :*, Expr(:call, :scalartype, object),
-                    Expr(:call, :scalartype, α))
+                    instantiate_scalartype(α))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         if length(ex.args) > 2
             return Expr(:call, :promote_add, map(instantiate_scalartype, ex.args[2:end])...)
@@ -20,6 +20,8 @@ function instantiate_scalartype(ex::Expr)
         return Expr(:call, :(Base.promote_op), ex.args[1],
                     map(instantiate_scalartype, ex.args[2:end])...)
     elseif ex.head == :call && ex.args[1] == :conj
+        return instantiate_scalartype(ex.args[2])
+    elseif ex.head == :call && ex.args[1] == :tensorscalar
         return instantiate_scalartype(ex.args[2])
     elseif isscalarexpr(ex)
         return :(scalartype($ex))
@@ -37,7 +39,7 @@ function instantiate_scalar(ex::Expr)
         tempvar = gensym()
         returnvar = gensym()
         return quote
-            $tempvar = $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [],
+            $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [],
                                      TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
@@ -92,23 +94,32 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
+    α = simplify_scalarmul(α, α2)
 
     p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
     p2 = (map(l -> findfirst(isequal(l), srcind), rightind)...,)
     pC = (p1, p2)
 
+    out = Expr(:block)
+    if isa(α, Expr)
+        αsym = gensym(string(dst) * "_α")
+        push!(out.args, Expr(:(=), αsym, instantiate_scalar(α)))
+        α = αsym
+    end
+    if isa(β, Expr)
+        βsym = gensym(string(dst) * "_β")
+        push!(out.args, Expr(:(=), βsym, instantiate_scalar(β)))
+        β = βsym
+    end
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         istemporary = (alloc === TemporaryTensor)
-        Tval = α === One() ? instantiate_scalartype(ex) :
-               instantiate_scalartype(Expr(:call, :*, α, ex))
-        out = Expr(:block, Expr(:(=), TC, Tval),
-                   :($dst = tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary)))
-    else
-        out = Expr(:block)
+        Tval = α === One() ? instantiate_scalartype(src) :
+               instantiate_scalartype(Expr(:call, :*, α, src))
+        push!(out.args, Expr(:(=), TC, Tval))
+        push!(out.args, Expr(:(=), dst, :(tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary))))
     end
 
-    α′ = simplify_scalarmul(α, α2)
     if hastraceindices(ex)
         traceind = unique(setdiff(setdiff(srcind, leftind), rightind))
         q1 = (map(l -> findfirst(isequal(l), srcind), traceind)...,)
@@ -120,7 +131,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             return :(throw(IndexError($err)))
         end
         push!(out.args,
-              :($dst = tensortrace!($dst, $pC, $src, ($q1, $q2), $conjarg, $α′, $β)))
+              :($dst = tensortrace!($dst, $pC, $src, ($q1, $q2), $conjarg, $α, $β)))
         return out
     else
         if any(isnothing, (p1..., p2...)) || !isperm((p1..., p2...)) ||
@@ -128,7 +139,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
-        push!(out.args, :($dst = tensoradd!($dst, $pC, $src, $conjarg, $α′, $β)))
+        push!(out.args, :($dst = tensoradd!($dst, $pC, $src, $conjarg, $α, $β)))
         return out
     end
 end
@@ -217,6 +228,16 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
        !(isperm((p1..., p2...)) && length(oindAB) == length(p1) + length(p2))
         err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
+    end
+    if isa(α, Expr)
+        αsym = gensym(string(dst) * "_α")
+        push!(out.args, Expr(:(=), αsym, instantiate_scalar(α)))
+        α = αsym
+    end
+    if isa(β, Expr)
+        βsym = gensym(string(dst) * "_β")
+        push!(out.args, Expr(:(=), βsym, instantiate_scalar(β)))
+        β = βsym
     end
     if alloc ∈ (NewTensor, TemporaryTensor)
         TCsym = gensym("T_" * string(dst))

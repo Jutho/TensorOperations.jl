@@ -21,8 +21,13 @@ function processcontractions(ex, treebuilder, treesorter, costcheck)
     elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
-        return Expr(:call, :tensorscalar,
-                    processcontractions(ex.args[2], treebuilder, treesorter, costcheck))
+        ex, pre, post = _processcontractions(ex.args[2], treebuilder, treesorter, costcheck)
+        if isnothing(pre)
+            return Expr(:call, :tensorscalar, ex)
+        else
+            lhs = gensym()
+            return Expr(:block, pre, Expr(:(=), lhs, Expr(:call, :tensorscalar, ex)), post, lhs)
+        end
     elseif isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
         rhs, pre, post = _processcontractions(rhs, treebuilder, treesorter, costcheck)

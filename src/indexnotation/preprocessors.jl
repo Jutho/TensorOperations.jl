@@ -103,11 +103,12 @@ end
 
 # explicitscalar: wrap all tensor expressions with zero output indices in scalar call
 function explicitscalar(ex)
-    if isa(ex, Expr) # prewalk
-        ex = Expr(ex.head, map(explicitscalar, ex.args)...)
-    end
     if istensorexpr(ex) && isempty(getindices(ex))
         return Expr(:call, :tensorscalar, ex)
+    elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
+        return ex
+    elseif isa(ex, Expr) # postwalk
+        ex = Expr(ex.head, map(explicitscalar, ex.args)...)
     else
         return ex
     end

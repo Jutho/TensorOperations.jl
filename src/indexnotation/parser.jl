@@ -8,7 +8,7 @@ mutable struct TensorParser
     function TensorParser()
         preprocessors = [normalizeindices,
                          expandconj,
-                         groupscalarfactors,
+                         explicitscalar,
                          nconindexcompletion,
                          extracttensorobjects]
         contractiontreebuilder = defaulttreebuilder
