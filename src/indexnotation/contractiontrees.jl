@@ -26,7 +26,8 @@ function processcontractions(ex, treebuilder, treesorter, costcheck)
             return Expr(:call, :tensorscalar, ex)
         else
             lhs = gensym()
-            return Expr(:block, pre, Expr(:(=), lhs, Expr(:call, :tensorscalar, ex)), post, lhs)
+            return Expr(:block, pre, Expr(:(=), lhs, Expr(:call, :tensorscalar, ex)), post,
+                        lhs)
         end
     elseif isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
@@ -62,7 +63,6 @@ end
 
 function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexprs,
                                  postexprs)
-    
     if isexpr(ex, :call)
         args = ex.args
         nargs = length(args)

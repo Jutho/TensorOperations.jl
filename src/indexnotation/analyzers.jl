@@ -54,7 +54,7 @@ function decomposegeneraltensor(ex)
             idx = findfirst(a -> isgeneraltensor(a), ex.args)
             (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[idx])
             scalar = One()
-            for i = 2:length(ex.args)
+            for i in 2:length(ex.args)
                 scalar = simplify_scalarmul(scalar, i == idx ? α : ex.args[i])
             end
             return (object, leftind, rightind, scalar, conj)
@@ -225,7 +225,9 @@ function simplify_scalarmul(exa, exb)
         return Expr(:call, :*, exa, exb)
     end
 end
-simplify_scalarmul(exa, exb, exc, exd...) = simplify_scalarmul(simplify_scalarmul(exa, exb), exc, exd...)
+function simplify_scalarmul(exa, exb, exc, exd...)
+    return simplify_scalarmul(simplify_scalarmul(exa, exb), exc, exd...)
+end
 
 # # auxiliary routine
 # function unique2(itr)

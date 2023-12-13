@@ -40,7 +40,7 @@ function instantiate_scalar(ex::Expr)
         returnvar = gensym()
         return quote
             $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [],
-                                     TemporaryTensor))
+                          TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
             $returnvar
@@ -78,11 +78,11 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
         α′ = simplify_scalarmul(α, ex.args[3])
         return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
     elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 &&
-        isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
+           isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
         α′ = simplify_scalarmul(α, Expr(:call, :\, ex.args[2], 1))
         return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc)
     elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 &&
-            istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
+           istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
         α′ = simplify_scalarmul(α, Expr(:call, :/, 1, ex.args[3]))
         return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
     end
@@ -117,7 +117,8 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         Tval = α === One() ? instantiate_scalartype(src) :
                instantiate_scalartype(Expr(:call, :*, α, src))
         push!(out.args, Expr(:(=), TC, Tval))
-        push!(out.args, Expr(:(=), dst, :(tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary))))
+        push!(out.args,
+              Expr(:(=), dst, :(tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary))))
     end
 
     if hastraceindices(ex)
