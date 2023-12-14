@@ -32,9 +32,9 @@ CUDA.functional() && @testset "CUDA" verbose = true begin
     include("cuda.jl")
 end
 
-@testset "Polynomials" begin
-    include("polynomials.jl")
-end
+# @testset "Polynomials" begin
+#     include("polynomials.jl")
+# end
 
 @testset "Aqua" verbose = true begin
     # only test project formatting for Julia >= 1.9

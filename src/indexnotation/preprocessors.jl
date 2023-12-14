@@ -101,64 +101,6 @@ function conjexpr(ex)
     return error("cannot conjugate expression: $ex")
 end
 
-# explicitscalar: wrap all tensor expressions with zero output indices in scalar call
-function explicitscalar(ex)
-    if istensorexpr(ex) && isempty(getindices(ex))
-        return Expr(:call, :tensorscalar, ex)
-    elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
-        return ex
-    elseif isa(ex, Expr) # postwalk
-        ex = Expr(ex.head, map(explicitscalar, ex.args)...)
-    else
-        return ex
-    end
-end
-
-"""
-    groupscalarfactors(ex)
-
-Group all scalar factors of a tensor expression into a single scalar factor at the start of the expression.
-"""
-function groupscalarfactors(ex)
-    # if istensor(ex) || (isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor"))
-    #     return ex
-    # elseif istensorexpr(ex) && ex.args[1] == :*
-    #     args = ex.args[2:end]
-    #     scalarpos = findall(isscalarexpr, args)
-    #     tensorpos = setdiff(1:length(args), scalarpos)
-    #     length(scalarpos) == 0 && return Expr(:call, :*, map(groupscalarfactors, args)...)
-    #     if length(scalarpos) == 1
-    #         scalar = args[scalarpos[1]]
-    #     else
-    #         scalar = Expr(:call, :*, args[scalarpos]...)
-    #     end
-    #     if length(tensorpos) == 0
-    #         return scalar
-    #     else
-    #         return Expr(:call, :*, scalar, map(groupscalarfactors, args[tensorpos])...)
-    #     end
-    # elseif istensorexpr(ex) && ex.args[1] == :/
-    #     xarg = Expr(:call, :/, 1, ex.args[3])
-    #     if istensorexpr(ex.args[2]) && ex.args[2].args[1] == :*
-    #         args = ex.args[2].args[2:end]
-    #         return groupscalarfactors(Expr(:call, :*, args..., xarg))
-    #     else
-    #         return Expr(:call, :*, groupscalarfactors(ex.args[2]), xarg)
-    #     end
-    # elseif istensorexpr(ex) && ex.args[1] == :\
-    #     xarg = Expr(:call, :/, 1, ex.args[2])
-    #     if istensorexpr(ex.args[3]) && ex.args[2].args[1] == :*
-    #         args = ex.args[3].args[2:end]
-    #         return groupscalarfactors(Expr(:call, :*, xarg, args...))
-    #     else
-    #         return Expr(:call, :*, xarg, groupscalarfactors(ex.args[2]))
-    #     end
-    # elseif isa(ex, Expr)
-    #     return Expr(ex.head, map(groupscalarfactors, ex.args)...)
-    # end
-    return ex
-end
-
 # extracttensorobjects: replace tensor objects which are not simple symbols with newly 
 # generated symbols, and assign them before the expression and after the expression as necessary
 """
