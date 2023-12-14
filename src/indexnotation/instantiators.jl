@@ -39,8 +39,7 @@ function instantiate_scalar(ex::Expr)
         tempvar = gensym()
         returnvar = gensym()
         return quote
-            $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [],
-                          TemporaryTensor))
+            $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [], TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
             $returnvar
@@ -67,9 +66,6 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
             return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, alloc)
         end
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
-           istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
-        return instantiate_contraction(dst, β, ex, α, leftind, rightind, alloc)
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
            isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
         α′ = simplify_scalarmul(α, ex.args[2])
         return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc)
@@ -77,6 +73,9 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
            istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
         α′ = simplify_scalarmul(α, ex.args[3])
         return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
+           istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
+        return instantiate_contraction(dst, β, ex, α, leftind, rightind, alloc)
     elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 &&
            isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
         α′ = simplify_scalarmul(α, Expr(:call, :\, ex.args[2], 1))
@@ -150,7 +149,8 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         push!(out.args, Expr(:(=), TC, instantiate_scalartype(ex)))
-        α′ = (α === One()) ? α : Expr(:call, :*, Expr(:call, :one, TC), α)
+        α′ = (α === One()) ? Expr(:call, :one, TC) :
+             Expr(:call, :*, Expr(:call, :one, TC), α)
         push!(out.args, instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc))
     else
         push!(out.args, instantiate(dst, β, ex.args[2], α, leftind, rightind, alloc))
