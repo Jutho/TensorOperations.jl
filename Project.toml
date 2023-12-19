@@ -1,7 +1,7 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 authors = ["Lukas Devos <lukas.devos@ugent.be>", "Maarten Van Damme <maartenvd1994@gmail.com>", "Jutho Haegeman <jutho.haegeman@ugent.be>"]
-version = "4.0.7"
+version = "4.0.8"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -15,28 +15,28 @@ TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
-[weakdeps]
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
-
-[extensions]
-TensorOperationsChainRulesCoreExt = "ChainRulesCore"
-TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
-
 [compat]
-Aqua = "0.6, 0.7"
+Aqua = "0.6, 0.7, 0.8"
 CUDA = "4,5"
 ChainRulesCore = "1"
+ChainRulesTestUtils = "1"
 DynamicPolynomials = "0.5"
 LRUCache = "1"
+LinearAlgebra = "1.6"
+Logging = "1.6"
 PackageExtensionCompat = "1"
+Random = "1"
 Strided = "2.0.4"
 StridedViews = "0.2"
+Test = "1"
 TupleTools = "1.1"
 VectorInterface = "0.4.1"
 cuTENSOR = "1"
 julia = "1.6"
+
+[extensions]
+TensorOperationsChainRulesCoreExt = "ChainRulesCore"
+TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
@@ -50,3 +50,8 @@ cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
 test = ["Test", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging"]
+
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
