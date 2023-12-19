@@ -37,7 +37,5 @@ end
 end
 
 @testset "Aqua" verbose = true begin
-    # only test project formatting for Julia >= 1.9
-    Aqua.test_all(TensorOperations;
-                  project_toml_formatting=(VERSION >= v"1.9"))
+    Aqua.test_all(TensorOperations)
 end

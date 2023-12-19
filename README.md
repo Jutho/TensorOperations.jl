@@ -12,7 +12,6 @@ Fast tensor operations using a convenient Einstein index notation.
 |:----------------:|:------------:|:------------:|:---------------------:|
 | [![CI][ci-img]][ci-url] | [![PkgEval][pkgeval-img]][pkgeval-url] | [![Codecov][codecov-img]][codecov-url] | [![Aqua QA][aqua-img]][aqua-url] |
 
-
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://jutho.github.io/TensorOperations.jl/stable
 

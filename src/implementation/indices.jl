@@ -108,7 +108,7 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
 end
 
 #-------------------------------------------------------------------------------------------
-# Generate index information
+# Convert indices to einsum labels: useful for package extensions / add-ons (e.g. TBLIS)
 #-------------------------------------------------------------------------------------------
 const OFFSET_OPEN = 'a' - 1
 const OFFSET_CLOSED = 'A' - 1

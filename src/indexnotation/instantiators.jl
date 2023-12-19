@@ -5,7 +5,7 @@ function instantiate_scalartype(ex::Expr)
     elseif isgeneraltensor(ex)
         (object, _, _, α, _) = decomposegeneraltensor(ex)
         return Expr(:call, :(Base.promote_op), :*, Expr(:call, :scalartype, object),
-                    Expr(:call, :scalartype, α))
+                    instantiate_scalartype(α))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         if length(ex.args) > 2
             return Expr(:call, :promote_add, map(instantiate_scalartype, ex.args[2:end])...)
@@ -20,6 +20,8 @@ function instantiate_scalartype(ex::Expr)
         return Expr(:call, :(Base.promote_op), ex.args[1],
                     map(instantiate_scalartype, ex.args[2:end])...)
     elseif ex.head == :call && ex.args[1] == :conj
+        return instantiate_scalartype(ex.args[2])
+    elseif ex.head == :call && ex.args[1] == :tensorscalar
         return instantiate_scalartype(ex.args[2])
     elseif isscalarexpr(ex)
         return :(scalartype($ex))
@@ -37,8 +39,7 @@ function instantiate_scalar(ex::Expr)
         tempvar = gensym()
         returnvar = gensym()
         return quote
-            $tempvar = $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [],
-                                     TemporaryTensor))
+            $(instantiate(tempvar, Zero(), ex.args[2], One(), [], [], TemporaryTensor))
             $returnvar = tensorscalar($tempvar)
             tensorfree!($tempvar)
             $returnvar
@@ -51,84 +52,80 @@ function instantiate_scalar(ex::Expr)
 end
 instantiate_scalar(ex::Symbol) = ex
 instantiate_scalar(ex) = ex
-function simplify_scalarmul(exa, exb)
-    if exa === One()
-        return exb
-    elseif exb === One()
-        return exa
-    end
-    if exa isa Number && exb isa Number
-        return exa * exb
-    end
-    if exa isa Number && isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
-        return Expr(:call, :*, exa * exb.args[2], exb.args[3:end]...)
-    end
-    if exb isa Number && isexpr(exa, :call) && exa.args[1] == :* && exa.args[2] isa Number
-        return Expr(:call, :*, exb * exa.args[2], exa.args[3:end]...)
-    end
-    if exa isa Number
-        return Expr(:call, :*, exa, exb)
-    end
-    if exb isa Number
-        return Expr(:call, :*, exb, exa)
-    end
-    if isexpr(exa, :call) && exa.args[1] == :* && exa.args[2] isa Number &&
-       isexpr(exb, :call) && exb.args[1] == :* && exb.args[2] isa Number
-        return Expr(:call, :*, exa.args[2] * exb.args[2], exa.args[3:end]...,
-                    exb.args[3:end]...)
-    end
-    return Expr(:call, :*, exa, exb)
-end
 
 @enum AllocationStrategy ExistingTensor NewTensor TemporaryTensor
 function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
-                     alloc::AllocationStrategy)
+                     alloc::AllocationStrategy, scaltype=nothing)
     if isgeneraltensor(ex)
-        return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, alloc)
+        return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, alloc, scaltype)
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         if length(ex.args) == 2
             α′ = (ex.args[1] == :-) ? Expr(:call, :-, α) : α
-            return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
+            return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc, scaltype)
         else # linear combination
-            return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, alloc)
+            return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, alloc,
+                                                 scaltype)
         end
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
-           istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
-        return instantiate_contraction(dst, β, ex, α, leftind, rightind, alloc)
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
            isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
         α′ = simplify_scalarmul(α, ex.args[2])
-        return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc)
+        return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc, scaltype)
     elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
            istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
         α′ = simplify_scalarmul(α, ex.args[3])
-        return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc)
+        return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc, scaltype)
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
+           istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
+        return instantiate_contraction(dst, β, ex, α, leftind, rightind, alloc, scaltype)
+    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 &&
+           isscalarexpr(ex.args[2]) && istensorexpr(ex.args[3])
+        α′ = simplify_scalarmul(α, Expr(:call, :\, ex.args[2], 1))
+        return instantiate(dst, β, ex.args[3], α′, leftind, rightind, alloc, scaltype)
+    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 &&
+           istensorexpr(ex.args[2]) && isscalarexpr(ex.args[3])
+        α′ = simplify_scalarmul(α, Expr(:call, :/, 1, ex.args[3]))
+        return instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc, scaltype)
     end
     throw(ArgumentError("problem with parsing $ex"))
 end
 
 function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
-                                   rightind::Vector{Any}, alloc::AllocationStrategy)
+                                   rightind::Vector{Any}, alloc::AllocationStrategy,
+                                   scaltype)
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)
+    α = simplify_scalarmul(α, α2)
 
     p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
     p2 = (map(l -> findfirst(isequal(l), srcind), rightind)...,)
     pC = (p1, p2)
 
+    out = Expr(:block)
+    if isa(α, Expr)
+        αsym = gensym(string(dst) * "_α")
+        push!(out.args, Expr(:(=), αsym, instantiate_scalar(α)))
+        α = αsym
+    end
+    if isa(β, Expr)
+        βsym = gensym(string(dst) * "_β")
+        push!(out.args, Expr(:(=), βsym, instantiate_scalar(β)))
+        β = βsym
+    end
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
         istemporary = (alloc === TemporaryTensor)
-        Tval = α === One() ? instantiate_scalartype(ex) :
-               instantiate_scalartype(Expr(:call, :*, α, ex))
-        out = Expr(:block, Expr(:(=), TC, Tval),
-                   :($dst = tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary)))
-    else
-        out = Expr(:block)
+        if scaltype === nothing
+            TCval = α === One() ? instantiate_scalartype(src) :
+                    instantiate_scalartype(Expr(:call, :*, α, src))
+        else
+            TCval = scaltype
+        end
+        push!(out.args, Expr(:(=), TC, TCval))
+        push!(out.args,
+              Expr(:(=), dst, :(tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary))))
     end
 
-    α′ = simplify_scalarmul(α, α2)
     if hastraceindices(ex)
         traceind = unique(setdiff(setdiff(srcind, leftind), rightind))
         q1 = (map(l -> findfirst(isequal(l), srcind), traceind)...,)
@@ -140,7 +137,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             return :(throw(IndexError($err)))
         end
         push!(out.args,
-              :($dst = tensortrace!($dst, $pC, $src, ($q1, $q2), $conjarg, $α′, $β)))
+              :($dst = tensortrace!($dst, $pC, $src, ($q1, $q2), $conjarg, $α, $β)))
         return out
     else
         if any(isnothing, (p1..., p2...)) || !isperm((p1..., p2...)) ||
@@ -148,21 +145,23 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
-        push!(out.args, :($dst = tensoradd!($dst, $pC, $src, $conjarg, $α′, $β)))
+        push!(out.args, :($dst = tensoradd!($dst, $pC, $src, $conjarg, $α, $β)))
         return out
     end
 end
 function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any},
-                                       rightind::Vector{Any}, alloc::AllocationStrategy)
+                                       rightind::Vector{Any}, alloc::AllocationStrategy,
+                                       scaltype)
     out = Expr(:block)
     if alloc ∈ (NewTensor, TemporaryTensor)
-        TC = gensym("T_" * string(dst))
-        push!(out.args, Expr(:(=), TC, instantiate_scalartype(ex)))
-        α′ = (α === One()) ? α :
-             Expr(:call, :*, Expr(:call, :one, TC), α)
-        push!(out.args, instantiate(dst, β, ex.args[2], α′, leftind, rightind, alloc))
+        if scaltype === nothing
+            scaltype = instantiate_scalartype(ex)
+        end
+        push!(out.args,
+              instantiate(dst, β, ex.args[2], α, leftind, rightind, alloc, scaltype))
     else
-        push!(out.args, instantiate(dst, β, ex.args[2], α, leftind, rightind, alloc))
+        push!(out.args,
+              instantiate(dst, β, ex.args[2], α, leftind, rightind, alloc, scaltype))
     end
     if ex.args[1] == :- && length(ex.args) == 3
         push!(out.args,
@@ -179,7 +178,7 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
     return out
 end
 function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
-                                 rightind::Vector{Any}, alloc::AllocationStrategy)
+                                 rightind::Vector{Any}, alloc::AllocationStrategy, scaltype)
     exA = ex.args[2]
     exB = ex.args[3]
 
@@ -239,12 +238,28 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
     end
+    if isa(α, Expr)
+        αsym = gensym(string(dst) * "_α")
+        push!(out.args, Expr(:(=), αsym, instantiate_scalar(α)))
+        α = αsym
+    end
+    if isa(β, Expr)
+        βsym = gensym(string(dst) * "_β")
+        push!(out.args, Expr(:(=), βsym, instantiate_scalar(β)))
+        β = βsym
+    end
     if alloc ∈ (NewTensor, TemporaryTensor)
         TCsym = gensym("T_" * string(dst))
-        TCval = Expr(:call, :promote_contract, Expr(:call, :scalartype, A),
-                     Expr(:call, :scalartype, B))
-        if α !== One()
-            TCval = Expr(:call, :(Base.promote_op), :*, instantiate_scalartype(α), TCval)
+        if scaltype === nothing
+            Atype = instantiate_scalartype(A)
+            Btype = instantiate_scalartype(B)
+            TCval = Expr(:call, :promote_contract, Atype, Btype)
+            if α !== One()
+                TCval = Expr(:call, :(Base.promote_op), :*, instantiate_scalartype(α),
+                             TCval)
+            end
+        else
+            TCval = scaltype
         end
         istemporary = alloc === TemporaryTensor
         initC = Expr(:block, Expr(:(=), TCsym, TCval),

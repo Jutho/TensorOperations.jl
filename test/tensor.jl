@@ -455,6 +455,35 @@ using LinearAlgebra
         @test vec ≈ mat1 * mat2 * veccopy
     end
 
+    @testset "tensorscalar expressions" begin
+        mat1 = rand(ComplexF64, 2, 2)
+        mat2 = rand(2, 2)
+        mat3 = rand(2, 2)
+        mat4 = rand(Float32, 2, 2)
+        @tensoropt res1[a, b] := mat1[x, y] * mat2[y, x] * mat3[a, c] * mat4[c, b]
+        @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[a, c] * mat4[c, b]
+        @tensor res3[a, b] := tensorscalar(mat1[x, y] * mat2[y, x]) * mat3[a, c] *
+                              mat4[c, b]
+        @tensor costcheck = warn res4[a, b] := tensorscalar(mat1[x, y] * mat2[y, x]) *
+                                               mat3[a, c] * mat4[c, b]
+        @test res1 == res2 == res3 == res4
+
+        @tensor res1[a, b] := mat1[x, y] * mat2[y, x] * mat3[b, a] + mat4[a, b]
+        @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[b, a] + mat4[a, b]
+        @tensoropt res3[a, b] := mat4[a, b] + mat1[x, y] * mat3[b, a] * mat2[y, x]
+        @tensor costcheck = warn res4[a, b] := mat4[a, b] +
+                                               tensorscalar(mat1[x, y] * mat2[y, x]) *
+                                               mat3[b, a]
+        @test res1 == res2 == res3 == res4
+
+        @tensor res1[a, b] := 0.5 * mat1[x, y] * mat2[y, x] * mat3[b, a]
+        @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[b, a] * 0.5
+        @tensoropt res3[a, b] := 0.5 * mat1[x, y] * mat3[b, a] * mat2[y, x]
+        @tensor costcheck = warn res4[a, b] := 0.5 * tensorscalar(mat1[x, y] * mat2[y, x]) *
+                                               mat3[b, a]
+        @test res1 == res2 == res3 == res4
+    end
+
     # @testset "Issue 136" begin
     #     A = rand(2, 2)
     #     B = rand(2, 2)

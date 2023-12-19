@@ -53,10 +53,11 @@ function decomposegeneraltensor(ex)
                count(a -> isgeneraltensor(a), ex.args) == 1 # scalar multiplication: multiply scalar factors
             idx = findfirst(a -> isgeneraltensor(a), ex.args)
             (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[idx])
-            scalars = Expr(:call)
-            append!(scalars.args, deepcopy(ex.args))
-            scalars.args[idx] = α
-            return (object, leftind, rightind, scalars, conj)
+            scalar = One()
+            for i in 2:length(ex.args)
+                scalar = simplify_scalarmul(scalar, i == idx ? α : ex.args[i])
+            end
+            return (object, leftind, rightind, scalar, conj)
         elseif ex.args[1] == :/ && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
             if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
                 (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
@@ -206,6 +207,26 @@ function getallindices(ex)
         return unique!(mapreduce(getallindices, vcat, ex.args))
     end
     return Any[]
+end
+
+function simplify_scalarmul(exa, exb)
+    if exa === One()
+        return exb
+    elseif exb === One()
+        return exa
+    end
+    if isexpr(exa, :call) && exa.args[1] == :* && isexpr(exb, :call) && exb.args[1] == :*
+        return Expr(:call, :*, exa.args[2:end]..., exb.args[2:end]...)
+    elseif isexpr(exa, :call) && exa.args[1] == *
+        return Expr(:call, :*, exa.args[2:end]..., exb)
+    elseif isexpr(exb, :call) && exb.args[1] == *
+        return Expr(:call, :*, exa, exb.args[2:end]...)
+    else
+        return Expr(:call, :*, exa, exb)
+    end
+end
+function simplify_scalarmul(exa, exb, exc, exd...)
+    return simplify_scalarmul(simplify_scalarmul(exa, exb), exc, exd...)
 end
 
 # # auxiliary routine

@@ -21,8 +21,8 @@ function processcontractions(ex, treebuilder, treesorter, costcheck)
     elseif isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     elseif isexpr(ex, :call) && ex.args[1] == :tensorscalar
-        return Expr(:call, :tensorscalar,
-                    processcontractions(ex.args[2], treebuilder, treesorter, costcheck))
+        return processcontractions(ex.args[2], treebuilder, treesorter, costcheck)
+        # `tensorscalar` will be reinserted automatically
     elseif isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
         rhs, pre, post = _processcontractions(rhs, treebuilder, treesorter, costcheck)
@@ -57,6 +57,10 @@ end
 
 function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexprs,
                                  postexprs)
+    if isexpr(ex, :call) && ex.args[1] == :tensorscalar
+        return insertcontractiontrees!(ex.args[2], treebuilder, treesorter, costcheck,
+                                       preexprs, postexprs)
+    end
     if isexpr(ex, :call)
         args = ex.args
         nargs = length(args)
@@ -64,7 +68,12 @@ function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexpr
                   (insertcontractiontrees!(args[i], treebuilder, treesorter, costcheck,
                                            preexprs, postexprs) for i in 2:nargs)...)
     end
-    if istensorcontraction(ex) && length(ex.args) > 3
+    if !istensorcontraction(ex)
+        return ex
+    end
+    if length(ex.args) <= 3
+        return isempty(getindices(ex)) ? Expr(:call, :tensorscalar, ex) : ex
+    else
         args = ex.args[2:end]
         network = map(getindices, args)
         for a in getallindices(ex)
@@ -137,7 +146,6 @@ function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexpr
         push!(postexprs, removelinenumbernode(costcompareex))
         return treeex
     end
-    return ex
 end
 
 function treecost(tree, network, costs)
@@ -175,9 +183,14 @@ function defaulttreesorter(args, tree)
     if isa(tree, Int)
         return args[tree]
     else
-        return Expr(:call, :*,
-                    defaulttreesorter(args, tree[1]),
-                    defaulttreesorter(args, tree[2]))
+        ex = Expr(:call, :*,
+                  defaulttreesorter(args, tree[1]),
+                  defaulttreesorter(args, tree[2]))
+        if isempty(getindices(ex))
+            return Expr(:call, :tensorscalar, ex)
+        else
+            return ex
+        end
     end
 end
 
