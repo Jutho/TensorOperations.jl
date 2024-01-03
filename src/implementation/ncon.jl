@@ -28,32 +28,13 @@ function ncon(tensors, network,
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
-    outputindices = Vector{Int}()
-    for n in network
-        for k in n
-            if k < 0
-                push!(outputindices, k)
-            end
-        end
-    end
-    if output === nothing
-        output = sort(outputindices; rev=true)
-    else
-        for a in output
-            a in outputindices ||
-                throw(ArgumentError("invalid NCON network: $network -> $output"))
-        end
-        for a in outputindices
-            a in output ||
-                throw(ArgumentError("invalid NCON network: $network -> $output"))
-        end
-    end
+    output′ = nconoutput(network, output)
 
     if length(tensors) == 1
-        if length(output) == length(network[1])
-            return tensorcopy(output, tensors[1], network[1], conjlist[1] ? :C : :N)
+        if length(output′) == length(network[1])
+            return tensorcopy(output′, tensors[1], network[1], conjlist[1] ? :C : :N)
         else
-            return tensortrace(output, tensors[1], network[1], conjlist[1] ? :C : :N)
+            return tensortrace(output′, tensors[1], network[1], conjlist[1] ? :C : :N)
         end
     end
 
@@ -62,7 +43,7 @@ function ncon(tensors, network,
 
     A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
     B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
-    IC = tuple(output...)
+    IC = tuple(output′...)
 
     return tensorcontract(IC, A, IA, CA, B, IB, CB)
 end
@@ -77,4 +58,20 @@ function contracttree(tensors, network, conjlist, tree)
     IC = tuple(symdiff(IA, IB)...)
     C = tensorcontract(IC, A, IA, CA, B, IB, CB)
     return C, IC, :N
+end
+
+function nconoutput(network, output)
+    outputindices = Vector{Int}()
+    for n in network
+        for k in n
+            if k < 0
+                push!(outputindices, k)
+            end
+        end
+    end
+    isnothing(output) && return sort(outputindices; rev=true)
+
+    issetequal(output, outputindices) ||
+        throw(ArgumentError("invalid NCON network: $network -> $output"))
+    return output
 end

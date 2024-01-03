@@ -18,7 +18,7 @@ trivtuple(N) = ntuple(identity, N)
 @non_differentiable TensorOperations.tensorcontract_structure(args...)
 @non_differentiable TensorOperations.tensorcontract_type(args...)
 @non_differentiable TensorOperations.tensoralloc_contract(args...)
-@non_differentiable TensorOperations.tensorfree!(C)
+@non_differentiable TensorOperations.tensorfree!(args...)
 
 # TODO: possibly use the non-inplace functions, to avoid depending on Base.copy
 
@@ -199,5 +199,11 @@ function _kron(Es::NTuple{N,Any}, backend::Backend...) where {N}
     p = ((1, (2 .+ trivtuple(N - 1))...), (2, ((N + 1) .+ trivtuple(N - 1))...))
     return tensorproduct(p, E1, ((1, 2), ()), :N, E2, p2, :N, One(), backend...)
 end
+
+# NCON functions
+@non_differentiable TensorOperations.ncontree(args...)
+@non_differentiable TensorOperations.nconoutput(args...)
+@non_differentiable TensorOperations.isnconstyle(args...)
+@non_differentiable TensorOperations.indexordertree(args...)
 
 end
