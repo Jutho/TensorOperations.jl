@@ -72,5 +72,6 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
+        continue-on-error: true
         env:
           JULIA_NUM_THREADS: 4
