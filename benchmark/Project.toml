@@ -1,0 +1,9 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+MKL = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
+PkgBenchmark = "32113eaa-f34f-5b0d-bd6c-c81e245fc73d"
+TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
+TensorOperationsTBLIS = "1e289f0c-8058-4c3e-8acf-f8ef036bd865"
+ThreadPinning = "811555cd-349b-4f26-b7bc-1f208b848042"
+cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
