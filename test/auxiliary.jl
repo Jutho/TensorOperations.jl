@@ -202,7 +202,7 @@ end
     @testset "add" begin
         @test add_indices((:a, :b, :c), (:a, :b, :c)) == ((1, 2, 3), ())
         @test add_indices((:a, :b, :c), (:c, :b, :a)) == ((3, 2, 1), ())
-        @test add_indices((1, :b, 3.0), (3.0, 1, :b)) == ((3, 1, 2), ())
+        @test add_indices((1, :b, 3), (3, 1, :b)) == ((3, 1, 2), ())
 
         @test_throws IndexError add_indices((:a, :b, :c), (:c, :a, :b, :d))
         @test_throws IndexError add_indices((:a, :b, :c), (:a, :b, :d))
@@ -218,7 +218,7 @@ end
               (((1, 2, 3), ()), (4,), (5,))
         @test trace_indices((:a, :b, :c, :d, :d), (:c, :b, :a)) ==
               (((3, 2, 1), ()), (4,), (5,))
-        @test trace_indices((4, :b, 3.0, 1, 4), (3.0, 1, :b)) ==
+        @test trace_indices((4, :b, 3, 1, 4), (3, 1, :b)) ==
               (((3, 4, 2), ()), (1,), (5,))
 
         @test_throws IndexError trace_indices((:a, :b, :c, :d, :d), (:a, :b, :d))
