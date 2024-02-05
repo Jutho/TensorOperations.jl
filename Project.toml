@@ -4,6 +4,7 @@ authors = ["Lukas Devos <lukas.devos@ugent.be>", "Maarten Van Damme <maartenvd19
 version = "5.1.4"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"

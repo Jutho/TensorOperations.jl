@@ -1,0 +1,2 @@
+[TensorOperations]
+precompile_trace_ndims = [2, 2]
