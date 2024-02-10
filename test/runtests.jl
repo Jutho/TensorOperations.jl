@@ -27,9 +27,9 @@ end
     include("ad.jl")
 end
 
-using CUDA
-CUDA.functional() && @testset "CUDA" verbose = true begin
-    include("cuda.jl")
+using cuTENSOR
+has_cutensor() && @testset "cuTENSOR" verbose = true begin
+    include("cutensor.jl")
 end
 
 @testset "Polynomials" begin
