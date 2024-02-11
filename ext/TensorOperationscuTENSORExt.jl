@@ -19,7 +19,6 @@ using TensorOperations: TensorOperations as TO
 
 using cuTENSOR
 using cuTENSOR: CUDA
-using cuTENSOR: CUTENSOR_OP_IDENTITY, CUTENSOR_OP_CONJ, CUTENSOR_OP_ADD
 
 using CUDA: CuArray, AnyCuArray
 # this might be dependency-piracy, but removes a dependency from the main package
@@ -45,13 +44,13 @@ function TO.tensorscalar(C::SUPPORTED_CUARRAYS)
 end
 
 function tensorop(A::AnyCuArray, conjA::Symbol=:N)
-    return (eltype(A) <: Real || conjA === :N) ? CUTENSOR_OP_IDENTITY : CUTENSOR_OP_CONJ
+    return (eltype(A) <: Real || conjA === :N) ? cuTENSOR.OP_IDENTITY : cuTENSOR.OP_CONJ
 end
 function tensorop(A::CuStridedView, conjA::Symbol=:N)
     return if (eltype(A) <: Real || !xor(conjA === :C, A.op === conj))
-        CUTENSOR_OP_IDENTITY
+        cuTENSOR.OP_IDENTITY
     else
-        CUTENSOR_OP_CONJ
+        cuTENSOR.OP_CONJ
     end
 end
 
@@ -158,9 +157,9 @@ function TO.tensoradd!(C::CuArray, pC::Index2Tuple,
         cuTENSOR.elementwise_binary_execute!(α,
                                              A, Ainds, opA,
                                              β,
-                                             C, Cinds, CUTENSOR_OP_IDENTITY,
+                                             C, Cinds, cuTENSOR.OP_IDENTITY,
                                              C, Cinds,
-                                             CUTENSOR_OP_ADD)
+                                             cuTENSOR.OP_ADD)
     end
 end
 
@@ -178,8 +177,8 @@ function TO.tensorcontract!(C::CuArray, pC::Index2Tuple,
                               A, Ainds, opA,
                               B, Binds, opB,
                               β,
-                              C, Cinds, CUTENSOR_OP_IDENTITY,
-                              CUTENSOR_OP_IDENTITY)
+                              C, Cinds, cuTENSOR.OP_IDENTITY,
+                              cuTENSOR.OP_IDENTITY)
 end
 
 function TO.tensortrace!(C::CuArray, pC::Index2Tuple,
@@ -190,7 +189,7 @@ function TO.tensortrace!(C::CuArray, pC::Index2Tuple,
     opA = tensorop(A, conjA)
 
     # map to reduction operation
-    plan = plan_trace(A, Ainds, opA, C, Cinds, CUTENSOR_OP_IDENTITY, CUTENSOR_OP_ADD)
+    plan = plan_trace(A, Ainds, opA, C, Cinds, cuTENSOR.OP_IDENTITY, cuTENSOR.OP_ADD)
     return cuTENSOR.reduce!(plan, α, A, β, C)
 end
 
