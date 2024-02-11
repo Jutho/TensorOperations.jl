@@ -40,8 +40,8 @@ StridedViews = "0.2"
 Test = "1"
 TupleTools = "1.1"
 VectorInterface = "0.4.1"
-cuTENSOR = "1"
-julia = "1.6"
+cuTENSOR = "2"
+julia = "1.8"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
