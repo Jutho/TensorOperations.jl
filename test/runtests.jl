@@ -27,8 +27,9 @@ end
     include("ad.jl")
 end
 
-using cuTENSOR
-has_cutensor() && @testset "cuTENSOR" verbose = true begin
+# note: cuTENSOR should not be loaded before this point
+# as there is a test which requires it to be loaded after
+@testset "cuTENSOR" verbose = true begin
     include("cutensor.jl")
 end
 
