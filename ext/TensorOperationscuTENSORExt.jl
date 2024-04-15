@@ -167,7 +167,9 @@ function TO.tensortrace!(C::AnyCuArray, pC::Index2Tuple,
     tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
     return C
 end
-TO.tensorfree!(C::AnyCuArray, backend::cuTENSORBackend) = tensorfree!(StridedView(C), backend)
+function TO.tensorfree!(C::AnyCuArray, backend::cuTENSORBackend)
+    return tensorfree!(StridedView(C), backend)
+end
 
 #-------------------------------------------------------------------------------------------
 # Implementation
@@ -286,10 +288,12 @@ end
 using cuTENSOR: cutensorWorksizePreference_t, cutensorAlgo_t, cutensorComputeDescriptorEnum,
                 CuTensorPlan, ModeType, cutensorOperator_t, cutensorJitMode_t,
                 WORKSPACE_DEFAULT, ALGO_DEFAULT, JIT_MODE_NONE, CuTensorDescriptor,
-                is_unary, is_binary, cutensorOperationDescriptor_t, cutensorCreateContraction,
+                is_unary, is_binary, cutensorOperationDescriptor_t,
+                cutensorCreateContraction,
                 cutensorCreatePermutation, cutensorReduce, cutensorPlanPreference_t,
                 plan_contraction, cutensorCreatePlanPreference, cutensorPermute,
-                cutensorElementwiseBinaryExecute, cutensorContract, cutensorCreateElementwiseBinary, cutensorElementwiseBinaryExecute
+                cutensorElementwiseBinaryExecute, cutensorContract,
+                cutensorCreateElementwiseBinary, cutensorElementwiseBinaryExecute
 
 function cuTENSOR.elementwise_binary_execute!(@nospecialize(alpha::Number),
                                               @nospecialize(A::CuStridedView),
@@ -310,9 +314,9 @@ function cuTENSOR.elementwise_binary_execute!(@nospecialize(alpha::Number),
                                               plan::Union{CuTensorPlan,Nothing}=nothing)
     actual_plan = if plan === nothing
         cuTENSOR.plan_elementwise_binary(A, Ainds, opA,
-                                C, Cinds, opC,
-                                D, Dinds, opAC;
-                                workspace, algo, compute_type)
+                                         C, Cinds, opC,
+                                         D, Dinds, opAC;
+                                         workspace, algo, compute_type)
     else
         plan
     end
