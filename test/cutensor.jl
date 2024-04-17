@@ -150,10 +150,10 @@ if cuTENSOR.has_cutensor()
             @tensor C1[4, 1, 3, 2] := A[1, 2, 3, 4]
             @cutensor C2[4, 1, 3, 2] := A[1, 2, 3, 4]
             @test C1 ≈ collect(C2)
-            @test_throws CUTENSORError begin
+            @test_throws TensorOperations.IndexError begin
                 @cutensor C[1, 2, 3, 4] := A[1, 2, 3]
             end
-            @test_throws CUTENSORError begin
+            @test_throws TensorOperations.IndexError begin
                 @cutensor C[1, 2, 3, 4] := A[1, 2, 2, 4]
             end
 
@@ -181,7 +181,7 @@ if cuTENSOR.has_cutensor()
             @tensor C1[a, g, e, d, f] := A[a, b, c, d, e] * B[c, f, b, g]
             @cutensor C2[a, g, e, d, f] := A[a, b, c, d, e] * B[c, f, b, g]
             @test C1 ≈ collect(C2)
-            @test_throws CUTENSORError begin
+            @test_throws IndexError begin
                 @cutensor A[a, b, c, d] * B[c, f, b, g]
             end
         end
@@ -192,7 +192,7 @@ if cuTENSOR.has_cutensor()
             @tensor C1[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
             @cutensor C2[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
             @test C1 ≈ collect(C2)
-            @test_throws CUTENSORError begin
+            @test_throws IndexError begin
                 @cutensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
             end
         end
@@ -227,7 +227,7 @@ if cuTENSOR.has_cutensor()
             @test_throws TensorOperations.IndexError begin
                 @tensor C[3, 1, 4, 2] = A[1, 2, 3]
             end
-            @test_throws DimensionMismatch begin
+            @test_throws CUTENSORError begin
                 @tensor C[3, 1, 4, 2] = A[3, 1, 4, 2]
             end
             @test_throws TensorOperations.IndexError begin
@@ -252,7 +252,7 @@ if cuTENSOR.has_cutensor()
             @test_throws IndexError begin
                 @tensor C[3, 1, 4, 2] = 0.5 * C[3, 1, 4, 2] + 1.2 * A[1, 2, 3]
             end
-            @test_throws DimensionMismatch begin
+            @test_throws CUTENSORError begin
                 @tensor C[3, 1, 4, 2] = 0.5 * C[3, 1, 4, 2] + 1.2 * A[3, 1, 2, 4]
             end
             @test_throws IndexError begin
@@ -275,13 +275,13 @@ if cuTENSOR.has_cutensor()
             @test_throws IndexError begin
                 @tensor B[b, c] += α * A[a, b, c]
             end
-            @test_throws DimensionMismatch begin
+            @test_throws CUTENSORError begin
                 @tensor B[c, b] += α * A[a, b, c, a]
             end
             @test_throws IndexError begin
                 @tensor B[c, b] += α * A[a, b, a, a]
             end
-            @test_throws DimensionMismatch begin
+            @test_throws CUTENSORError begin
                 @tensor B[c, b] += α * A[a, b, a, c]
             end
         end
