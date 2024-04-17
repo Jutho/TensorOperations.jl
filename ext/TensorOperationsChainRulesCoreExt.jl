@@ -55,13 +55,13 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
             _dα = tensorscalar(tensorcontract(((), ()), A, ((), linearize(pC)),
                                               _conj(conjA), ΔC,
                                               (trivtuple(numind(pC)),
-                                               ()), :N, backend...))
+                                               ()), :N, One(), backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(((), ()), C,
                                               ((), trivtuple(numind(pC))), :C, ΔC,
-                                              (trivtuple(numind(pC)), ()), :N,
+                                              (trivtuple(numind(pC)), ()), :N, One(),
                                               backend...))
             return projectβ(_dβ)
         end
@@ -116,17 +116,17 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(((), ()),
                                               tensorcontract(pC, A, pA, conjA, B, pB,
-                                                             conjB),
+                                                             conjB, One(), backend...),
                                               ((), trivtuple(numind(pC))),
                                               :C, ΔC,
-                                              (trivtuple(numind(pC)), ()), :N,
+                                              (trivtuple(numind(pC)), ()), :N, One(),
                                               backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(((), ()), C,
                                               ((), trivtuple(numind(pC))), :C, ΔC,
-                                              (trivtuple(numind(pC)), ()), :N,
+                                              (trivtuple(numind(pC)), ()), :N, One(),
                                               backend...))
             return projectβ(_dβ)
         end
@@ -172,14 +172,14 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C, pC::Index2Tuple, A,
                                               tensortrace(pC, A, pA),
                                               ((), trivtuple(numind(pC))),
                                               _conj(conjA), ΔC,
-                                              (trivtuple(numind(pC)), ()), :N,
+                                              (trivtuple(numind(pC)), ()), :N, One(),
                                               backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(((), ()), C,
                                               ((), trivtuple(numind(pC))), :C, ΔC,
-                                              (trivtuple(numind(pC)), ()), :N,
+                                              (trivtuple(numind(pC)), ()), :N, One(),
                                               backend...))
             return projectβ(_dβ)
         end
