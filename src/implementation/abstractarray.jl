@@ -126,9 +126,7 @@ function tensoradd!(C::AbstractArray, pC::Index2Tuple,
     dimcheck_tensoradd(C, pC, A)
 
     # can we assume that C is mutable?
-    # is there more functionality in base that we can use?
-    C .= β .* C .+ α .* permutedims(conjA === :N ? A : conj(A), linearize(pC))
-    return C
+    return add!(C, permutedims(conjA === :N ? A : conj(A), linearize(pC)), α, β)
 end
 
 # For now I am giving up on writing a generic tensortrace! that works for all AbstractArray types...
