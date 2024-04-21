@@ -19,7 +19,8 @@ trivtuple(N) = ntuple(identity, N)
 @non_differentiable TensorOperations.tensorcontract_type(args...)
 @non_differentiable TensorOperations.tensoralloc_contract(args...)
 
-# Cannot free intermediate tensors when using AD!
+# Cannot free intermediate tensors when using AD
+# Thus we change the forward passes: `istemp=false` and `tensorfree!` is a no-op
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensorfree!), args...)
     tensorfree!_pullback(Δargs...) = ntuple(x -> NoTangent(), length(args))
     return nothing, tensorfree!_pullback
@@ -27,10 +28,7 @@ end
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoralloc), ttype, structure,
                               istemp, backend...)
     output = TensorOperations.tensoralloc(ttype, structure, false, backend...)
-    function tensoralloc_pullback(Δoutput)
-        istemp && TensorOperations.tensorfree!(unthunk(Δoutput), backend...)
-        return ntuple(x -> NoTangent(), 4 + length(backend))
-    end
+    tensoralloc_pullback(Δargs...) = ntuple(x -> NoTangent(), 4 + length(backend))
     return output, tensoralloc_pullback
 end
 
