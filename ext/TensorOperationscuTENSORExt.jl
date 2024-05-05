@@ -150,6 +150,11 @@ function TO.tensoralloc_contract(TC, pC,
     return tensoralloc(ttype, structure, istemp)::ttype
 end
 
+function TO.tensorfree!(C::CuArray, ::cuTENSORBackend)
+    CUDA.unsafe_free!(C)
+    return nothing
+end
+
 # Convert all implementations to StridedViews
 # This should work for wrapper types that are supported by StridedViews
 function TO.tensoradd!(C::AnyCuArray, pC::Index2Tuple,
@@ -171,10 +176,6 @@ function TO.tensortrace!(C::AnyCuArray, pC::Index2Tuple,
                          α::Number, β::Number, backend::cuTENSORBackend)
     tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
     return C
-end
-function TO.tensorfree!(C::DenseCuArray, backend::cuTENSORBackend)
-    CUDA.unsafe_free!(C)
-    return nothing
 end
 
 #-------------------------------------------------------------------------------------------
