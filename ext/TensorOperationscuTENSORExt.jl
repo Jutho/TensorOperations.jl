@@ -32,7 +32,7 @@ using cuTENSOR: reduction_compute_types, cutensorCreateReduction, cutensorReduce
 import cuTENSOR: plan_reduction, reduce!
 
 using cuTENSOR: CUDA
-using CUDA: CuArray, AnyCuArray
+using CUDA: CuArray, StridedCuArray, DenseCuArray, AnyCuArray
 # this might be dependency-piracy, but removes a dependency from the main package
 using CUDA.Adapt: adapt
 
@@ -47,17 +47,17 @@ isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
 #-------------------------------------------------------------------------------------------
 
 const CuStridedView = StridedViewsCUDAExt.CuStridedView
-const SUPPORTED_CUARRAYS = (:AnyCuArray, :CuStridedView)
+const SUPPORTED_CUARRAYS = (:StridedCuArray, :CuStridedView)
 const cuTENSORBackend = TO.Backend{:cuTENSOR}
 
-function TO.tensorscalar(C::AnyCuArray)
+function TO.tensorscalar(C::StridedCuArray)
     return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
 end
 function TO.tensorscalar(C::CuStridedView)
     return ndims(C) == 0 ? CUDA.@allowscalar(C[]) : throw(DimensionMismatch())
 end
 
-function tensorop(A::AnyCuArray, conjA::Symbol=:N)
+function tensorop(A::StridedCuArray, conjA::Symbol=:N)
     return (eltype(A) <: Real || conjA === :N) ? OP_IDENTITY : OP_CONJ
 end
 function tensorop(A::CuStridedView, conjA::Symbol=:N)
@@ -150,12 +150,8 @@ function TO.tensoralloc_contract(TC, pC,
     return tensoralloc(ttype, structure, istemp)::ttype
 end
 
-function TO.tensorfree!(C::CuStridedView, ::cuTENSORBackend)
-    CUDA.unsafe_free!(parent(C))
-    return nothing
-end
-
 # Convert all implementations to StridedViews
+# This should work for wrapper types that are supported by StridedViews
 function TO.tensoradd!(C::AnyCuArray, pC::Index2Tuple,
                        A::AnyCuArray, conjA::Symbol,
                        α::Number, β::Number, backend::cuTENSORBackend)
@@ -176,8 +172,9 @@ function TO.tensortrace!(C::AnyCuArray, pC::Index2Tuple,
     tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
     return C
 end
-function TO.tensorfree!(C::AnyCuArray, backend::cuTENSORBackend)
-    return tensorfree!(StridedView(C), backend)
+function TO.tensorfree!(C::DenseCuArray, backend::cuTENSORBackend)
+    CUDA.unsafe_free!(C)
+    return nothing
 end
 
 #-------------------------------------------------------------------------------------------
@@ -234,351 +231,12 @@ function TO.tensortrace!(C::CuStridedView, pC::Index2Tuple,
     return reduce!(plan, α, A, β, C)
 end
 
-#-------------------------------------------------------------------------------------------
-# Implementations for StridedViews
-#-------------------------------------------------------------------------------------------
-
-# cuTENSOR does not readily support subarrays/views because they need to be strided, but
-# StridedViews should always work. The following is a lot of code duplication from
-# cuTENSOR.jl, but for now this will have to do.
-
-# elementwise_binary_execute
-# --------------------------
-function elementwise_binary_execute!(@nospecialize(alpha::Number),
-                                     @nospecialize(A::CuStridedView),
-                                     Ainds::ModeType,
-                                     opA::cutensorOperator_t,
-                                     @nospecialize(gamma::Number),
-                                     @nospecialize(C::CuStridedView),
-                                     Cinds::ModeType,
-                                     opC::cutensorOperator_t,
-                                     @nospecialize(D::CuStridedView),
-                                     Dinds::ModeType,
-                                     opAC::cutensorOperator_t;
-                                     workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                                     algo::cutensorAlgo_t=ALGO_DEFAULT,
-                                     compute_type::Union{DataType,
-                                                         cutensorComputeDescriptorEnum,
-                                                         Nothing}=nothing,
-                                     plan::Union{CuTensorPlan,Nothing}=nothing)
-    actual_plan = if plan === nothing
-        plan_elementwise_binary(A, Ainds, opA,
-                                C, Cinds, opC,
-                                D, Dinds, opAC;
-                                workspace, algo, compute_type)
-    else
-        plan
-    end
-
-    elementwise_binary_execute!(actual_plan, alpha, A, gamma, C, D)
-
-    if plan === nothing
-        CUDA.unsafe_free!(actual_plan)
-    end
-
-    return D
-end
-
-function elementwise_binary_execute!(plan::CuTensorPlan,
-                                     @nospecialize(alpha::Number),
-                                     @nospecialize(A::CuStridedView),
-                                     @nospecialize(gamma::Number),
-                                     @nospecialize(C::CuStridedView),
-                                     @nospecialize(D::CuStridedView))
-    scalar_type = plan.scalar_type
-    cutensorElementwiseBinaryExecute(handle(), plan,
-                                     Ref{scalar_type}(alpha), A,
-                                     Ref{scalar_type}(gamma), C, D,
-                                     stream())
-    return D
-end
-
-function plan_elementwise_binary(@nospecialize(A::CuStridedView), Ainds::ModeType,
-                                 opA::cutensorOperator_t,
-                                 @nospecialize(C::CuStridedView), Cinds::ModeType,
-                                 opC::cutensorOperator_t,
-                                 @nospecialize(D::CuStridedView), Dinds::ModeType,
-                                 opAC::cutensorOperator_t;
-                                 jit::cutensorJitMode_t=JIT_MODE_NONE,
-                                 workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                                 algo::cutensorAlgo_t=ALGO_DEFAULT,
-                                 compute_type::Union{DataType,
-                                                     cutensorComputeDescriptorEnum,
-                                                     Nothing}=eltype(C))
-    !is_unary(opA) && throw(ArgumentError("opA must be a unary op!"))
-    !is_unary(opC) && throw(ArgumentError("opC must be a unary op!"))
-    !is_binary(opAC) && throw(ArgumentError("opAC must be a binary op!"))
-    descA = CuTensorDescriptor(A)
-    descC = CuTensorDescriptor(C)
-    @assert size(C) == size(D) && strides(C) == strides(D)
-    descD = descC # must currently be identical
-    modeA = collect(Cint, Ainds)
-    modeC = collect(Cint, Cinds)
-    modeD = modeC
-
-    actual_compute_type = if compute_type === nothing
-        elementwise_binary_compute_types[(eltype(A), eltype(C))]
-    else
-        compute_type
-    end
-
-    desc = Ref{cutensorOperationDescriptor_t}()
-    cutensorCreateElementwiseBinary(handle(),
-                                    desc,
-                                    descA, modeA, opA,
-                                    descC, modeC, opC,
-                                    descD, modeD,
-                                    opAC,
-                                    actual_compute_type)
-
-    plan_pref = Ref{cutensorPlanPreference_t}()
-    cutensorCreatePlanPreference(handle(), plan_pref, algo, jit)
-
-    return CuTensorPlan(desc[], plan_pref[]; workspacePref=workspace)
-end
-
-# permute!
-# --------
-function permute!(@nospecialize(alpha::Number),
-                  @nospecialize(A::CuStridedView), Ainds::ModeType,
-                  opA::cutensorOperator_t,
-                  @nospecialize(B::CuStridedView), Binds::ModeType;
-                  workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                  algo::cutensorAlgo_t=ALGO_DEFAULT,
-                  compute_type::Union{DataType,cutensorComputeDescriptorEnum,
-                                      Nothing}=nothing,
-                  plan::Union{CuTensorPlan,Nothing}=nothing)
-    actual_plan = if plan === nothing
-        plan_permutation(A, Ainds, opA,
-                         B, Binds;
-                         workspace, algo, compute_type)
-    else
-        plan
-    end
-
-    permute!(actual_plan, alpha, A, B)
-
-    if plan === nothing
-        CUDA.unsafe_free!(actual_plan)
-    end
-
-    return B
-end
-
-function permute!(plan::CuTensorPlan,
-                  @nospecialize(alpha::Number),
-                  @nospecialize(A::CuStridedView),
-                  @nospecialize(B::CuStridedView))
-    scalar_type = plan.scalar_type
-    cutensorPermute(handle(), plan, Ref{scalar_type}(alpha), A, B, stream())
-    return B
-end
-
-function plan_permutation(@nospecialize(A::CuStridedView), Ainds::ModeType,
-                          opA::cutensorOperator_t,
-                          @nospecialize(B::CuStridedView), Binds::ModeType;
-                          jit::cutensorJitMode_t=JIT_MODE_NONE,
-                          workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                          algo::cutensorAlgo_t=ALGO_DEFAULT,
-                          compute_type::Union{DataType,cutensorComputeDescriptorEnum,
-                                              Nothing}=nothing)
-    descA = CuTensorDescriptor(A)
-    descB = CuTensorDescriptor(B)
-
-    modeA = collect(Cint, Ainds)
-    modeB = collect(Cint, Binds)
-
-    actual_compute_type = if compute_type === nothing
-        permutation_compute_types[(eltype(A), eltype(B))]
-    else
-        compute_type
-    end
-
-    desc = Ref{cutensorOperationDescriptor_t}()
-    cutensorCreatePermutation(handle(), desc,
-                              descA, modeA, opA,
-                              descB, modeB,
-                              actual_compute_type)
-
-    plan_pref = Ref{cutensorPlanPreference_t}()
-    cutensorCreatePlanPreference(handle(), plan_pref, algo, jit)
-
-    return CuTensorPlan(desc[], plan_pref[]; workspacePref=workspace)
-end
-
-# contract!
-# ---------
-function contract!(@nospecialize(alpha::Number),
-                   @nospecialize(A::CuStridedView), Ainds::ModeType,
-                   opA::cutensorOperator_t,
-                   @nospecialize(B::CuStridedView), Binds::ModeType,
-                   opB::cutensorOperator_t,
-                   @nospecialize(beta::Number),
-                   @nospecialize(C::CuStridedView), Cinds::ModeType,
-                   opC::cutensorOperator_t,
-                   opOut::cutensorOperator_t;
-                   jit::cutensorJitMode_t=JIT_MODE_NONE,
-                   workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                   algo::cutensorAlgo_t=ALGO_DEFAULT,
-                   compute_type::Union{DataType,cutensorComputeDescriptorEnum,
-                                       Nothing}=nothing,
-                   plan::Union{CuTensorPlan,Nothing}=nothing)
-    actual_plan = if plan === nothing
-        plan_contraction(A, Ainds, opA, B, Binds, opB, C, Cinds, opC, opOut;
-                         jit, workspace, algo, compute_type)
-    else
-        plan
-    end
-
-    contract!(actual_plan, alpha, A, B, beta, C)
-
-    if plan === nothing
-        CUDA.unsafe_free!(actual_plan)
-    end
-
-    return C
-end
-
-function contract!(plan::CuTensorPlan,
-                   @nospecialize(alpha::Number),
-                   @nospecialize(A::CuStridedView),
-                   @nospecialize(B::CuStridedView),
-                   @nospecialize(beta::Number),
-                   @nospecialize(C::CuStridedView))
-    scalar_type = plan.scalar_type
-    cutensorContract(handle(), plan,
-                     Ref{scalar_type}(alpha), A, B,
-                     Ref{scalar_type}(beta), C, C,
-                     plan.workspace, sizeof(plan.workspace), stream())
-    return C
-end
-
-function plan_contraction(@nospecialize(A::CuStridedView), Ainds::ModeType,
-                          opA::cutensorOperator_t,
-                          @nospecialize(B::CuStridedView), Binds::ModeType,
-                          opB::cutensorOperator_t,
-                          @nospecialize(C::CuStridedView), Cinds::ModeType,
-                          opC::cutensorOperator_t,
-                          opOut::cutensorOperator_t;
-                          jit::cutensorJitMode_t=JIT_MODE_NONE,
-                          workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                          algo::cutensorAlgo_t=ALGO_DEFAULT,
-                          compute_type::Union{DataType,
-                                              cutensorComputeDescriptorEnum,
-                                              Nothing}=nothing)
-    !is_unary(opA) && throw(ArgumentError("opA must be a unary op!"))
-    !is_unary(opB) && throw(ArgumentError("opB must be a unary op!"))
-    !is_unary(opC) && throw(ArgumentError("opC must be a unary op!"))
-    !is_unary(opOut) && throw(ArgumentError("opOut must be a unary op!"))
-    descA = CuTensorDescriptor(A)
-    descB = CuTensorDescriptor(B)
-    descC = CuTensorDescriptor(C)
-    # for now, D must be identical to C (and thus, descD must be identical to descC)
-    modeA = collect(Cint, Ainds)
-    modeB = collect(Cint, Binds)
-    modeC = collect(Cint, Cinds)
-
-    actual_compute_type = if compute_type === nothing
-        contraction_compute_types[(eltype(A), eltype(B), eltype(C))]
-    else
-        compute_type
-    end
-
-    desc = Ref{cutensorOperationDescriptor_t}()
-    cutensorCreateContraction(handle(),
-                              desc,
-                              descA, modeA, opA,
-                              descB, modeB, opB,
-                              descC, modeC, opC,
-                              descC, modeC,
-                              actual_compute_type)
-
-    plan_pref = Ref{cutensorPlanPreference_t}()
-    cutensorCreatePlanPreference(handle(), plan_pref, algo, jit)
-
-    return CuTensorPlan(desc[], plan_pref[]; workspacePref=workspace)
-end
-
-# reduce!
-# -------
-function reduce!(@nospecialize(alpha::Number),
-                 @nospecialize(A::CuStridedView), Ainds::ModeType,
-                 opA::cutensorOperator_t,
-                 @nospecialize(beta::Number),
-                 @nospecialize(C::CuStridedView), Cinds::ModeType,
-                 opC::cutensorOperator_t,
-                 opReduce::cutensorOperator_t;
-                 workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                 algo::cutensorAlgo_t=ALGO_DEFAULT,
-                 compute_type::Union{DataType,cutensorComputeDescriptorEnum,
-                                     Nothing}=nothing,
-                 plan::Union{CuTensorPlan,Nothing}=nothing)
-    actual_plan = if plan === nothing
-        plan_reduction(A, Ainds, opA, C, Cinds, opC, opReduce; workspace, algo,
-                       compute_type)
-    else
-        plan
-    end
-
-    reduce!(actual_plan, alpha, A, beta, C)
-
-    if plan === nothing
-        CUDA.unsafe_free!(actual_plan)
-    end
-
-    return C
-end
-
-function reduce!(plan::CuTensorPlan,
-                 @nospecialize(alpha::Number),
-                 @nospecialize(A::CuStridedView),
-                 @nospecialize(beta::Number),
-                 @nospecialize(C::CuStridedView))
-    scalar_type = plan.scalar_type
-    cutensorReduce(handle(), plan,
-                   Ref{scalar_type}(alpha), A,
-                   Ref{scalar_type}(beta), C, C,
-                   plan.workspace, sizeof(plan.workspace), stream())
-    return C
-end
-
-function plan_reduction(@nospecialize(A::CuStridedView), Ainds::ModeType,
-                        opA::cutensorOperator_t,
-                        @nospecialize(C::CuStridedView), Cinds::ModeType,
-                        opC::cutensorOperator_t,
-                        opReduce::cutensorOperator_t;
-                        jit::cutensorJitMode_t=JIT_MODE_NONE,
-                        workspace::cutensorWorksizePreference_t=WORKSPACE_DEFAULT,
-                        algo::cutensorAlgo_t=ALGO_DEFAULT,
-                        compute_type::Union{DataType,cutensorComputeDescriptorEnum,
-                                            Nothing}=nothing)
-    !is_unary(opA) && throw(ArgumentError("opA must be a unary op!"))
-    !is_unary(opC) && throw(ArgumentError("opC must be a unary op!"))
-    !is_binary(opReduce) && throw(ArgumentError("opReduce must be a binary op!"))
-    descA = CuTensorDescriptor(A)
-    descC = CuTensorDescriptor(C)
-    # for now, D must be identical to C (and thus, descD must be identical to descC)
-    modeA = collect(Cint, Ainds)
-    modeC = collect(Cint, Cinds)
-
-    actual_compute_type = if compute_type === nothing
-        reduction_compute_types[(eltype(A), eltype(C))]
-    else
-        compute_type
-    end
-
-    desc = Ref{cutensorOperationDescriptor_t}()
-    cutensorCreateReduction(handle(),
-                            desc,
-                            descA, modeA, opA,
-                            descC, modeC, opC,
-                            descC, modeC, opReduce,
-                            actual_compute_type)
-
-    plan_pref = Ref{cutensorPlanPreference_t}()
-    cutensorCreatePlanPreference(handle(), plan_pref, algo, jit)
-
-    return CuTensorPlan(desc[], plan_pref[]; workspacePref=workspace)
+function cuTENSOR.CuTensorDescriptor(a::CuStridedView; size=size(a), strides=strides(a),
+                                     eltype=eltype(a))
+    sz = collect(Int64, size)
+    st = collect(Int64, strides)
+    alignment::UInt32 = Base.aligned_sizeof(eltype) # TODO: maybe optimize this a bit?
+    return cuTENSOR.CuTensorDescriptor(sz, st, eltype, alignment)
 end
 
 # trace!
