@@ -14,22 +14,10 @@ using cuTENSOR: WORKSPACE_DEFAULT, ALGO_DEFAULT, JIT_MODE_NONE
 using cuTENSOR: cutensorCreatePlanPreference, cutensorPlan, CuTensorPlan,
                 CuTensorDescriptor, ModeType
 
-# elementwise binary
-using cuTENSOR: elementwise_binary_compute_types, cutensorCreateElementwiseBinary,
-                cutensorElementwiseBinaryExecute
-import cuTENSOR: plan_elementwise_binary, elementwise_binary_execute!
-
-# permute
-using cuTENSOR: permutation_compute_types, cutensorCreatePermutation, cutensorPermute
-import cuTENSOR: plan_permutation, permute!
-
-# contract
-using cuTENSOR: contraction_compute_types, cutensorCreateContraction, cutensorContract
-import cuTENSOR: plan_contraction, contract!
+using cuTENSOR: elementwise_binary_execute!, permute!, contract!, reduce!
 
 # reduce
-using cuTENSOR: reduction_compute_types, cutensorCreateReduction, cutensorReduce
-import cuTENSOR: plan_reduction, reduce!
+using cuTENSOR: reduction_compute_types, cutensorCreateReduction
 
 using cuTENSOR: CUDA
 using CUDA: CuArray, StridedCuArray, DenseCuArray, AnyCuArray
