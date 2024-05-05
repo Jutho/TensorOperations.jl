@@ -236,7 +236,11 @@ function cuTENSOR.CuTensorDescriptor(a::CuStridedView; size=size(a), strides=str
                                      eltype=eltype(a))
     sz = collect(Int64, size)
     st = collect(Int64, strides)
-    alignment::UInt32 = Base.aligned_sizeof(eltype) # TODO: maybe optimize this a bit?
+    # compute largest possible alignment
+    alignment::UInt32 = 256
+    while (alignment > Base.aligned_sizeof(eltype)) && (alignment % 2 != 0)
+        alignment >>= 1
+    end
     return cuTENSOR.CuTensorDescriptor(sz, st, eltype, alignment)
 end
 
