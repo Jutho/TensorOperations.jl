@@ -30,7 +30,8 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_add(TC, A, pA, conjA, istemp=false, backend::Backend...)
+function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Symbol, istemp::Bool=false,
+                         backend::Backend...)
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
@@ -49,8 +50,10 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB,
-                              istemp=false, backend::Backend...)
+function tensoralloc_contract(TC,
+                              A, pA::Index2Tuple, conjA::Symbol,
+                              B, pB::Index2Tuple, conjB::Symbol,
+                              pAB::Index2Tuple, istemp::Bool=false, backend::Backend...)
     ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
