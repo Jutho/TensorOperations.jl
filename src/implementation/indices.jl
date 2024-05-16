@@ -76,7 +76,7 @@ function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     pA = (indCinA..., cindA1..., cindA2...)
     (isperm(pA) && length(pA) == NA) ||
         throw(IndexError("invalid trace specification: $IA to $IC"))
-    return (indCinA, ()), cindA1, cindA2
+    return (indCinA, ()), (cindA1, cindA2)
 end
 
 function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
