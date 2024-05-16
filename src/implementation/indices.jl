@@ -98,13 +98,13 @@ function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
 
     pA = (oindA, cindA)
     pB = (cindB, oindB)
-    pC = (indCinoAB, ())
+    pAB = (indCinoAB, ())
 
     if !isperm(linearize(pA)) || !isperm(linearize(pB)) || !isperm(indCinoAB)
         throw(IndexError("invalid contraction pattern: $IA and $IB to $IC"))
     end
 
-    return pA, pB, pC
+    return pA, pB, pAB
 end
 
 #-------------------------------------------------------------------------------------------
@@ -119,20 +119,20 @@ function add_labels(pA::Index2Tuple)
     return tuple(einA...), tuple(einB...)
 end
 
-function trace_labels(pC::Index2Tuple, iA₁::IndexTuple, iA₂::IndexTuple)
-    length(iA₁) == length(iA₂) ||
+function trace_labels(p::Index2Tuple, q::Index2Tuple)
+    numin(q) == numout(q) ||
         throw(IndexError("number of traced indices not consistent"))
-    length(iA₁) < OFFSET_OPEN - OFFSET_CLOSED ||
+    numin(q) < OFFSET_OPEN - OFFSET_CLOSED ||
         throw(IndexError("too many traced indices"))
-    einA = Vector{Char}(undef, numind(pC) + length(iA₁) + length(iA₂))
-    setindex!.(Ref(einA), (1:numind(pC)) .+ OFFSET_OPEN, linearize(pC))
-    setindex!.(Ref(einA), (1:length(iA₁)) .+ OFFSET_CLOSED, iA₁)
-    setindex!.(Ref(einA), (1:length(iA₂)) .+ OFFSET_CLOSED, iA₂)
-    return tuple(einA...), tuple(((1:numind(pC)) .+ OFFSET_OPEN)...)
+    einA = Vector{Char}(undef, numind(p) + numind(q))
+    setindex!.(Ref(einA), (1:numind(p)) .+ OFFSET_OPEN, linearize(p))
+    setindex!.(Ref(einA), (1:numin(q)) .+ OFFSET_CLOSED, q[1])
+    setindex!.(Ref(einA), (1:numin(q)) .+ OFFSET_CLOSED, q[2])
+    return tuple(einA...), tuple(((1:numind(p)) .+ OFFSET_OPEN)...)
 end
 
-function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
-    numout(pA) + numin(pB) == numind(pC) ||
+function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pAB::Index2Tuple)
+    numout(pA) + numin(pB) == numind(pAB) ||
         throw(IndexError("number of outer indices not consistent"))
     numin(pA) == numout(pB) ||
         throw(IndexError("number of contracted indices not consistent"))
@@ -147,5 +147,5 @@ function contract_labels(pA::Index2Tuple, pB::Index2Tuple, pC::Index2Tuple)
     setindex!.(Ref(einB), (1:numin(pB)) .+ (OFFSET_OPEN + numout(pA)), pB[2])
     setindex!.(Ref(einB), (1:numout(pB)) .+ OFFSET_CLOSED, pB[1])
 
-    return tuple(einA...), tuple(einB...), tuple((linearize(pC) .+ OFFSET_OPEN)...)
+    return tuple(einA...), tuple(einB...), tuple((linearize(pAB) .+ OFFSET_OPEN)...)
 end
