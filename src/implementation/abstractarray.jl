@@ -15,26 +15,27 @@ end
 const StridedNative = Backend{:StridedNative}
 const StridedBLAS = Backend{:StridedBLAS}
 
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                     α::Number, β::Number)
-    return tensoradd!(C, pC, A, conjA, α, β, StridedNative())
+    return tensoradd!(C, A, pA, conjA, α, β, StridedNative())
 end
 
-function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                      α, β)
-    return tensortrace!(C, pC, A, pA, conjA, α, β, StridedNative())
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      α::Number, β::Number)
+    return tensortrace!(C, A, p, q, conjA, α, β, StridedNative())
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple,
                          α::Number, β::Number)
     if eltype(C) <: LinearAlgebra.BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
-        return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedBLAS())
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedBLAS())
     else
-        return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedNative())
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedNative())
     end
 end
 
@@ -42,35 +43,41 @@ end
 # Implementation based on StridedViews
 #-------------------------------------------------------------------------------------------
 
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                     α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
-    tensoradd!(StridedView(C), pC, StridedView(A), conjA, α, β, backend)
+    tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
     return C
 end
 
-function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
                       α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
-    tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
+    tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
     return C
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedBLAS)
-    tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB, α, β, StridedBLAS())
+    tensorcontract!(StridedView(C),
+                    StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB,
+                    pAB, α, β, StridedBLAS())
     return C
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
-    tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB, α, β, StridedNative())
+    tensorcontract!(StridedView(C),
+                    StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB,
+                    pAB, α, β, StridedNative())
     return C
 end
 
