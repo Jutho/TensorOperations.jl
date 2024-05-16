@@ -18,11 +18,11 @@ Promote the scalar types of a tensor addition to a common type.
 promote_add(args...) = Base.promote_op(+, args...)
 
 """
-    tensoralloc_add(TC, pC, A, conjA, istemp=false, backend::Backend...)
+    tensoralloc_add(TC, A, pA, conjA, istemp=false, backend::Backend...)
 
 Allocate a tensor `C` of scalar type `TC` that would be the result of
 
-    `tensoradd!(C, pC, A, conjA)`
+    `tensoradd!(C, A, pA, conjA)`
 
 The `istemp` argument is used to indicate that a tensor wlil not be used after the `@tensor`
 block, and thus will be followed by an explicit call to `tensorfree!`. The `backend` can be
@@ -30,18 +30,18 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_add(TC, pC, A, conjA, istemp=false, backend::Backend...)
-    ttype = tensoradd_type(TC, pC, A, conjA)
-    structure = tensoradd_structure(pC, A, conjA)
+function tensoralloc_add(TC, A, pA, conjA, istemp=false, backend::Backend...)
+    ttype = tensoradd_type(TC, A, pA, conjA)
+    structure = tensoradd_structure(A, pA, conjA)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
 end
 
 """
-    tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB, istemp=false, backend::Backend...)
+    tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, istemp=false, backend::Backend...)
 
 Allocate a tensor `C` of scalar type `TC` that would be the result of
 
-    `tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB)`
+    `tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB)`
 
 The `istemp` argument is used to indicate that a tensor wlil not be used after the `@tensor`
 block, and thus will be followed by an explicit call to `tensorfree!`. The `backend` can be
@@ -49,10 +49,10 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_contract(TC, pC, A, pA, conjA, B, pB, conjB,
+function tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB,
                               istemp=false, backend::Backend...)
-    ttype = tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
-    structure = tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
+    ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
+    structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
 end
 
@@ -63,24 +63,23 @@ end
 tensorstructure(A::AbstractArray) = size(A)
 tensorstructure(A::AbstractArray, iA::Int, conjA::Symbol) = size(A, iA)
 
-function tensoradd_type(TC, pC::Index2Tuple, A::AbstractArray, conjA::Symbol)
-    return Array{TC,sum(length.(pC))}
+function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
+    return Array{TC,sum(length.(pA))}
 end
 
-function tensoradd_structure(pC::Index2Tuple, A::AbstractArray, conjA::Symbol)
-    return size.(Ref(A), linearize(pC))
+function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
+    return size.(Ref(A), linearize(pA))
 end
 
-function tensorcontract_type(TC, pC, A::AbstractArray, pA, conjA,
-                             B::AbstractArray, pB, conjB, backend...)
-    return Array{TC,sum(length.(pC))}
+function tensorcontract_type(TC, A::AbstractArray, pA, conjA,
+                             B::AbstractArray, pB, conjB, pAB, backend...)
+    return Array{TC,sum(length.(pAB))}
 end
 
-function tensorcontract_structure(pC::Index2Tuple,
-                                  A::AbstractArray, pA::Index2Tuple, conjA,
-                                  B::AbstractArray, pB::Index2Tuple, conjB)
+function tensorcontract_structure(A::AbstractArray, pA, conjA,
+                                  B::AbstractArray, pB, conjB, pAB, backend...)
     return let lA = length(pA[1])
-        map(n -> n <= lA ? size(A, pA[1][n]) : size(B, pB[2][n - lA]), linearize(pC))
+        map(n -> n <= lA ? size(A, pA[1][n]) : size(B, pB[2][n - lA]), linearize(pAB))
     end
 end
 
