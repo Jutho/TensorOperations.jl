@@ -141,10 +141,6 @@ See also [`tensortrace!`](@ref).
 """
 function tensortrace end
 
-function tensortrace(IC::Tuple, A, IA::Tuple, conjA::Symbol=:N, α::Number=One())
-    pC, cindA1, cindA2 = trace_indices(IA, IC)
-    return tensortrace(A, pC, (cindA1, cindA2), conjA, α)
-end
 # default `IC`
 function tensortrace(A, IA, conjA::Symbol, α::Number=One())
     return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), conjA, α)
@@ -157,9 +153,10 @@ end
 function tensortrace(A, IA, α::Number=One())
     return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), :N, α)
 end
-# iterables
+# labels to indices
 function tensortrace(IC, A, IA, conjA::Symbol, α::Number=One())
-    return tensortrace(tuple(IC...), A, tuple(IA...), conjA, α)
+    p, q = trace_indices(tuple(IA...), tuple(IC...))
+    return tensortrace(A, p, q, conjA, α)
 end
 # expert mode
 function tensortrace(A, p::Index2Tuple, q::Index2Tuple, conjA::Symbol, α::Number=One(),
