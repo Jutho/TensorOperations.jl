@@ -3,9 +3,9 @@
 #-------------------------------------------------------------------------------------------
 
 """
-    tensoradd!(C, pC, A, conjA, α=1, β=1 [, backend])
+    tensoradd!(C, A, pA, conjA, α=1, β=1 [, backend])
 
-Compute `C = β * C + α * permutedims(opA(A), pC)` without creating the intermediate
+Compute `C = β * C + α * permutedims(opA(A), pA)` without creating the intermediate
 temporary. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj`
 if `conjA` equals `:C`. Optionally specify a backend implementation to use.
 
@@ -16,17 +16,17 @@ See also [`tensoradd`](@ref).
 """
 function tensoradd! end
 # insert default α and β arguments
-function tensoradd!(C, pC::Index2Tuple, A, conjA::Symbol)
-    return tensoradd!(C, pC, A, conjA, One(), One())
+function tensoradd!(C, A, pA::Index2Tuple, conjA::Symbol)
+    return tensoradd!(C, A, pA, conjA, One(), One())
 end
 
 """
-    tensortrace!(C, pC, A, pA, conjA, α=1, β=0 [, backend])
+    tensortrace!(C, A, p, q, conjA, α=1, β=0 [, backend])
 
-Compute `C = β * C + α * permutedims(partialtrace(opA(A)), pC)` without creating the
-intermediate temporary, where `A` is partially traced, such that indices in `pA[1]` are
-contracted with indices in `pA[2]`, and the remaining indices are permuted according
-to `pC`. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj` if
+Compute `C = β * C + α * permutedims(opA(A), (p, q))` without creating the
+intermediate temporary, where `A` is partially traced, such that indices in `q[1]` are
+contracted with indices in `q[2]`, and the other indices are permuted according
+to `p`. The operation `opA` acts as `identity` if `conjA` equals `:N` and as `conj` if
 `conjA` equals `:C`. Optionally specify a backend implementation to use.
 
 !!! warning
@@ -36,17 +36,17 @@ See also [`tensortrace`](@ref).
 """
 function tensortrace! end
 # insert default α and β arguments
-function tensortrace!(C, pC::Index2Tuple, A, pA::Index2Tuple, conjA::Symbol)
-    return tensortrace!(C, pC, A, pA, conjA, One(), Zero())
+function tensortrace!(C, A, p::Index2Tuple, q::Index2Tuple, conjA::Symbol)
+    return tensortrace!(C, A, p, q, conjA, One(), Zero())
 end
 
 """
-    tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α=1, β=0 [, backend])
+    tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α=1, β=0 [, backend])
 
-Compute `C = β * C + α * permutedims(contract(opA(A), opB(B)), pC)` without creating the
+Compute `C = β * C + α * permutedims(contract(opA(A), opB(B)), pAB)` without creating the
 intermediate temporary, where `A` and `B` are contracted such that the indices `pA[2]` of
 `A` are contracted with indices `pB[1]` of `B`. The remaining indices `(pA[1]..., pB[2]...)`
-are then permuted according to `pC`. The operation `opA` acts as `identity` if `conjA`
+are then permuted according to `pAB`. The operation `opA` acts as `identity` if `conjA`
 equals `:N` and as `conj` if `conjA` equals `:C`; the operation `opB` is determined by
 `conjB` analogously. Optionally specify a backend implementation to use.
 
@@ -57,10 +57,11 @@ See also [`tensorcontract`](@ref).
 """
 function tensorcontract! end
 # insert default α and β arguments
-function tensorcontract!(C, pC::Index2Tuple,
+function tensorcontract!(C,
                          A, pA::Index2Tuple, conjA::Symbol,
-                         B, pB::Index2Tuple, conjB::Symbol)
-    return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, One(), Zero())
+                         B, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple)
+    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero())
 end
 
 """
@@ -84,34 +85,34 @@ Obtain the information associated to indices `iA` of tensor `op(A)`, where `op` 
 function tensorstructure end
 
 """
-    tensoradd_structure(pC, A, conjA)
+    tensoradd_structure(A, pA, conjA)
 
 Obtain the structure information of `C`, where `C` would be the output of
-`tensoradd!(C, pC, A, conjA)`.
+`tensoradd!(C, A, pA, conjA)`.
 """
 function tensoradd_structure end
 
 """
-    tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
+    tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
 
 Obtain the structure information of `C`, where `C` would be the output of
-`tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB)`.
+`tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB)`.
 """
 function tensorcontract_structure end
 
 """
-    tensoradd_type(TC, pC, A, conjA)
+    tensoradd_type(TC, A, pA, conjA)
 
-Obtain `typeof(C)`, where `C` is the result of `tensoradd!(C, pC, A, conjA)`
-with scalar type `TC`.
+Obtain the type information of `C`, where `C` would be the output of
+`tensoradd!(C, A, pA, conjA)` with scalartype `TC`.
 """
 function tensoradd_type end
 
 """
-    tensorcontract_type(TC, pC, A, pA, conjA, B, pB, conjB)
+    tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
 
-Obtain `typeof(C)`, where `C` is the result of
-`tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB)` with scalar type `TC`.
+Obtain the type information of `C`, where `C` would be the output of
+`tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB)` with scalar type `TC`.
 """
 function tensorcontract_type end
 
