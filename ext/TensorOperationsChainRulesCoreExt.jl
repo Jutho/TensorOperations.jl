@@ -65,7 +65,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
         end
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(A, ((), linearize(pA)), _conj(conjA),
-                                              C, (trivtuple(numind(pA)), ()), :N,
+                                              ΔC, (trivtuple(numind(pA)), ()), :N,
                                               ((), ()), One(), backend...))
             return projectα(_dα)
         end
