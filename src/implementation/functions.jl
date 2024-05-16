@@ -14,8 +14,8 @@ Create a copy of `A`, where the dimensions of `A` are assigned indices from the
 iterable `IA` and the indices of the copy are contained in `IC`. Both iterables
 should contain the same elements, optionally in a different order.
 
-The result of this method is equivalent to `α * permutedims(A, pC)` where `pC` is the
-permutation such that `IC = IA[pC]`. The implementation of `tensorcopy` is however more
+The result of this method is equivalent to `α * permutedims(A, pA)` where `pA` is the
+permutation such that `IC = IA[pA]`. The implementation of `tensorcopy` is however more
 efficient on average, especially if `Threads.nthreads() > 1`.
 
 Optionally, the symbol `conjA` can be used to specify whether the input tensor should be
