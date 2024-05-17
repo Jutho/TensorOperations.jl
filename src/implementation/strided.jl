@@ -60,7 +60,7 @@ function tensorcontract!(C::StridedView{T},
     end
     tpAB = trivialpermutation(pAB)
     rpAB = (TupleTools.getindices(indCinoBA, tpAB[1]),
-           TupleTools.getindices(indCinoBA, tpAB[2]))
+            TupleTools.getindices(indCinoBA, tpAB[2]))
     if contract_memcost(C, A, pA, conjA, B, pB, conjB, pAB) <=
        contract_memcost(C, B, rpB, conjB, A, rpA, conjA, rpAB)
         return blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β)

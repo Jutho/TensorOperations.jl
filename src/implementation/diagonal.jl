@@ -16,7 +16,7 @@ function tensorcontract!(C::AbstractArray,
     return C
 end
 
-function tensorcontract!(C::AbstractArray, 
+function tensorcontract!(C::AbstractArray,
                          A::Diagonal, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
                          pAB::Index2Tuple,
@@ -31,7 +31,7 @@ function tensorcontract!(C::AbstractArray,
     end
     tpAB = trivialpermutation(pAB)
     rpAB = (TupleTools.getindices(indCinoBA, tpAB[1]),
-           TupleTools.getindices(indCinoBA, tpAB[2]))
+            TupleTools.getindices(indCinoBA, tpAB[2]))
 
     _diagtensorcontract!(StridedView(C),
                          StridedView(B), rpB, conjB,

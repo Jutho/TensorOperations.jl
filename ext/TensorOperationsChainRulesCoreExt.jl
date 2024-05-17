@@ -128,11 +128,11 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
             return projectB(_dB)
         end
         dα = @thunk begin
-            Cnoβ = tensorcontract(A, pA, conjA,
+            C_αβ = tensorcontract(A, pA, conjA,
                                   B, pB, conjB,
                                   pAB, One(), backend...)
             # TODO: consider using `inner`
-            _dα = tensorscalar(tensorcontract(Cnoβ, ((), trivtuple(numind(pAB))), :C,
+            _dα = tensorscalar(tensorcontract(C_αβ, ((), trivtuple(numind(pAB))), :C,
                                               ΔC, (trivtuple(numind(pAB)), ()), :N,
                                               ((), ()), One(), backend...))
             return projectα(_dα)
@@ -183,14 +183,15 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C,
             return projectA(_dA)
         end
         dα = @thunk begin
-            Cnoβ = tensortrace(A, p, q, :N, One(), backend...)
-            _dα = tensorscalar(tensorcontract(Cnoβ, ((), trivtuple(numind(p))), _conj(conjA),
+            C_αβ = tensortrace(A, p, q, :N, One(), backend...)
+            _dα = tensorscalar(tensorcontract(C_αβ, ((), trivtuple(numind(p))),
+                                              _conj(conjA),
                                               ΔC, (trivtuple(numind(p)), ()), :N,
                                               ((), ()), One(), backend...))
             return projectα(_dα)
         end
         dβ = @thunk begin
-            _dβ = tensorscalar(tensorcontract(C, ((), trivtuple(numind(p))), :C, 
+            _dβ = tensorscalar(tensorcontract(C, ((), trivtuple(numind(p))), :C,
                                               ΔC, (trivtuple(numind(p)), ()), :N,
                                               ((), ()), One(), backend...))
             return projectβ(_dβ)

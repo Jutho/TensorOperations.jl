@@ -112,7 +112,8 @@ end
 Check that `C` has compatible indices and number of dimensions with the trace of
 `A` over indices `p` and.
 """
-function argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple)
+function argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple,
+                              q::Index2Tuple)
     ndims(C) == numind(p) ||
         throw(IndexError("invalid selection of length $(ndims(C)): $p"))
     2 * numin(q) == 2 * numout(q) == ndims(A) - ndims(C) ||
