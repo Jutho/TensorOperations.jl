@@ -15,26 +15,27 @@ end
 const StridedNative = Backend{:StridedNative}
 const StridedBLAS = Backend{:StridedBLAS}
 
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                     α::Number, β::Number)
-    return tensoradd!(C, pC, A, conjA, α, β, StridedNative())
+    return tensoradd!(C, A, pA, conjA, α, β, StridedNative())
 end
 
-function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                      α, β)
-    return tensortrace!(C, pC, A, pA, conjA, α, β, StridedNative())
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      α::Number, β::Number)
+    return tensortrace!(C, A, p, q, conjA, α, β, StridedNative())
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple,
                          α::Number, β::Number)
     if eltype(C) <: LinearAlgebra.BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
-        return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedBLAS())
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedBLAS())
     else
-        return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedNative())
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedNative())
     end
 end
 
@@ -42,35 +43,41 @@ end
 # Implementation based on StridedViews
 #-------------------------------------------------------------------------------------------
 
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                     α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
-    tensoradd!(StridedView(C), pC, StridedView(A), conjA, α, β, backend)
+    tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
     return C
 end
 
-function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                      A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
                       α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
-    tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
+    tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
     return C
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedBLAS)
-    tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB, α, β, StridedBLAS())
+    tensorcontract!(StridedView(C),
+                    StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB,
+                    pAB, α, β, StridedBLAS())
     return C
 end
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                          B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
-    tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB, α, β, StridedNative())
+    tensorcontract!(StridedView(C),
+                    StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB,
+                    pAB, α, β, StridedNative())
     return C
 end
 
@@ -89,41 +96,42 @@ function argcheck_index2tuple(C::AbstractArray, pC::Index2Tuple)
 end
 
 """
-    argcheck_tensoradd(C::AbstractArray, pC::Index2Tuple, A::AbstractArray)
+    argcheck_tensoradd(C::AbstractArray, A::AbstractArray, pA::Index2Tuple)
 
-Check that `C` and `A` have `numind(pC)` indices and that `pC` constitutes a valid permutation.
+Check that `C` and `A` have `numind(pA)` indices and that `pA` constitutes a valid permutation.
 """
-function argcheck_tensoradd(C::AbstractArray, pC::Index2Tuple, A::AbstractArray)
+function argcheck_tensoradd(C::AbstractArray, A::AbstractArray, pA::Index2Tuple)
     ndims(C) == ndims(A) || throw(IndexError("non-matching number of dimensions"))
-    argcheck_index2tuple(C, pC)
+    argcheck_index2tuple(A, pA)
     return nothing
 end
 
 """
-    argcheck_tensortrace(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, pA::Index2Tuple)
+    argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple)
 
-Check that `C` and `pC` have compatible indices and number of dimensions with the trace of
-`A` over indices `pA`.
+Check that the partial trace of `A` over indices `q` and with permutation of the remaining
+indices `p` is compatible with output `C`.
 """
-function argcheck_tensortrace(C::AbstractArray, pC::Index2Tuple, A::AbstractArray,
-                              pA::Index2Tuple)
-    ndims(C) == numind(pC) ||
-        throw(IndexError("invalid selection of length $(ndims(C)): $pC"))
-    2 * numin(pA) == 2 * numout(pA) == ndims(A) - ndims(C) ||
+function argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple,
+                              q::Index2Tuple)
+    ndims(C) == numind(p) ||
+        throw(IndexError("invalid selection of length $(ndims(C)): $p"))
+    2 * numin(q) == 2 * numout(q) == ndims(A) - ndims(C) ||
         throw(IndexError("invalid number of trace dimensions"))
     return nothing
 end
 
 """
-    argcheck_tensorcontract(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, pA::Index2Tuple, B::AbstractArray, pB::Index2Tuple)
+    argcheck_tensorcontract(C::AbstractArray, A::AbstractArray, pA::Index2Tuple, B::AbstractArray, pB::Index2Tuple, pAB::Index2Tuple)
 
-Check that `C` and `pC`, `A` and `pA`, and `B` and `pB` have compatible indices and number
+Check that `C`, `A` and `pA`, and `B` and `pB` and `pAB` have compatible indices and number
 of dimensions.
 """
-function argcheck_tensorcontract(C::AbstractArray, pC::Index2Tuple,
+function argcheck_tensorcontract(C::AbstractArray,
                                  A::AbstractArray, pA::Index2Tuple,
-                                 B::AbstractArray, pB::Index2Tuple)
-    argcheck_index2tuple(C, pC)
+                                 B::AbstractArray, pB::Index2Tuple,
+                                 pAB::Index2Tuple)
+    argcheck_index2tuple(C, pAB)
     argcheck_index2tuple(A, pA)
     argcheck_index2tuple(B, pB)
     numout(pA) + numin(pB) == ndims(C) ||
@@ -134,45 +142,52 @@ function argcheck_tensorcontract(C::AbstractArray, pC::Index2Tuple,
 end
 
 """
-    dimcheck_tensoradd(C::AbstractArray, pC::Index2Tuple, A::AbstractArray)
+    dimcheck_tensoradd(C::AbstractArray, A::AbstractArray, pA::Index2Tuple)
 
-Check that `C` and `A` have compatible sizes for the addition specified by `pC`.
+Check that `C` and `A` have compatible sizes for the addition specified by `pA`.
 """
-function dimcheck_tensoradd(C::AbstractArray, pC::Index2Tuple, A::AbstractArray)
+function dimcheck_tensoradd(C::AbstractArray, A::AbstractArray, pA::Index2Tuple)
     szA, szC = size(A), size(C)
-    TupleTools.getindices(szA, linearize(pC)) == szC ||
+    TupleTools.getindices(szA, linearize(pA)) == szC ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
     return nothing
 end
 
 """
-    dimcheck_tensorcontract(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, pA::Index2Tuple)
+    dimcheck_tensorcontract(C::AbstractArray, A::AbstractArray,
+                            p::Index2Tuple, q::Index2Tuple)
 
-Check that `C` and `A` have compatible sizes for the trace and addition specified by `pC` and `pA`.
+Check that `C` and `A` have compatible sizes for the trace and addition specified by `p` and
+`q`.
 """
-function dimcheck_tensortrace(C::AbstractArray, pC::Index2Tuple, A::AbstractArray,
-                              pA::Index2Tuple)
+function dimcheck_tensortrace(C::AbstractArray, A::AbstractArray,
+                              p::Index2Tuple, q::Index2Tuple)
     szA, szC = size(A), size(C)
-    TupleTools.getindices(szA, pA[1]) == TupleTools.getindices(szA, pA[2]) ||
+    TupleTools.getindices(szA, q[1]) == TupleTools.getindices(szA, q[2]) ||
         throw(DimensionMismatch("non-matching sizes in traced dimensions"))
-    TupleTools.getindices(szA, linearize(pC)) == szC ||
+    TupleTools.getindices(szA, linearize(p)) == szC ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
     return nothing
 end
 
 """
-    dimcheck_tensorcontract(C::AbstractArray, pC::Index2Tuple, A::AbstractArray, pA::Index2Tuple, B::AbstractArray, pB::Index2Tuple)
+    dimcheck_tensorcontract(C::AbstractArray,
+                            A::AbstractArray, pA::Index2Tuple,
+                            B::AbstractArray, pB::Index2Tuple,
+                            pAB::Index2Tuple)
 
-Check that `C`, `A` and `B` have compatible sizes for the contraction specified by `pC`, `pA` and `pB`.
+Check that `C`, `A` and `B` have compatible sizes for the contraction specified by `pA`,
+`pB` and `pAB`.
 """
-function dimcheck_tensorcontract(C::AbstractArray, pC::Index2Tuple,
+function dimcheck_tensorcontract(C::AbstractArray,
                                  A::AbstractArray, pA::Index2Tuple,
-                                 B::AbstractArray, pB::Index2Tuple)
+                                 B::AbstractArray, pB::Index2Tuple,
+                                 pAB::Index2Tuple)
     szA, szB, szC = size(A), size(B), size(C)
     TupleTools.getindices(szA, pA[2]) == TupleTools.getindices(szB, pB[1]) ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
     szAB = (TupleTools.getindices(szA, pA[1])..., TupleTools.getindices(szB, pB[2])...)
-    TupleTools.getindices(szAB, linearize(pC)) == szC ||
+    TupleTools.getindices(szAB, linearize(pAB)) == szC ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
     return nothing
 end

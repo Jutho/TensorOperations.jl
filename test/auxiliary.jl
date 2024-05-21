@@ -215,23 +215,23 @@ end
 
     @testset "trace" begin
         @test trace_indices((:a, :b, :c, :d, :d), (:a, :b, :c)) ==
-              (((1, 2, 3), ()), (4,), (5,))
+              (((1, 2, 3), ()), ((4,), (5,)))
         @test trace_indices((:a, :b, :c, :d, :d), (:c, :b, :a)) ==
-              (((3, 2, 1), ()), (4,), (5,))
+              (((3, 2, 1), ()), ((4,), (5,)))
         @test trace_indices((4, :b, 3, 1, 4), (3, 1, :b)) ==
-              (((3, 4, 2), ()), (1,), (5,))
+              (((3, 4, 2), ()), ((1,), (5,)))
 
         @test_throws IndexError trace_indices((:a, :b, :c, :d, :d), (:a, :b, :d))
         @test_throws IndexError trace_indices((:a, :b, :c, :d, :d), (:a, :b, :c, :d, :d))
 
         # only tests for all indices to the left, labels defaults to this
-        for (pC, iA₁, iA₂) in
-            ((((1, 2, 3), ()), (4,), (5,)), (((3, 4, 2), ()), (1,), (5,)),
-             (((3, 1, 4, 5), ()), (6, 7), (2, 8)))
-            pC′, iA₁′, iA₂′ = trace_indices(trace_labels(pC, iA₁, iA₂)...)
-            @test pC′ == pC
-            @test issetequal([Set([i1, i2]) for (i1, i2) in zip(iA₁, iA₂)],
-                             [Set([i1, i2]) for (i1, i2) in zip(iA₁′, iA₂′)])
+        for (p, q) in
+            ((((1, 2, 3), ()), ((4,), (5,))), (((3, 4, 2), ()), ((1,), (5,))),
+             (((3, 1, 4, 5), ()), ((6, 7), (2, 8))))
+            p′, q′ = trace_indices(trace_labels(p, q)...)
+            @test p′ == p
+            @test issetequal([Set([i1, i2]) for (i1, i2) in zip(q...)],
+                             [Set([i1, i2]) for (i1, i2) in zip(q′...)])
         end
     end
 
@@ -244,11 +244,11 @@ end
         @test_throws IndexError contract_indices((:a, :b, :c), (:c, :d), (:a, :b, :d, :e))
         @test_throws IndexError contract_indices((:a, :b, :c), (:c, :d), (:a, :b, :e))
 
-        for (pA, pB, pC) in
+        for (pA, pB, pAB) in
             ((((1, 2), (3,)), ((1,), (2,)), ((1, 2, 3), ())),
              (((2, 3), (1,)), ((1,), (2,)), ((1, 2, 3), ())),
              (((1, 3), (2, 4)), ((1, 3), (2,)), ((2, 3, 1), ())))
-            @test contract_indices(contract_labels(pA, pB, pC)...) == (pA, pB, pC)
+            @test contract_indices(contract_labels(pA, pB, pAB)...) == (pA, pB, pAB)
         end
     end
 end
