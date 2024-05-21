@@ -109,8 +109,8 @@ end
 """
     argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple)
 
-Check that `C` has compatible indices and number of dimensions with the trace of
-`A` over indices `p` and.
+Check that the partial trace of `A` over indices `q` and with permutation of the remaining
+indices `p` is compatible with output `C`.
 """
 function argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple,
                               q::Index2Tuple)
