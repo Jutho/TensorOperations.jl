@@ -21,11 +21,11 @@ precision(::Type{<:Union{Float64,Complex{Float64}}}) = 1e-8
     A = rand(T₁, (2, 3, 4, 2, 5))
     C = rand(T₂, size.(Ref(A), p[1]))
 
-    test_rrule(tensortrace!, C, A, p, q, :N, α, β; atol, rtol)
-    test_rrule(tensortrace!, C, A, p, q, :C, α, β; atol, rtol)
+    test_rrule(tensortrace!, C, A, p, q, false, α, β; atol, rtol)
+    test_rrule(tensortrace!, C, A, p, q, true, α, β; atol, rtol)
 
-    test_rrule(tensortrace!, C, A, p, q, :C, α, β, StridedBLAS(); atol, rtol)
-    test_rrule(tensortrace!, C, A, p, q, :N, α, β, StridedNative(); atol, rtol)
+    test_rrule(tensortrace!, C, A, p, q, true, α, β, StridedBLAS(); atol, rtol)
+    test_rrule(tensortrace!, C, A, p, q, false, α, β, StridedNative(); atol, rtol)
 end
 
 @testset "tensoradd! ($T₁, $T₂)" for (T₁, T₂) in ((Float64, Float64), (Float32, Float64),
@@ -39,11 +39,11 @@ end
     C = rand(T₂, size.(Ref(A), pA[1]))
     α = rand(T)
     β = rand(T)
-    test_rrule(tensoradd!, C, A, pA, :N, α, β; atol, rtol)
-    test_rrule(tensoradd!, C, A, pA, :C, α, β; atol, rtol)
+    test_rrule(tensoradd!, C, A, pA, false, α, β; atol, rtol)
+    test_rrule(tensoradd!, C, A, pA, true, α, β; atol, rtol)
 
-    test_rrule(tensoradd!, C, A, pA, :N, α, β, StridedBLAS(); atol, rtol)
-    test_rrule(tensoradd!, C, A, pA, :C, α, β, StridedNative(); atol, rtol)
+    test_rrule(tensoradd!, C, A, pA, false, α, β, StridedBLAS(); atol, rtol)
+    test_rrule(tensoradd!, C, A, pA, true, α, β, StridedNative(); atol, rtol)
 end
 
 @testset "tensorcontract! ($T₁, $T₂)" for (T₁, T₂) in
@@ -63,14 +63,14 @@ end
     α = randn(T)
     β = randn(T)
 
-    test_rrule(tensorcontract!, C, A, pA, :N, B, pB, :N, pAB, α, β; atol, rtol)
-    test_rrule(tensorcontract!, C, A, pA, :C, B, pB, :N, pAB, α, β; atol, rtol)
-    test_rrule(tensorcontract!, C, A, pA, :N, B, pB, :C, pAB, α, β; atol, rtol)
-    test_rrule(tensorcontract!, C, A, pA, :C, B, pB, :C, pAB, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, A, pA, false, B, pB, false, pAB, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, A, pA, true, B, pB, false, pAB, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, A, pA, false, B, pB, true, pAB, α, β; atol, rtol)
+    test_rrule(tensorcontract!, C, A, pA, true, B, pB, true, pAB, α, β; atol, rtol)
 
-    test_rrule(tensorcontract!, C, A, pA, :N, B, pB, :N, pAB, α, β, StridedBLAS();
+    test_rrule(tensorcontract!, C, A, pA, false, B, pB, false, pAB, α, β, StridedBLAS();
                atol, rtol)
-    test_rrule(tensorcontract!, C, A, pA, :C, B, pB, :N, pAB, α, β, StridedNative();
+    test_rrule(tensorcontract!, C, A, pA, true, B, pB, false, pAB, α, β, StridedNative();
                atol, rtol)
 end
 

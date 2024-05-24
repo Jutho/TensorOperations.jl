@@ -2,8 +2,8 @@ tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch()
 
 tensorcost(C::AbstractArray, i) = size(C, i)
 
-function checkcontractible(A::AbstractArray, iA, conjA::Symbol,
-                           B::AbstractArray, iB, conjB::Symbol, label)
+function checkcontractible(A::AbstractArray, iA, conjA::Bool,
+                           B::AbstractArray, iB, conjB::Bool, label)
     size(A, iA) == size(B, iB) ||
         throw(DimensionMismatch("Nonmatching dimensions for $label: $(size(A, iA)) != $(size(B, iB))"))
     return nothing
@@ -16,20 +16,20 @@ const StridedNative = Backend{:StridedNative}
 const StridedBLAS = Backend{:StridedBLAS}
 
 function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number)
     return tensoradd!(C, A, pA, conjA, α, β, StridedNative())
 end
 
 function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number)
     return tensortrace!(C, A, p, q, conjA, α, β, StridedNative())
 end
 
 function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number)
     if eltype(C) <: LinearAlgebra.BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
@@ -44,22 +44,22 @@ end
 #-------------------------------------------------------------------------------------------
 
 function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
     tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
     return C
 end
 
 function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
     tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
     return C
 end
 
 function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedBLAS)
     tensorcontract!(StridedView(C),
@@ -70,8 +70,8 @@ function tensorcontract!(C::AbstractArray,
 end
 
 function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
     tensorcontract!(StridedView(C),
@@ -196,9 +196,4 @@ end
 # Utility functions
 #-------------------------------------------------------------------------------------------
 
-function flag2op(flag::Symbol)
-    op = flag == :N ? identity :
-         flag == :C ? conj :
-         throw(ArgumentError("unknown conjugation flag $flag"))
-    return op
-end
+flag2op(flag::Bool) = flag ? conj : identity

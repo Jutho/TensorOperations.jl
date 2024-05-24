@@ -24,7 +24,7 @@ function tensorcontract!(C::StridedView,
 end
 
 function tensoradd!(C::StridedView,
-                    A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                    A::StridedView, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number,
                     ::Union{StridedNative,StridedBLAS})
     argcheck_tensoradd(C, A, pA)
@@ -41,7 +41,7 @@ function tensoradd!(C::StridedView,
 end
 
 function tensortrace!(C::StridedView,
-                      A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number,
                       ::Union{StridedNative,StridedBLAS})
     argcheck_tensortrace(C, A, p, q)
@@ -63,9 +63,9 @@ function tensortrace!(C::StridedView,
     return C
 end
 
-function tensorcontract!(C::StridedView,
-                         A::StridedView, pA::Index2Tuple, conjA::Symbol,
-                         B::StridedView, pB::Index2Tuple, conjB::Symbol,
+function tensorcontract!(C::StridedView{T},
+                         A::StridedView, pA::Index2Tuple, conjA::Bool,
+                         B::StridedView, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedBLAS)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -92,8 +92,8 @@ end
 
 # reduce overhead for the case where it is just matrix multiplication
 function tensorcontract!(C::StridedView{T,2},
-                         A::StridedView{T,2}, pA::Index2Tuple{1,1}, conjA::Symbol,
-                         B::StridedView{T,2}, pB::Index2Tuple{1,1}, conjB::Symbol,
+                         A::StridedView{T,2}, pA::Index2Tuple{1,1}, conjA::Bool,
+                         B::StridedView{T,2}, pB::Index2Tuple{1,1}, conjB::Bool,
                          pAB::Index2Tuple{1,1}, α::Number, β::Number,
                          ::StridedBLAS) where {T}
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -115,8 +115,8 @@ function tensorcontract!(C::StridedView{T,2},
 end
 
 function tensorcontract!(C::StridedView,
-                         A::StridedView, pA::Index2Tuple, conjA::Symbol,
-                         B::StridedView, pB::Index2Tuple, conjB::Symbol,
+                         A::StridedView, pA::Index2Tuple, conjA::Bool,
+                         B::StridedView, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple, α::Number, β::Number,
                          ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -149,19 +149,19 @@ end
 function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β)
     TC = eltype(C)
 
-    A_, pA, conjA, flagA = makeblascontractable(A, pA, conjA, TC)
-    B_, pB, conjB, flagB = makeblascontractable(B, pB, conjB, TC)
+    A_, pA, flagA = makeblascontractable(flag2op(conjA)(A), pA, TC)
+    B_, pB, flagB = makeblascontractable(flag2op(conjB)(B), pB, TC)
 
     ipAB = oindABinC(pAB, pA, pB)
-    flagC = isblascontractable(C, ipAB, :D)
+    flagC = isblasdestination(C, ipAB)
     if flagC
         C_ = C
-        _unsafe_blas_contract!(C_, A_, pA, conjA, B_, pB, conjB, ipAB, α, β)
+        _unsafe_blas_contract!(C_, A_, pA, B_, pB, ipAB, α, β)
     else
-        C_ = StridedView(TensorOperations.tensoralloc_add(TC, C, ipAB, :N, true))
-        _unsafe_blas_contract!(C_, A_, pA, conjA, B_, pB, conjB, trivialpermutation(ipAB),
+        C_ = StridedView(TensorOperations.tensoralloc_add(TC, C, ipAB, false, true))
+        _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
                                one(TC), zero(TC))
-        tensoradd!(C, C_, pAB, :N, α, β)
+        tensoradd!(C, C_, pAB, false, α, β)
         tensorfree!(C_.parent)
     end
     flagA || tensorfree!(A_.parent)
@@ -170,8 +170,8 @@ function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β)
 end
 
 function _unsafe_blas_contract!(C::StridedView{T},
-                                A::StridedView{T}, pA, conjA,
-                                B::StridedView{T}, pB, conjB,
+                                A::StridedView{T}, pA,
+                                B::StridedView{T}, pB,
                                 pAB, α, β) where {T<:BlasFloat}
     sizeA = size(A)
     sizeB = size(B)
@@ -180,30 +180,27 @@ function _unsafe_blas_contract!(C::StridedView{T},
     osizeA = TupleTools.getindices(sizeA, pA[1])
     osizeB = TupleTools.getindices(sizeB, pB[2])
 
-    opA = flag2op(conjA)
-    opB = flag2op(conjB)
-
     mul!(sreshape(permutedims(C, linearize(pAB)), (prod(osizeA), prod(osizeB))),
-         opA(sreshape(permutedims(A, linearize(pA)), (prod(osizeA), prod(csizeA)))),
-         opB(sreshape(permutedims(B, linearize(pB)), (prod(csizeB), prod(osizeB)))),
+         sreshape(permutedims(A, linearize(pA)), (prod(osizeA), prod(csizeA))),
+         sreshape(permutedims(B, linearize(pB)), (prod(csizeB), prod(osizeB))),
          α, β)
 
     return C
 end
 
-@inline function makeblascontractable(A, pA, conjA, TC)
-    flagA = isblascontractable(A, pA, conjA) && eltype(A) == TC
+@inline function makeblascontractable(A, pA, TC)
+    flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
-        A_ = StridedView(TensorOperations.tensoralloc_add(TC, A, pA, conjA, true))
-        A = tensoradd!(A_, A, pA, conjA, One(), Zero())
-        conjA = :N
+        A_ = StridedView(TensorOperations.tensoralloc_add(TC, A, pA, false, true))
+        A = tensoradd!(A_, A, pA, false, One(), Zero())
         pA = trivialpermutation(pA)
     end
-    return A, pA, conjA, flagA
+    return A, pA, flagA
 end
 
-function isblascontractable(A::StridedView, p::Index2Tuple, C::Symbol)
+function isblascontractable(A::StridedView, p::Index2Tuple)
     eltype(A) <: LinearAlgebra.BlasFloat || return false
+
     sizeA = size(A)
     stridesA = strides(A)
     sizeA1 = TupleTools.getindices(sizeA, p[1])
@@ -211,16 +208,31 @@ function isblascontractable(A::StridedView, p::Index2Tuple, C::Symbol)
     stridesA1 = TupleTools.getindices(stridesA, p[1])
     stridesA2 = TupleTools.getindices(stridesA, p[2])
 
-    canfuse1, d1, s1 = _canfuse(sizeA1, stridesA1)
-    canfuse2, d2, s2 = _canfuse(sizeA2, stridesA2)
+    canfuse1, _, s1 = _canfuse(sizeA1, stridesA1)
+    canfuse2, _, s2 = _canfuse(sizeA2, stridesA2)
 
-    if C == :D # destination
-        return A.op == identity && canfuse1 && canfuse2 && s1 == 1
-    elseif (C == :C && A.op == identity) || (C == :N && A.op == conj) # conjugated
+    if A.op == conj
         return canfuse1 && canfuse2 && s2 == 1
     else
         return canfuse1 && canfuse2 && (s1 == 1 || s2 == 1)
     end
+end
+
+function isblasdestination(A::StridedView, p::Index2Tuple)
+    (eltype(A) <: LinearAlgebra.BlasFloat && A.op == identity) || return false
+
+    sizeA = size(A)
+    stridesA = strides(A)
+
+    sizeA1 = TupleTools.getindices(sizeA, p[1])
+    stridesA1 = TupleTools.getindices(stridesA, p[1])
+    canfuse1, _, s1 = _canfuse(sizeA1, stridesA1)
+    (canfuse1 && s1 == 1) || return false
+
+    sizeA2 = TupleTools.getindices(sizeA, p[2])
+    stridesA2 = TupleTools.getindices(stridesA, p[2])
+    canfuse2, _, _ = _canfuse(sizeA2, stridesA2)
+    return canfuse2
 end
 
 _canfuse(::Dims{0}, ::Dims{0}) = true, 1, 1
@@ -251,8 +263,8 @@ end
 function contract_memcost(C, A, pA, conjA, B, pB, conjB, pAB)
     ipAB = oindABinC(pAB, pA, pB)
     return length(A) *
-           (!isblascontractable(A, pA, conjA) || eltype(A) !== eltype(C)) +
+           (!isblascontractable(flag2op(conjA)(A), pA) || eltype(A) !== eltype(C)) +
            length(B) *
-           (!isblascontractable(B, pB, conjB) || eltype(B) !== eltype(C)) +
-           length(C) * !isblascontractable(C, ipAB, :D)
+           (!isblascontractable(flag2op(conjB)(B), pB) || eltype(B) !== eltype(C)) +
+           length(C) * !isblasdestination(C, ipAB)
 end

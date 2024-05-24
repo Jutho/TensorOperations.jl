@@ -147,7 +147,7 @@ function insertcontractionchecks(ex)
             (object, indl, indr) = decomposegeneraltensor(getlhs(ex))
             inds = vcat(indl, indr)
             for (pos, label) in enumerate(inds)
-                push!(get!(indexmap, label, Vector{Any}()), (object, pos, :C)) # treat lhs as conjugated tensor
+                push!(get!(indexmap, label, Vector{Any}()), (object, pos, true)) # treat lhs as conjugated tensor
             end
         end
         _fillindexmap!(indexmap, rhs)
@@ -158,9 +158,9 @@ function insertcontractionchecks(ex)
             for k in 2:length(v)
                 obj2, pos2, conj2 = v[k]
                 push!(out.args,
-                      :(@notensor checkcontractible($obj1, $pos1, $(QuoteNode(conj1)),
+                      :(@notensor checkcontractible($obj1, $pos1, $conj1,
                                                     $obj2, $pos2,
-                                                    $(QuoteNode(conj2)), $l)))
+                                                    $conj2, $l)))
             end
         end
         return Expr(:block, out, ex)
@@ -172,7 +172,7 @@ function _fillindexmap!(indexmap, ex)
         (object, indl, indr, _, conj) = decomposegeneraltensor(ex)
         inds = vcat(indl, indr)
         for (pos, label) in enumerate(inds)
-            push!(get!(indexmap, label, Vector{Any}()), (object, pos, conj ? :C : :N))
+            push!(get!(indexmap, label, Vector{Any}()), (object, pos, conj))
         end
     elseif ex isa Expr
         for exa in ex.args

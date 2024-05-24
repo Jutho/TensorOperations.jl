@@ -30,7 +30,7 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Symbol, istemp::Bool=false,
+function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Bool=false,
                          backend::Backend...)
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
@@ -51,8 +51,8 @@ used to implement different allocation strategies.
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
 function tensoralloc_contract(TC,
-                              A, pA::Index2Tuple, conjA::Symbol,
-                              B, pB::Index2Tuple, conjB::Symbol,
+                              A, pA::Index2Tuple, conjA::Bool,
+                              B, pB::Index2Tuple, conjB::Bool,
                               pAB::Index2Tuple, istemp::Bool=false, backend::Backend...)
     ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
@@ -64,13 +64,13 @@ end
 # ------------------------------------------------------------------------------------------
 
 tensorstructure(A::AbstractArray) = size(A)
-tensorstructure(A::AbstractArray, iA::Int, conjA::Symbol) = size(A, iA)
+tensorstructure(A::AbstractArray, iA::Int, conjA::Bool) = size(A, iA)
 
-function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
+function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool)
     return Array{TC,sum(length.(pA))}
 end
 
-function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Symbol)
+function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool)
     return size.(Ref(A), linearize(pA))
 end
 
