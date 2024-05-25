@@ -1,7 +1,6 @@
 # methods/simple.jl
 #
 # Method-based access to tensor operations using simple definitions.
-
 # ------------------------------------------------------------------------------------------
 # tensorcopy
 # ------------------------------------------------------------------------------------------
@@ -25,17 +24,13 @@ See also [`tensorcopy!`](@ref).
 """
 function tensorcopy end
 
-function tensorcopy(IC::Tuple, A, IA::Tuple, conjA::Bool=false, α::Number=One())
+function tensorcopy(IC::Labels, A, IA::Labels, conjA::Bool=false, α::Number=One())
     pA = add_indices(IA, IC)
     return tensorcopy(A, pA, conjA, α)
 end
 # default `IC`
-function tensorcopy(A, IA, conjA::Bool=false, α::Number=One())
-    return tensorcopy(tuple(IA...), A, tuple(IA...), conjA, α)
-end
-# implement for iterables
-function tensorcopy(IC, A, IA, conjA::Bool=false, α::Number=One())
-    return tensorcopy(tuple(IC...), A, tuple(IA...), conjA, α)
+function tensorcopy(A, IA::Labels, conjA::Bool=false, α::Number=One())
+    return tensorcopy(IA, A, IA, conjA, α)
 end
 # expert mode
 function tensorcopy(A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
@@ -88,27 +83,23 @@ See also [`tensoradd!`](@ref).
 """
 function tensoradd end
 
-function tensoradd(IC::Tuple, A, IA::Tuple, conjA::Bool, B, IB::Tuple,
+function tensoradd(IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels,
                    conjB::Bool, α::Number=One(), β::Number=One())
     return tensoradd(A, add_indices(IA, IC), conjA, B, add_indices(IB, IC), conjB, α, β)
 end
 # default `IC`
-function tensoradd(A, IA, conjA::Bool, B, IB, conjB::Bool,
+function tensoradd(A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
                    α::Number=One(), β::Number=One())
-    return tensoradd(tuple(IA...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β)
+    return tensoradd(IA, A, IA, conjA, B, IB, conjB, α, β)
 end
 # default `conjA` and `conjB`
-function tensoradd(IC, A, IA, B, IB, α::Number=One(), β::Number=One())
-    return tensoradd(tuple(IC...), A, tuple(IA...), false, B, tuple(IB...), false, α, β)
+function tensoradd(IC::Labels, A, IA::Labels, B, IB::Labels, α::Number=One(),
+                   β::Number=One())
+    return tensoradd(IC, A, IA, false, B, IB, false, α, β)
 end
 # default `IC`, `conjA` and `conjB`
-function tensoradd(A, IA, B, IB, α::Number=One(), β::Number=One())
-    return tensoradd(tuple(IA...), A, tuple(IA...), B, tuple(IB...), α, β)
-end
-# iterables
-function tensoradd(IC, A, IA, conjA::Bool, B, IB, conjB::Bool,
-                   α::Number=One(), β::Number=One())
-    return tensoradd(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α, β)
+function tensoradd(A, IA::Labels, B, IB::Labels, α::Number=One(), β::Number=One())
+    return tensoradd(IA, A, IA, B, IB, α, β)
 end
 # expert mode
 function tensoradd(A, pA::Index2Tuple, conjA::Bool,
@@ -142,20 +133,20 @@ See also [`tensortrace!`](@ref).
 function tensortrace end
 
 # default `IC`
-function tensortrace(A, IA, conjA::Bool, α::Number=One())
-    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), conjA, α)
+function tensortrace(A, IA::Labels, conjA::Bool, α::Number=One())
+    return tensortrace(unique2(IA), A, IA, conjA, α)
 end
 # default `conjA`
-function tensortrace(IC, A, IA, α::Number=One())
-    return tensortrace(tuple(IC...), A, tuple(IA...), false, α)
+function tensortrace(IC::Labels, A, IA::Labels, α::Number=One())
+    return tensortrace(IC, A, IA, false, α)
 end
 # default `IC` and `conjA`
-function tensortrace(A, IA, α::Number=One())
-    return tensortrace(unique2(tuple(IA...)), A, tuple(IA...), false, α)
+function tensortrace(A, IA::Labels, α::Number=One())
+    return tensortrace(unique2(IA), A, IA, false, α)
 end
 # labels to indices
-function tensortrace(IC, A, IA, conjA::Bool, α::Number=One())
-    p, q = trace_indices(tuple(IA...), tuple(IC...))
+function tensortrace(IC::Labels, A, IA::Labels, conjA::Bool, α::Number=One())
+    p, q = trace_indices(IA, IC)
     return tensortrace(A, p, q, conjA, α)
 end
 # expert mode
@@ -190,28 +181,23 @@ See also [`tensorcontract!`](@ref).
 """
 function tensorcontract end
 
-function tensorcontract(IC::Tuple, A, IA::Tuple, conjA::Bool, B, IB::Tuple, conjB::Bool,
+function tensorcontract(IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
                         α::Number=One())
     pA, pB, pAB = contract_indices(IA, IB, IC)
     return tensorcontract(A, pA, conjA, B, pB, conjB, pAB, α)
 end
 # default `IC`
-function tensorcontract(A, IA, conjA::Bool, B, IB, conjB::Bool, α::Number=One())
-    return tensorcontract(symdiff(tuple(IA...), tuple(IB...)), A, tuple(IA...), conjA, B,
-                          tuple(IB...), conjB, α)
+function tensorcontract(A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+                        α::Number=One())
+    return tensorcontract(symdiff(IA, IB), A, IA, conjA, B, IB, conjB, α)
 end
 # default `conjA` and `conjB`
-function tensorcontract(IC, A, IA, B, IB, α::Number=One())
-    return tensorcontract(tuple(IC...), A, tuple(IA...), false, B, tuple(IB...), false, α)
+function tensorcontract(IC::Labels, A, IA::Labels, B, IB::Labels, α::Number=One())
+    return tensorcontract(IC, A, IA, false, B, IB, false, α)
 end
 # default `IC`, `conjA` and `conjB`
-function tensorcontract(A, IA, B, IB, α::Number=One())
-    return tensorcontract(symdiff(tuple(IA...), tuple(IB...)), A, tuple(IA...), false, B,
-                          tuple(IB...), false, α)
-end
-# iterables
-function tensorcontract(IC, A, IA, conjA::Bool, B, IB, conjB::Bool, α::Number=One())
-    return tensorcontract(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α)
+function tensorcontract(A, IA::Labels, B, IB::Labels, α::Number=One())
+    return tensorcontract(symdiff(IA, IB), A, IA, false, B, IB, false, α)
 end
 # expert mode
 function tensorcontract(A, pA::Index2Tuple, conjA::Bool,
@@ -244,28 +230,23 @@ See also [`tensorproduct!`](@ref) and [`tensorcontract`](@ref).
 """
 function tensorproduct end
 
-function tensorproduct(IC::Tuple, A, IA::Tuple, conjA::Bool, B, IB::Tuple, conjB::Bool,
+function tensorproduct(IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
                        α::Number=One())
     pA, pB, pAB = contract_indices(IA, IB, IC)
     return tensorproduct(A, pA, conjA, B, pB, conjB, pAB, α)
 end
 # default `IC`
-function tensorproduct(A, IA, conjA::Bool, B, IB, conjB::Bool, α::Number=One())
-    return tensorproduct(vcat(tuple(IA...), tuple(IB...)), A, tuple(IA...), conjA, B,
-                         tuple(IB...), conjB, α)
+function tensorproduct(A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+                       α::Number=One())
+    return tensorproduct(vcat(IA, IB), A, IA, conjA, B, IB, conjB, α)
 end
 # default `conjA` and `conjB`
-function tensorproduct(IC, A, IA, B, IB, α::Number=One())
-    return tensorproduct(tuple(IC...), A, tuple(IA...), false, B, tuple(IB...), false, α)
+function tensorproduct(IC::Labels, A, IA::Labels, B, IB::Labels, α::Number=One())
+    return tensorproduct(IC, A, IA, false, B, IB, false, α)
 end
 # default `IC`, `conjA` and `conjB`
-function tensorproduct(A, IA, B, IB, α::Number=One())
-    return tensorproduct(vcat(tuple(IA...), tuple(IB...)), A, tuple(IA...), false, B,
-                         tuple(IB...), false, α)
-end
-# iterables
-function tensorproduct(IC, A, IA, conjA::Bool, B, IB, conjB::Bool, α::Number=One())
-    return tensorproduct(tuple(IC...), A, tuple(IA...), conjA, B, tuple(IB...), conjB, α)
+function tensorproduct(A, IA::Labels, B, IB::Labels, α::Number=One())
+    return tensorproduct(vcat(IA, IB), A, IA, false, B, IB, false, α)
 end
 # expert mode
 function tensorproduct(A, pA::Index2Tuple, conjA::Bool,
