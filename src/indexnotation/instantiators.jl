@@ -99,7 +99,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
 
     p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
     p2 = (map(l -> findfirst(isequal(l), srcind), rightind)...,)
-    pC = (p1, p2)
+    p = (p1, p2)
 
     out = Expr(:block)
     if isa(α, Expr)
@@ -123,7 +123,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         push!(out.args, Expr(:(=), TC, TCval))
         push!(out.args,
-              Expr(:(=), dst, :(tensoralloc_add($TC, $pC, $src, $conjarg, $istemporary))))
+              Expr(:(=), dst, :(tensoralloc_add($TC, $src, $p, $conjarg, $istemporary))))
     end
 
     if hastraceindices(ex)
@@ -137,7 +137,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             return :(throw(IndexError($err)))
         end
         push!(out.args,
-              :($dst = tensortrace!($dst, $pC, $src, ($q1, $q2), $conjarg, $α, $β)))
+              :($dst = tensortrace!($dst, $src, $p, ($q1, $q2), $conjarg, $α, $β)))
         return out
     else
         if any(isnothing, (p1..., p2...)) || !isperm((p1..., p2...)) ||
@@ -145,7 +145,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
-        push!(out.args, :($dst = tensoradd!($dst, $pC, $src, $conjarg, $α, $β)))
+        push!(out.args, :($dst = tensoradd!($dst, $src, $p, $conjarg, $α, $β)))
         return out
     end
 end
@@ -227,7 +227,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
     p1 = (map(l -> findfirst(isequal(l), oindAB), leftind)...,)
     p2 = (map(l -> findfirst(isequal(l), oindAB), rightind)...,)
 
-    pC = (p1, p2)
+    pAB = (p1, p2)
     pA = (poA, pcA)
     pB = (pcB, poB)
 
@@ -263,12 +263,12 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         istemporary = alloc === TemporaryTensor
         initC = Expr(:block, Expr(:(=), TCsym, TCval),
-                     :($dst = tensoralloc_contract($TCsym, $pC, $A, $pA, $conjA, $B, $pB,
-                                                   $conjB, $istemporary)))
+                     :($dst = tensoralloc_contract($TCsym, $A, $pA, $conjA, $B, $pB,
+                                                   $conjB, $pAB, $istemporary)))
         push!(out.args, initC)
     end
     push!(out.args,
-          :($dst = tensorcontract!($dst, $pC, $A, $pA, $conjA, $B, $pB, $conjB, $α, $β)))
+          :($dst = tensorcontract!($dst, $A, $pA, $conjA, $B, $pB, $conjB, $pAB, $α, $β)))
     Atemp && push!(out.args, :(tensorfree!($A)))
     Btemp && push!(out.args, :(tensorfree!($B)))
     (Atemp || Btemp) && push!(out.args, dst)

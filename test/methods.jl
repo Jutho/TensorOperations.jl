@@ -103,12 +103,12 @@ using TensorOperations: IndexError
         Acopy = tensorcopy(A, 1:4)
         Ccopy = tensorcopy(C, 1:4)
         pC = (p, ())
-        tensorcopy!(C, pC, A, :N)
-        tensorcopy!(Ccopy, pC, Acopy, :N)
+        tensorcopy!(C, A, pC, :N)
+        tensorcopy!(Ccopy, Acopy, pC, :N)
         @test C ≈ Ccopy
-        @test_throws IndexError tensorcopy!(C, ((1, 2, 3), ()), A, :N)
-        @test_throws DimensionMismatch tensorcopy!(C, ((1, 2, 3, 4), ()), A, :N)
-        @test_throws IndexError tensorcopy!(C, ((1, 2, 2, 3), ()), A, :N)
+        @test_throws IndexError tensorcopy!(C, A, ((1, 2, 3), ()), :N)
+        @test_throws DimensionMismatch tensorcopy!(C, A, ((1, 2, 3, 4), ()), :N)
+        @test_throws IndexError tensorcopy!(C, A, ((1, 2, 2, 3), ()), :N)
     end
 
     @testset "tensoradd!" begin
@@ -121,12 +121,12 @@ using TensorOperations: IndexError
         Ccopy = tensorcopy(1:4, C, 1:4)
         α = randn(Float64)
         β = randn(Float64)
-        tensoradd!(C, (p, ()), A, :N, α, β)
+        tensoradd!(C, A, (p, ()), :N, α, β)
         Ccopy = β * Ccopy + α * Acopy
         @test C ≈ Ccopy
-        @test_throws IndexError tensoradd!(C, ((1, 2, 3), ()), A, :N, 1.2, 0.5)
-        @test_throws DimensionMismatch tensoradd!(C, ((1, 2, 3, 4), ()), A, :N, 1.2, 0.5)
-        @test_throws IndexError tensoradd!(C, ((1, 1, 2, 3), ()), A, :N, 1.2, 0.5)
+        @test_throws IndexError tensoradd!(C, A, ((1, 2, 3), ()), :N, 1.2, 0.5)
+        @test_throws DimensionMismatch tensoradd!(C, A, ((1, 2, 3, 4), ()), :N, 1.2, 0.5)
+        @test_throws IndexError tensoradd!(C, A, ((1, 1, 2, 3), ()), :N, 1.2, 0.5)
     end
 
     @testset "tensortrace!" begin
@@ -138,17 +138,17 @@ using TensorOperations: IndexError
         Bcopy = tensorcopy(B, 1:2)
         α = randn(Float64)
         β = randn(Float64)
-        tensortrace!(B, ((2, 3), ()), A, ((1,), (4,)), :N, α, β)
+        tensortrace!(B, A, ((2, 3), ()), ((1,), (4,)), :N, α, β)
         Bcopy = β * Bcopy
         for i in 1 .+ (0:8)
             Bcopy += α * view(A, i, :, :, i)
         end
         @test B ≈ Bcopy
-        @test_throws IndexError tensortrace!(B, ((1,), ()), A, ((2,), (3,)), :N, α, β)
-        @test_throws DimensionMismatch tensortrace!(B, ((1, 4), ()), A, ((2,), (3,)), :N, α,
+        @test_throws IndexError tensortrace!(B, A, ((1,), ()), ((2,), (3,)), :N, α, β)
+        @test_throws DimensionMismatch tensortrace!(B, A, ((1, 4), ()), ((2,), (3,)), :N, α,
                                                     β)
-        @test_throws IndexError tensortrace!(B, ((1, 4), ()), A, ((1, 1), (4,)), :N, α, β)
-        @test_throws DimensionMismatch tensortrace!(B, ((1, 4), ()), A, ((1,), (3,)), :N, α,
+        @test_throws IndexError tensortrace!(B, A, ((1, 4), ()), ((1, 1), (4,)), :N, α, β)
+        @test_throws DimensionMismatch tensortrace!(B, A, ((1, 4), ()), ((1,), (3,)), :N, α,
                                                     β)
     end
 
@@ -170,20 +170,24 @@ using TensorOperations: IndexError
                 Ccopy[d, a, e] += α * A[a, b, c, d] * conj(B[c, e, b])
             end
         end
-        tensorcontract!(C, ((1, 2, 3), ()), A, ((4, 1), (2, 3)), :N, B, ((3, 1), (2,)), :C,
-                        α, β)
+        tensorcontract!(C, A, ((4, 1), (2, 3)), :N, B, ((3, 1), (2,)), :C,
+                        ((1, 2, 3), ()), α, β)
         @test C ≈ Ccopy
-        @test_throws IndexError tensorcontract!(C, ((1, 2, 3), ()),
+        @test_throws IndexError tensorcontract!(C,
                                                 A, ((4, 1), (2, 4)), :N,
-                                                B, ((1, 3), (2,)), :N, α, β)
-        @test_throws IndexError tensorcontract!(C, ((1, 2, 3), ()),
+                                                B, ((1, 3), (2,)), :N,
+                                                ((1, 2, 3), ()), α, β)
+        @test_throws IndexError tensorcontract!(C,
                                                 A, ((4, 1), (2, 3)), :N,
-                                                B, ((1, 3), ()), :N, α, β)
-        @test_throws IndexError tensorcontract!(C, ((1, 2), ()),
+                                                B, ((1, 3), ()), :N,
+                                                ((1, 2, 3), ()), α, β)
+        @test_throws IndexError tensorcontract!(C,
                                                 A, ((4, 1), (2, 3)), :N,
-                                                B, ((1, 3), (2,)), :N, α, β)
-        @test_throws DimensionMismatch tensorcontract!(C, ((1, 3, 2), ()),
+                                                B, ((1, 3), (2,)), :N,
+                                                ((1, 2), ()), α, β)
+        @test_throws DimensionMismatch tensorcontract!(C,
                                                        A, ((4, 1), (2, 3)), :N,
-                                                       B, ((1, 3), (2,)), :N, α, β)
+                                                       B, ((1, 3), (2,)), :N,
+                                                       ((1, 3, 2), ()), α, β)
     end
 end

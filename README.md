@@ -21,8 +21,7 @@ Fast tensor operations using a convenient Einstein index notation.
 [doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245496.svg
 [doi-url]: https://doi.org/10.5281/zenodo.3245496
 
-[downloads-img]:
-  https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
+[downloads-img]: https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
 [downloads-url]: https://pkgs.genieframework.com?packages=TensorOperations
 
 [ci-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
@@ -54,7 +53,7 @@ Fast tensor operations using a convenient Einstein index notation.
 - The cache for temporaries has been removed due to its inconsistent and intricate interplay with multithreading.
   However, the new feature of specifying custom allocation strategies can be used to experiment with novel cache-like behaviour in the future.
 
-> **WARNING:** TensorOperations 4.0 contains seveal breaking changes and cannot generally be expected to be compatible with previous versions.
+> **WARNING:** TensorOperations 4.0 contains several breaking changes and cannot generally be expected to be compatible with previous versions.
 
 ### Code example
 
