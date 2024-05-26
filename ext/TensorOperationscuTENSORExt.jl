@@ -63,78 +63,83 @@ end
 # making sure that if no backend is specified, the cuTENSOR backend is used:
 
 for ArrayType in SUPPORTED_CUARRAYS
-    @eval function TO.tensoradd!(C::$ArrayType, pC::Index2Tuple, A::$ArrayType,
+    @eval function TO.tensoradd!(C::$ArrayType, A::$ArrayType, pA::Index2Tuple,
                                  conjA::Symbol,
                                  α::Number, β::Number)
-        return tensoradd!(C, pC, A, conjA, α, β, cuTENSORBackend())
+        return tensoradd!(C, A, pA, conjA, α, β, cuTENSORBackend())
     end
-    @eval function TO.tensorcontract!(C::$ArrayType, pC::Index2Tuple,
+    @eval function TO.tensorcontract!(C::$ArrayType,
                                       A::$ArrayType, pA::Index2Tuple, conjA::Symbol,
                                       B::$ArrayType, pB::Index2Tuple, conjB::Symbol,
-                                      α::Number, β::Number)
-        return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, cuTENSORBackend())
+                                      pAB::Index2Tuple, α::Number, β::Number)
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, cuTENSORBackend())
     end
-    @eval function TO.tensortrace!(C::$ArrayType, pC::Index2Tuple,
-                                   A::$ArrayType, pA::Index2Tuple, conjA::Symbol,
+    @eval function TO.tensortrace!(C::$ArrayType,
+                                   A::$ArrayType, p::Index2Tuple, q::Index2Tuple,
+                                   conjA::Symbol,
                                    α::Number, β::Number)
-        return tensortrace!(C, pC, A, pA, conjA, α, β, cuTENSORBackend())
+        return tensortrace!(C, A, p, q, conjA, α, β, cuTENSORBackend())
     end
-    @eval function TO.tensoradd_type(TC, pC::Index2Tuple, ::$ArrayType, conjA::Symbol)
-        return CUDA.CuArray{TC,TO.numind(pC)}
+    @eval function TO.tensoradd_type(TC, ::$ArrayType, pA::Index2Tuple, conjA::Symbol)
+        return CUDA.CuArray{TC,TO.numind(pA)}
     end
-    @eval function TO.tensorcontract_type(TC, pC::Index2Tuple,
+    @eval function TO.tensorcontract_type(TC,
                                           ::$ArrayType, pA::Index2Tuple, conjA::Symbol,
-                                          ::$ArrayType, pB::Index2Tuple, conjB::Symbol)
-        return CUDA.CuArray{TC,TO.numind(pC)}
+                                          ::$ArrayType, pB::Index2Tuple, conjB::Symbol,
+                                          pAB::Index2Tuple)
+        return CUDA.CuArray{TC,TO.numind(pAB)}
     end
     @eval TO.tensorfree!(C::$ArrayType) = TO.tensorfree!(C::$ArrayType, cuTENSORBackend())
 end
 
 # making sure that if the backend is specified, arrays are converted to CuArrays
 
-function TO.tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                       A::AbstractArray, conjA::Symbol, α::Number, β::Number,
+function TO.tensoradd!(C::AbstractArray,
+                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                       α::Number, β::Number,
                        backend::cuTENSORBackend)
     C_cuda = adapt(CuArray, C)
     A_cuda = adapt(CuArray, A)
-    tensoradd!(C_cuda, pC, A_cuda, conjA, α, β, backend)
+    tensoradd!(C_cuda, A_cuda, pA, conjA, α, β, backend)
     C === C_cuda || copyto!(C, C_cuda)
     return C
 end
-function TO.tensorcontract!(C::AbstractArray, pC::Index2Tuple,
+function TO.tensorcontract!(C::AbstractArray,
                             A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                             B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                            pAB::Index2Tuple,
                             α::Number, β::Number, backend::cuTENSORBackend)
     C_cuda = adapt(CuArray, C)
     A_cuda = adapt(CuArray, A)
     B_cuda = adapt(CuArray, B)
-    tensorcontract!(C_cuda, pC, A_cuda, pA, conjA, B_cuda, pB, conjB, α, β, backend)
+    tensorcontract!(C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend)
     C === C_cuda || copyto!(C, C_cuda)
     return C
 end
-function TO.tensortrace!(C::AbstractArray, pC::Index2Tuple,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+function TO.tensortrace!(C::AbstractArray,
+                         A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
                          α::Number, β::Number, backend::cuTENSORBackend)
     C_cuda = adapt(CuArray, C)
     A_cuda = adapt(CuArray, A)
-    tensortrace!(C_cuda, pC, A_cuda, pA, conjA, α, β, backend)
+    tensortrace!(C_cuda, A_cuda, p, q, conjA, α, β, backend)
     C === C_cuda || copyto!(C, C_cuda)
     return C
 end
 
-function TO.tensoralloc_add(TC, pC, A::AbstractArray, conjA, istemp,
+function TO.tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol, istemp,
                             ::cuTENSORBackend)
-    ttype = CuArray{TC,TO.numind(pC)}
-    structure = TO.tensoradd_structure(pC, A, conjA)
+    ttype = CuArray{TC,TO.numind(pA)}
+    structure = TO.tensoradd_structure(A, pA, conjA)
     return TO.tensoralloc(ttype, structure, istemp)::ttype
 end
 
-function TO.tensoralloc_contract(TC, pC,
-                                 A::AbstractArray, pA, conjA,
-                                 B::AbstractArray, pB, conjB,
+function TO.tensoralloc_contract(TC,
+                                 A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                                 B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                                 pAB::Index2Tuple,
                                  istemp, ::cuTENSORBackend)
-    ttype = CuArray{TC,TO.numind(pC)}
-    structure = TO.tensorcontract_structure(pC, A, pA, conjA, B, pB, conjB)
+    ttype = CuArray{TC,TO.numind(pAB)}
+    structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp)::ttype
 end
 
@@ -145,24 +150,25 @@ end
 
 # Convert all implementations to StridedViews
 # This should work for wrapper types that are supported by StridedViews
-function TO.tensoradd!(C::AnyCuArray, pC::Index2Tuple,
-                       A::AnyCuArray, conjA::Symbol,
+function TO.tensoradd!(C::AnyCuArray,
+                       A::AnyCuArray, pA::Index2Tuple, conjA::Symbol,
                        α::Number, β::Number, backend::cuTENSORBackend)
-    tensoradd!(StridedView(C), pC, StridedView(A), conjA, α, β, backend)
+    tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
     return C
 end
-function TO.tensorcontract!(C::AnyCuArray, pC::Index2Tuple, A::AnyCuArray,
+function TO.tensorcontract!(C::AnyCuArray, A::AnyCuArray,
                             pA::Index2Tuple, conjA::Symbol, B::AnyCuArray,
-                            pB::Index2Tuple, conjB::Symbol, α::Number, β::Number,
+                            pB::Index2Tuple, conjB::Symbol, pAB::Index2Tuple, α::Number,
+                            β::Number,
                             backend::cuTENSORBackend)
-    tensorcontract!(StridedView(C), pC, StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB, α, β, backend)
+    tensorcontract!(StridedView(C), StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB, pAB, α, β, backend)
     return C
 end
-function TO.tensortrace!(C::AnyCuArray, pC::Index2Tuple,
-                         A::AnyCuArray, pA::Index2Tuple, conjA::Symbol,
+function TO.tensortrace!(C::AnyCuArray,
+                         A::AnyCuArray, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
                          α::Number, β::Number, backend::cuTENSORBackend)
-    tensortrace!(StridedView(C), pC, StridedView(A), pA, conjA, α, β, backend)
+    tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
     return C
 end
 
@@ -170,11 +176,11 @@ end
 # Implementation
 #-------------------------------------------------------------------------------------------
 
-function TO.tensoradd!(C::CuStridedView, pC::Index2Tuple,
-                       A::CuStridedView, conjA::Symbol,
+function TO.tensoradd!(C::CuStridedView,
+                       A::CuStridedView, pA::Index2Tuple, conjA::Symbol,
                        α::Number, β::Number, ::cuTENSORBackend)
     # convert arguments
-    Ainds, Cinds = collect.(TO.add_labels(pC))
+    Ainds, Cinds = collect.(TO.add_labels(pA))
     opA = tensorop(A, conjA)
 
     # dispatch to cuTENSOR
@@ -190,12 +196,13 @@ function TO.tensoradd!(C::CuStridedView, pC::Index2Tuple,
     end
 end
 
-function TO.tensorcontract!(C::CuStridedView, pC::Index2Tuple,
+function TO.tensorcontract!(C::CuStridedView,
                             A::CuStridedView, pA::Index2Tuple, conjA::Symbol,
                             B::CuStridedView, pB::Index2Tuple, conjB::Symbol,
+                            pAB::Index2Tuple,
                             α::Number, β::Number, ::cuTENSORBackend)
     # convert arguments
-    Ainds, Binds, Cinds = collect.(TO.contract_labels(pA, pB, pC))
+    Ainds, Binds, Cinds = collect.(TO.contract_labels(pA, pB, pAB))
     opA = tensorop(A, conjA)
     opB = tensorop(B, conjB)
 
@@ -208,11 +215,11 @@ function TO.tensorcontract!(C::CuStridedView, pC::Index2Tuple,
                      OP_IDENTITY)
 end
 
-function TO.tensortrace!(C::CuStridedView, pC::Index2Tuple,
-                         A::CuStridedView, pA::Index2Tuple, conjA::Symbol,
+function TO.tensortrace!(C::CuStridedView,
+                         A::CuStridedView, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
                          α::Number, β::Number, ::cuTENSORBackend)
     # convert arguments
-    Ainds, Cinds = collect.(TO.trace_labels(pC, pA...))
+    Ainds, Cinds = collect.(TO.trace_labels(p, q))
     opA = tensorop(A, conjA)
 
     # map to reduction operation
