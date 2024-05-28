@@ -126,7 +126,8 @@ function TO.tensortrace!(C::AbstractArray,
     return C
 end
 
-function TO.tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol, istemp,
+function TO.tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
+                            istemp::Bool,
                             ::cuTENSORBackend)
     ttype = CuArray{TC,TO.numind(pA)}
     structure = TO.tensoradd_structure(A, pA, conjA)
@@ -137,7 +138,7 @@ function TO.tensoralloc_contract(TC,
                                  A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
                                  B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
                                  pAB::Index2Tuple,
-                                 istemp, ::cuTENSORBackend)
+                                 istemp::Bool, ::cuTENSORBackend)
     ttype = CuArray{TC,TO.numind(pAB)}
     structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp)::ttype
