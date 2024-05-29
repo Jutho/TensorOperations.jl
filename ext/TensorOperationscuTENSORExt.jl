@@ -232,13 +232,13 @@ function cuTENSOR.CuTensorDescriptor(a::CuStridedView; size=size(a), strides=str
                                      eltype=eltype(a))
     sz = collect(Int64, size)
     st = collect(Int64, strides)
-    # compute largest possible alignment
-    alignment::UInt32 = 256
-    while (alignment > Base.aligned_sizeof(eltype)) && (alignment % 2 != 0)
-        alignment >>= 1
-    end
+    alignment = UInt32(find_alignment(a))
     return cuTENSOR.CuTensorDescriptor(sz, st, eltype, alignment)
 end
+
+const MAX_ALIGNMENT = UInt(256) # This is the largest alignment of CUDA memory
+"find the alignment of the first element of the view"
+find_alignment(A::CuStridedView) = gcd(MAX_ALIGNMENT, convert(UInt, pointer(A)))
 
 # trace!
 # ------
