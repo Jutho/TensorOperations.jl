@@ -101,7 +101,7 @@ function TO.tensoradd!(C::AbstractArray,
     C_cuda = adapt(CuArray, C)
     A_cuda = adapt(CuArray, A)
     tensoradd!(C_cuda, A_cuda, pA, conjA, α, β, backend)
-    C === C_cuda || copyto!(C, C_cuda)
+    C === C_cuda || copy!(C, C_cuda)
     return C
 end
 function TO.tensorcontract!(C::AbstractArray,
@@ -113,7 +113,7 @@ function TO.tensorcontract!(C::AbstractArray,
     A_cuda = adapt(CuArray, A)
     B_cuda = adapt(CuArray, B)
     tensorcontract!(C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend)
-    C === C_cuda || copyto!(C, C_cuda)
+    C === C_cuda || copy!(C, C_cuda)
     return C
 end
 function TO.tensortrace!(C::AbstractArray,
@@ -122,7 +122,7 @@ function TO.tensortrace!(C::AbstractArray,
     C_cuda = adapt(CuArray, C)
     A_cuda = adapt(CuArray, A)
     tensortrace!(C_cuda, A_cuda, p, q, conjA, α, β, backend)
-    C === C_cuda || copyto!(C, C_cuda)
+    C === C_cuda || copy!(C, C_cuda)
     return C
 end
 
