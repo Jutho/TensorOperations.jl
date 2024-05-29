@@ -1,10 +1,32 @@
 #-------------------------------------------------------------------------------------------
 # StridedView implementation
 #-------------------------------------------------------------------------------------------
+
+# default backends
+function tensoradd!(C::StridedView,
+                    A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                    α::Number, β::Number)
+    backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
+    return tensoradd!(C, A, pA, conjA, α, β, backend)
+end
+function tensortrace!(C::StridedView,
+                      A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      α::Number, β::Number)
+    backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
+    return tensortrace!(C, A, p, q, conjA, α, β, backend)
+end
+function tensorcontract!(C::StridedView,
+                         A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                         B::StridedView, pB::Index2Tuple, conjB::Symbol,
+                         pAB::Index2Tuple, α::Number, β::Number)
+    backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
+    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend)
+end
+
 function tensoradd!(C::StridedView,
                     A::StridedView, pA::Index2Tuple, conjA::Symbol,
                     α::Number, β::Number,
-                    backend::Union{StridedNative,StridedBLAS}=StridedNative())
+                    ::Union{StridedNative,StridedBLAS})
     argcheck_tensoradd(C, A, pA)
     dimcheck_tensoradd(C, A, pA)
     if !istrivialpermutation(pA) && Base.mightalias(C, A)
@@ -21,7 +43,7 @@ end
 function tensortrace!(C::StridedView,
                       A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
                       α::Number, β::Number,
-                      backend::Union{StridedNative,StridedBLAS}=StridedNative())
+                      ::Union{StridedNative,StridedBLAS})
     argcheck_tensortrace(C, A, p, q)
     dimcheck_tensortrace(C, A, p, q)
 
@@ -41,12 +63,11 @@ function tensortrace!(C::StridedView,
     return C
 end
 
-function tensorcontract!(C::StridedView{T},
+function tensorcontract!(C::StridedView,
                          A::StridedView, pA::Index2Tuple, conjA::Symbol,
                          B::StridedView, pB::Index2Tuple, conjB::Symbol,
                          pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         backend::StridedBLAS=StridedBLAS()) where {T<:LinearAlgebra.BlasFloat}
+                         α::Number, β::Number, ::StridedBLAS)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -74,7 +95,7 @@ function tensorcontract!(C::StridedView{T,2},
                          A::StridedView{T,2}, pA::Index2Tuple{1,1}, conjA::Symbol,
                          B::StridedView{T,2}, pB::Index2Tuple{1,1}, conjB::Symbol,
                          pAB::Index2Tuple{1,1}, α::Number, β::Number,
-                         backend::StridedBLAS=StridedBLAS()) where {T<:LinearAlgebra.BlasFloat}
+                         ::StridedBLAS) where {T}
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -97,7 +118,7 @@ function tensorcontract!(C::StridedView,
                          A::StridedView, pA::Index2Tuple, conjA::Symbol,
                          B::StridedView, pB::Index2Tuple, conjB::Symbol,
                          pAB::Index2Tuple, α::Number, β::Number,
-                         backend::StridedNative)
+                         ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 

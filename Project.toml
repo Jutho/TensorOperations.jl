@@ -1,7 +1,7 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 authors = ["Lukas Devos <lukas.devos@ugent.be>", "Maarten Van Damme <maartenvd1994@gmail.com>", "Jutho Haegeman <jutho.haegeman@ugent.be>"]
-version = "4.1.1"
+version = "5.0.0-DEV"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -26,7 +26,7 @@ TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
 Aqua = "0.6, 0.7, 0.8"
-CUDA = "4,5"
+CUDA = "5.4.0"
 ChainRulesCore = "1"
 ChainRulesTestUtils = "1"
 DynamicPolynomials = "0.5"
@@ -40,8 +40,8 @@ StridedViews = "0.2"
 Test = "1"
 TupleTools = "1.1"
 VectorInterface = "0.4.1"
-cuTENSOR = "1"
-julia = "1.6"
+cuTENSOR = "2.1.1"
+julia = "1.8"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
