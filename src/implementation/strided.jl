@@ -63,7 +63,7 @@ function tensortrace!(C::StridedView,
     return C
 end
 
-function tensorcontract!(C::StridedView{T},
+function tensorcontract!(C::StridedView,
                          A::StridedView, pA::Index2Tuple, conjA::Bool,
                          B::StridedView, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
