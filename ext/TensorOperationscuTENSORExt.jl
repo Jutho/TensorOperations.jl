@@ -243,13 +243,6 @@ end
 # trace!
 # ------
 # not actually part of cuTENSOR, just a special case of reduce
-function trace!(plan::CuTensorPlan,
-                @nospecialize(alpha::Number),
-                @nospecialize(A::CuStridedView),
-                @nospecialize(beta::Number),
-                @nospecialize(C::CuStridedView))
-    return reduce!(plan, alpha, A, beta, C)
-end
 
 function plan_trace(@nospecialize(A::AbstractArray), Ainds::ModeType,
                     opA::cutensorOperator_t,
