@@ -94,7 +94,6 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
                                    scaltype)
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
-    conjarg = conj ? :(:C) : :(:N)
     α = simplify_scalarmul(α, α2)
 
     p1 = (map(l -> findfirst(isequal(l), srcind), leftind)...,)
@@ -123,7 +122,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         push!(out.args, Expr(:(=), TC, TCval))
         push!(out.args,
-              Expr(:(=), dst, :(tensoralloc_add($TC, $src, $p, $conjarg, $istemporary))))
+              Expr(:(=), dst, :(tensoralloc_add($TC, $src, $p, $conj, $istemporary))))
     end
 
     if hastraceindices(ex)
@@ -137,7 +136,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             return :(throw(IndexError($err)))
         end
         push!(out.args,
-              :($dst = tensortrace!($dst, $src, $p, ($q1, $q2), $conjarg, $α, $β)))
+              :($dst = tensortrace!($dst, $src, $p, ($q1, $q2), $conj, $α, $β)))
         return out
     else
         if any(isnothing, (p1..., p2...)) || !isperm((p1..., p2...)) ||
@@ -145,7 +144,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
             err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
-        push!(out.args, :($dst = tensoradd!($dst, $src, $p, $conjarg, $α, $β)))
+        push!(out.args, :($dst = tensoradd!($dst, $src, $p, $conj, $α, $β)))
         return out
     end
 end
@@ -195,14 +194,14 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         push!(out.args, instantiate(A, Zero(), exA, One(), oindA, cind, TemporaryTensor))
         poA = ((1:length(oindA))...,)
         pcA = length(oindA) .+ ((1:length(cind))...,)
-        conjA = :(:N)
+        conjA = false
         Atemp = true
     else
         A, indlA, indrA, αA, conj = decomposegeneraltensor(exA)
         indA = vcat(indlA, indrA)
         poA = (map(l -> findfirst(isequal(l), indA), oindA)...,)
         pcA = (map(l -> findfirst(isequal(l), indA), cind)...,)
-        conjA = conj ? :(:C) : :(:N)
+        conjA = conj
         α = simplify_scalarmul(α, αA)
         Atemp = false
     end
@@ -211,14 +210,14 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         push!(out.args, instantiate(B, Zero(), exB, One(), cind, oindB, TemporaryTensor))
         poB = length(cind) .+ ((1:length(oindB))...,)
         pcB = ((1:length(cind))...,)
-        conjB = :(:N)
+        conjB = false
         Btemp = true
     else
         B, indlB, indrB, αB, conj = decomposegeneraltensor(exB)
         indB = vcat(indlB, indrB)
         poB = (map(l -> findfirst(isequal(l), indB), oindB)...,)
         pcB = (map(l -> findfirst(isequal(l), indB), cind)...,)
-        conjB = conj ? :(:C) : :(:N)
+        conjB = conj
         α = simplify_scalarmul(α, αB)
         Btemp = false
     end

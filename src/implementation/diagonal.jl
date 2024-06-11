@@ -2,8 +2,8 @@
 # Specialized implementations for contractions involving diagonal matrices
 #-------------------------------------------------------------------------------------------
 function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::Diagonal, pB::Index2Tuple, conjB::Symbol,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -17,8 +17,8 @@ function tensorcontract!(C::AbstractArray,
 end
 
 function tensorcontract!(C::AbstractArray,
-                         A::Diagonal, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+                         A::Diagonal, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -41,8 +41,8 @@ function tensorcontract!(C::AbstractArray,
 end
 
 function tensorcontract!(C::AbstractArray,
-                         A::Diagonal, pA::Index2Tuple, conjA::Symbol,
-                         B::Diagonal, pB::Index2Tuple, conjB::Symbol,
+                         A::Diagonal, pA::Index2Tuple, conjA::Bool,
+                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -85,8 +85,8 @@ function tensorcontract!(C::AbstractArray,
 end
 
 function tensorcontract!(C::Diagonal,
-                         A::Diagonal, pA::Index2Tuple, conjA::Symbol,
-                         B::Diagonal, pB::Index2Tuple, conjB::Symbol,
+                         A::Diagonal, pA::Index2Tuple, conjA::Bool,
+                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
@@ -101,8 +101,8 @@ function tensorcontract!(C::Diagonal,
 end
 
 function _diagtensorcontract!(C::StridedView,
-                              A::StridedView, pA::Index2Tuple, conjA::Symbol,
-                              Bdiag::StridedView, pB::Index2Tuple, conjB::Symbol,
+                              A::StridedView, pA::Index2Tuple, conjA::Bool,
+                              Bdiag::StridedView, pB::Index2Tuple, conjB::Bool,
                               pAB::Index2Tuple, α::Number, β::Number)
     sizeA = i -> size(A, i)
     csizeA = sizeA.(pA[2])

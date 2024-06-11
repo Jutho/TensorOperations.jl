@@ -34,3 +34,17 @@ end
 
 istrivialpermutation(p::IndexTuple) = p == trivialpermutation(p)
 istrivialpermutation(p::Index2Tuple) = p == trivialpermutation(p)
+
+"""
+    const LabelType = Union{Int,Symbol,Char}
+
+Alias for supported label types.
+"""
+const LabelType = Union{Int,Symbol,Char}
+
+"""
+    const Labels{I<:LabelType} = Union{Tuple{Vararg{I}},Vector{I}}
+
+Alias for supported label containers.
+"""
+const Labels{I<:LabelType} = Union{Tuple{Vararg{I}},AbstractVector{I}}

@@ -56,6 +56,7 @@ end
 #-------------------------------------------------------------------------------------------
 # Extract index information
 #-------------------------------------------------------------------------------------------
+add_indices(IA, IC) = add_indices(tuple(IA...), tuple(IC...))
 function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     indCinA = map(l -> _findfirst(isequal(l), IA), IC)
     (NA == NC && isperm(indCinA)) ||
@@ -63,6 +64,7 @@ function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     return (indCinA, ())
 end
 
+trace_indices(IA, IC) = trace_indices(tuple(IA...), tuple(IC...))
 function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     # trace indices
     isodd(length(IA) - length(IC)) &&
@@ -79,6 +81,9 @@ function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
     return (indCinA, ()), (cindA1, cindA2)
 end
 
+function contract_indices(IA, IB, IC)
+    return contract_indices(tuple(IA...), tuple(IB...), tuple(IC...))
+end
 function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
                           IC::NTuple{NC,Any}) where {NA,NB,NC}
     # labels
