@@ -16,10 +16,10 @@ end
 
 # actual implementations:
 function tensorcontract!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    B::Diagonal, pB::Index2Tuple, conjB::Bool,
-                    pAB::Index2Tuple,
-                    α::Number, β::Number, ::StridedNative)
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
+                         pAB::Index2Tuple,
+                         α::Number, β::Number, ::StridedNative)
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
