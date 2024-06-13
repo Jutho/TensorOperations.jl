@@ -86,8 +86,8 @@ end
 function tensoradd!(C::AbstractArray,
                     A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number)
-    argcheck_tensoradd(C, pC, A)
-    dimcheck_tensoradd(C, pC, A)
+    argcheck_tensoradd(C, A, pA)
+    dimcheck_tensoradd(C, A, pA)
 
     # can we assume that C is mutable?
     # is there more functionality in base that we can use?
@@ -103,7 +103,7 @@ end
 
 function tensortrace!(C::AbstractArray,
                       A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
+                      α::Number, β::Number)
     argcheck_tensortrace(C, A, p, q)
     dimcheck_tensortrace(C, A, p, q)
 
@@ -124,33 +124,36 @@ function tensorcontract!(C::AbstractArray,
                          B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number)
-    argcheck_tensorcontract(C, pC, A, pA, B, pB)
-    dimcheck_tensorcontract(C, pC, A, pA, B, pB)
+    argcheck_tensorcontract(C, A, pA, B, pB, pAB)
+    dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
     szA = size(A)
     szB = size(B)
     soA = TupleTools.getindices(szA, pA[1])
     soB = TupleTools.getindices(szA, pB[2])
     sc = TupleTools.getindices(szA, pA[2])
+    soA1 = prod(soA)
+    soB1 = prod(soB)
+    sc1 = prod(sc)
 
     if conjA && conjB
-        A′ = reshape(permutedims(A, linearize(reverse(pA))), (sc, soA))
-        B′ = reshape(permutedims(B, linearize(reverse(pB))), (soB, sc))
+        A′ = reshape(permutedims(A, linearize(reverse(pA))), (sc1, soA1))
+        B′ = reshape(permutedims(B, linearize(reverse(pB))), (soB1, sc1))
         C′ = adjoint(A′) * adjoint(B′)
     elseif conjA
-        A′ = reshape(permutedims(A, linearize(reverse(pA))), (sc, soA))
-        B′ = reshape(permutedims(B, linearize(pB)), (sc, soB))
+        A′ = reshape(permutedims(A, linearize(reverse(pA))), (sc1, soA1))
+        B′ = reshape(permutedims(B, linearize(pB)), (sc1, soB1))
         C′ = adjoint(A′) * B′
     elseif conjB
-        A′ = reshape(permutedims(A, linearize(pA)), (soA, sc))
-        B′ = reshape(permutedims(B, linearize(reverse(pB))), (soB, sc))
+        A′ = reshape(permutedims(A, linearize(pA)), (soA1, sc1))
+        B′ = reshape(permutedims(B, linearize(reverse(pB))), (soB1, sc1))
         C′ = A′ * adjoint(B′)
     else
-        A′ = reshape(permutedims(A, linearize(pA)), (soA, sc))
-        B′ = reshape(permutedims(B, linearize(pB)), (sc, soB))
+        A′ = reshape(permutedims(A, linearize(pA)), (soA1, sc1))
+        B′ = reshape(permutedims(B, linearize(pB)), (sc1, soB1))
         C′ = A′ * B′
     end
-    return tensoradd!(C, C′, pAB, false, α, β)
+    return tensoradd!(C, reshape(C′, (soA..., soB...)), pAB, false, α, β)
 end
 
 # ------------------------------------------------------------------------------------------

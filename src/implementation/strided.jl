@@ -4,20 +4,20 @@
 
 # default backends
 function tensoradd!(C::StridedView,
-                    A::StridedView, pA::Index2Tuple, conjA::Symbol,
+                    A::StridedView, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number)
     backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
     return tensoradd!(C, A, pA, conjA, α, β, backend)
 end
 function tensortrace!(C::StridedView,
-                      A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Symbol,
+                      A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number)
     backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
     return tensortrace!(C, A, p, q, conjA, α, β, backend)
 end
 function tensorcontract!(C::StridedView,
-                         A::StridedView, pA::Index2Tuple, conjA::Symbol,
-                         B::StridedView, pB::Index2Tuple, conjB::Symbol,
+                         A::StridedView, pA::Index2Tuple, conjA::Bool,
+                         B::StridedView, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple, α::Number, β::Number)
     backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend)
