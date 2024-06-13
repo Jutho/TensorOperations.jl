@@ -12,21 +12,21 @@ end
 const StridedNative = Backend{:StridedNative}
 const StridedBLAS = Backend{:StridedBLAS}
 
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+function tensoradd!(C::StridedArray,
+                    A::StridedArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number)
     return tensoradd!(C, A, pA, conjA, α, β, StridedNative())
 end
 
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+function tensortrace!(C::StridedArray,
+                      A::StridedArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number)
     return tensortrace!(C, A, p, q, conjA, α, β, StridedNative())
 end
 
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+function tensorcontract!(C::StridedArray,
+                         A::StridedArray, pA::Index2Tuple, conjA::Bool,
+                         B::StridedArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number)
     if eltype(C) <: LinearAlgebra.BlasFloat && !isa(B, Diagonal) && !isa(A, Diagonal)
