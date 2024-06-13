@@ -130,7 +130,7 @@ function tensorcontract!(C::AbstractArray,
     szA = size(A)
     szB = size(B)
     soA = TupleTools.getindices(szA, pA[1])
-    soB = TupleTools.getindices(szA, pB[2])
+    soB = TupleTools.getindices(szB, pB[2])
     sc = TupleTools.getindices(szA, pA[2])
     soA1 = prod(soA)
     soB1 = prod(soB)
