@@ -83,86 +83,74 @@ end
 #-------------------------------------------------------------------------------------------
 # Note that this is mostly for convenience + checking, and not for performance
 
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number)
     argcheck_tensoradd(C, pC, A)
     dimcheck_tensoradd(C, pC, A)
 
     # can we assume that C is mutable?
     # is there more functionality in base that we can use?
-    C .= β .* C .+ α .* permutedims(conjA === :N ? A : conj(A), linearize(pC))
+    if conjA
+        C .= β .* C .+ α .* conj.(PermutedDimsArray(A, linearize(pA)))
+    else
+        C .= β .* C .+ α .* PermutedDimsArray(A, linearize(pA))
+    end
     return C
 end
 
 # For now I am giving up on writing a generic tensortrace! that works for all AbstractArray types...
 
-# function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-#                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-#                       α, β)
-#     return tensortrace!(C, pC, A, pA, conjA, α, β, StridedNative())
-# end
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+                      α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
+    argcheck_tensortrace(C, A, p, q)
+    dimcheck_tensortrace(C, A, p, q)
 
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
-                         α::Number, β::Number, ::StridedNative)
-    tensorcontract!(StridedView(C),
-                    StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB,
-                    pAB, α, β, StridedNative())
+    szA = size(A)
+    so = TupleTools.getindices(szA, linearize(p))
+    st = prod(TupleTools.getindices(szA, q[1]))
+    A = reshape(PermutedDimsArray(A, (linearize(p)..., linearize(q)...)), (so..., st * st))
+    if conjA
+        C .= β .* C .+ α .* conj.(view(A, :, diagind(st, st)))
+    else
+        C .= β .* C .+ α .* view(A, :, diagind(st, st))
+    end
     return C
 end
 
-#-------------------------------------------------------------------------------------------
-# Implementation based on Base + LinearAlgebra
-#-------------------------------------------------------------------------------------------
-# Note that this is mostly for convenience + checking, and not for performance
-
-function tensoradd!(C::AbstractArray, pC::Index2Tuple,
-                    A::AbstractArray, conjA::Symbol,
-                    α::Number, β::Number)
-    argcheck_tensoradd(C, pC, A)
-    dimcheck_tensoradd(C, pC, A)
-
-    # can we assume that C is mutable?
-    return add!(C, permutedims(conjA === :N ? A : conj(A), linearize(pC)), α, β)
-end
-
-# For now I am giving up on writing a generic tensortrace! that works for all AbstractArray types...
-
-# function tensortrace!(C::AbstractArray, pC::Index2Tuple,
-#                       A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-#                       α, β)
-#     return tensortrace!(C, pC, A, pA, conjA, α, β, StridedNative())
-# end
-
-function tensorcontract!(C::AbstractArray, pC::Index2Tuple,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Symbol,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Symbol,
+function tensorcontract!(C::AbstractArray,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+                         pAB::Index2Tuple,
                          α::Number, β::Number)
     argcheck_tensorcontract(C, pC, A, pA, B, pB)
     dimcheck_tensorcontract(C, pC, A, pA, B, pB)
 
     szA = size(A)
-    matszA = prod(TupleTools.getindices(szA, pA[1])),
-             prod(TupleTools.getindices(szA, pA[2]))
-    A′ = reshape(permutedims(conjA === :N ? A : conj(A), linearize(pA)), matszA)
-
     szB = size(B)
-    matszB = prod(TupleTools.getindices(szB, pB[1])),
-             prod(TupleTools.getindices(szB, pB[2]))
-    B′ = reshape(permutedims(conjB === :N ? B : conj(B), linearize(pB)), matszB)
+    soA = TupleTools.getindices(szA, pA[1])
+    soB = TupleTools.getindices(szA, pB[2])
+    sc = TupleTools.getindices(szA, pA[2])
 
-    C′ = reshape(A′ * B′,
-                 (TupleTools.getindices(szA, pA[1])...,
-                  TupleTools.getindices(szB, pB[2])...))
-    # TODO: permuting zero-dimensional arrays is fixed in 1.11:
-    # https://github.com/JuliaLang/julia/issues/52615
-    # but this also avoids a copy
-    C″ = ndims(C) ≤ 1 ? C′ : permutedims(C′, linearize(pC))
-    add!(C, C″, α, β)
-    return C
+    if conjA && conjB
+        A′ = reshape(permutedims(A, linearize(reverse(pA))), (sc, soA))
+        B′ = reshape(permutedims(B, linearize(reverse(pB))), (soB, sc))
+        C′ = adjoint(A′) * adjoint(B′)
+    elseif conjA
+        A′ = reshape(permutedims(A, linearize(reverse(pA))), (sc, soA))
+        B′ = reshape(permutedims(B, linearize(pB)), (sc, soB))
+        C′ = adjoint(A′) * B′
+    elseif conjB
+        A′ = reshape(permutedims(A, linearize(pA)), (soA, sc))
+        B′ = reshape(permutedims(B, linearize(reverse(pB))), (soB, sc))
+        C′ = A′ * adjoint(B′)
+    else
+        A′ = reshape(permutedims(A, linearize(pA)), (soA, sc))
+        B′ = reshape(permutedims(B, linearize(pB)), (sc, soB))
+        C′ = A′ * B′
+    end
+    return tensoradd!(C, C′, pAB, false, α, β)
 end
 
 # ------------------------------------------------------------------------------------------
