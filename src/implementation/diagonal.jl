@@ -7,8 +7,8 @@ for (TC, TA, TB) in ((:AbstractArray, :AbstractArray, :Diagonal),
                      (:AbstractArray, :Diagonal, :AbstractArray), (:AbstractArray, :Diagonal, :Diagonal),
                      (:Diagonal, :Diagonal, :Diagonal))
     @eval function tensorcontract!(C::$TC,
-                                   A::$TA, pA::Index2Tuple, conjA::Symbol,
-                                   B::$TB, pB::Index2Tuple, conjB::Symbol,
+                                   A::$TA, pA::Index2Tuple, conjA::Bool,
+                                   B::$TB, pB::Index2Tuple, conjB::Bool,
                                    pAB::Index2Tuple, α::Number, β::Number)
         return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedNative())
     end
