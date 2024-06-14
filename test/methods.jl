@@ -102,9 +102,9 @@ using TensorOperations: IndexError
         C = view(Cbig, 13 .+ (0:6), 11 .+ 4 * (0:9), 15 .+ 4 * (0:8), 4 .+ 3 * (0:6))
         Acopy = tensorcopy(A, 1:4)
         Ccopy = tensorcopy(C, 1:4)
-        pC = (p, ())
-        tensorcopy!(C, A, pC, false)
-        tensorcopy!(Ccopy, Acopy, pC, false)
+        pA = (p, ())
+        tensorcopy!(C, A, pA, false)
+        tensorcopy!(Ccopy, Acopy, pA, false)
         @test C ≈ Ccopy
         @test_throws IndexError tensorcopy!(C, A, ((1, 2, 3), ()), false)
         @test_throws DimensionMismatch tensorcopy!(C, A, ((1, 2, 3, 4), ()), false)

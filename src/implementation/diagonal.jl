@@ -6,11 +6,11 @@
 for (TC, TA, TB) in ((:AbstractArray, :AbstractArray, :Diagonal),
                      (:AbstractArray, :Diagonal, :AbstractArray), (:AbstractArray, :Diagonal, :Diagonal),
                      (:Diagonal, :Diagonal, :Diagonal))
-    @eval function tensorcontract!(C::$TC, pC::Index2Tuple,
+    @eval function tensorcontract!(C::$TC,
                                    A::$TA, pA::Index2Tuple, conjA::Symbol,
                                    B::$TB, pB::Index2Tuple, conjB::Symbol,
-                                   α::Number, β::Number)
-        return tensorcontract!(C, pC, A, pA, conjA, B, pB, conjB, α, β, StridedNative())
+                                   pAB::Index2Tuple, α::Number, β::Number)
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedNative())
     end
 end
 
