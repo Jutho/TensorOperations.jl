@@ -116,14 +116,13 @@ function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexpr
     optimalordersym = gensym("optimalorder")
     if costcheck == :warn
         costcompareex = :(@notensor begin
-                              $currentcostsym = first(TensorOperations.treecost($tree,
-                                                                                $network,
-                                                                                $costmapsym))
-                              $optimaltreesym, $optimalcostsym = TensorOperations.optimaltree($network,
-                                                                                              $costmapsym)
+                              $currentcostsym = first(treecost($tree, $network,
+                                                               $costmapsym))
+                              $optimaltreesym, $optimalcostsym = optimaltree($network,
+                                                                             $costmapsym)
                               if $currentcostsym > $optimalcostsym
-                                  $optimalordersym = tuple(first(TensorOperations.tree2indexorder($optimaltreesym,
-                                                                                                  $network))...)
+                                  $optimalordersym = tuple(first(tree2indexorder($optimaltreesym,
+                                                                                 $network))...)
                                   @warn "Tensor network: " *
                                         $(string(ex)) *
                                         ":\n" *
@@ -132,21 +131,18 @@ function insertcontractiontrees!(ex, treebuilder, treesorter, costcheck, preexpr
                           end)
     elseif costcheck == :cache
         key = Expr(:quote, ex)
+        cacheref = GlobalRef(TensorOperations, :costcache)
         costcompareex = :(@notensor begin
-                              $currentcostsym = first(TensorOperations.treecost($tree,
-                                                                                $network,
-                                                                                $costmapsym))
-                              if !($key in
-                                   keys(TensorOperations.costcache)) ||
-                                 first(TensorOperations.costcache[$key]) <
-                                 $(currentcostsym)
-                                  $optimaltreesym, $optimalcostsym = TensorOperations.optimaltree($network,
-                                                                                                  $costmapsym)
-                                  $optimalordersym = tuple(first(TensorOperations.tree2indexorder($optimaltreesym,
-                                                                                                  $network))...)
-                                  TensorOperations.costcache[$key] = ($currentcostsym,
-                                                                      $optimalcostsym,
-                                                                      $optimalordersym)
+                              $currentcostsym = first(treecost($tree, $network,
+                                                               $costmapsym))
+                              if !($key in keys($cacheref)) ||
+                                 first($cacheref[$key]) < $(currentcostsym)
+                                  $optimaltreesym, $optimalcostsym = optimaltree($network,
+                                                                                 $costmapsym)
+                                  $optimalordersym = tuple(first(tree2indexorder($optimaltreesym,
+                                                                                 $network))...)
+                                  $cacheref[$key] = ($currentcostsym, $optimalcostsym,
+                                                     $optimalordersym)
                               end
                           end)
     end

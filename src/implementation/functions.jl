@@ -7,7 +7,7 @@
 
 """
     tensorcopy([IC=IA], A, IA, [conjA=false, [α=1]])
-    tensorcopy(A, pA::Index2Tuple, conjA, α) # expert mode
+    tensorcopy(A, pA::Index2Tuple, conjA, α, [backend]) # expert mode
 
 Create a copy of `A`, where the dimensions of `A` are assigned indices from the
 iterable `IA` and the indices of the copy are contained in `IC`. Both iterables

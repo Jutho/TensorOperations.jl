@@ -8,7 +8,10 @@ using TensorOperations: IndexError
         p = (3, 1, 4, 2)
         C1 = permutedims(A, p)
         C2 = @inferred tensorcopy((p...,), A, (1:4...,))
-        @test C1 ≈ C2
+        C3 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.StridedNative())
+        C4 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.BaseView())
+        C5 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.BaseCopy())
+        @test C1 ≈ C2 ≈ C3 ≈ C4 ≈ C5
         @test C1 ≈ ncon(Any[A], Any[[-2, -4, -1, -3]])
         @test_throws IndexError tensorcopy(1:4, A, 1:3)
         @test_throws IndexError tensorcopy(1:4, A, [1, 2, 2, 4])
