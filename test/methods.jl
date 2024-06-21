@@ -25,6 +25,16 @@ using TensorOperations: IndexError
         C2 = A + permutedims(B, p)
         @test C1 ≈ C2
         @test C1 ≈ A + ncon(Any[B], Any[[-2, -4, -1, -3]])
+        @test C1 ≈
+              @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
+                                  TensorOperations.StridedNative())
+        @test C1 ≈
+              @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
+                                  TensorOperations.BaseView())
+        @test C1 ≈
+              @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
+                                  TensorOperations.BaseCopy())
+
         @test_throws DimensionMismatch tensoradd(A, 1:4, B, 1:4)
     end
 
@@ -48,6 +58,12 @@ using TensorOperations: IndexError
             end
         end
         @test C1 ≈ C2
+        C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
+                                   TensorOperations.StridedNative())
+        C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
+                                   TensorOperations.BaseView())
+        C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
+                                   TensorOperations.BaseCopy())
         @test C1 ≈ ncon(Any[A], Any[[-2, 1, 2, -3, 1, -1, 2]])
     end
 
@@ -56,14 +72,27 @@ using TensorOperations: IndexError
         B = randn(Float64, (5, 6, 20, 3))
         C1 = @inferred tensorcontract((:a, :g, :e, :d, :f),
                                       A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g))
-        C2 = @inferred tensorcontract((:a, :g, :e, :d, :f),
-                                      A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g))
-        C3 = zeros(3, 3, 4, 3, 6)
+        C2 = zeros(3, 3, 4, 3, 6)
         for a in 1:3, b in 1:20, c in 1:5, d in 1:3, e in 1:4, f in 1:6, g in 1:3
-            C3[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
+            C2[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
         end
-        @test C1 ≈ C3
-        @test C2 ≈ C3
+        @test C1 ≈ C2
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.StridedNative())
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.StridedBLAS())
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.BaseView())
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.BaseCopy())
         @test C1 ≈ ncon(Any[A, B], Any[[-1, 1, 2, -4, -3], [2, -5, 1, -2]])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :d], B, [:c, :f, :b, :g])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :a, :e], B, [:c, :f, :b, :g])
@@ -90,6 +119,13 @@ using TensorOperations: IndexError
             C2[i, j, k, l] = A[k, i] * B[j, l]
         end
         @test C1 ≈ C2
+        @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
+                                           ((2, 3, 1, 4), ()), 1.0,
+                                           TensorOperations.StridedNative())
+        @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
+                                           ((2, 3, 1, 4), ()), 1.0, TensorOperations.BaseView())
+        @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
+                                           ((2, 3, 1, 4), ()), 1.0, TensorOperations.BaseCopy())
     end
 
     # test in-place methods

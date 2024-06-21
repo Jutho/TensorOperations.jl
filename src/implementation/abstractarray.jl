@@ -164,7 +164,7 @@ function tensortrace!(C::AbstractArray,
     so = TupleTools.getindices(szA, linearize(p))
     st = prod(TupleTools.getindices(szA, q[1]))
     Ã = reshape(PermutedDimsArray(A, (linearize(p)..., linearize(q)...)),
-                 (prod(so), st * st))
+                 (prod(so), st, st))
 
     if conjA
         if iszero(β)
@@ -196,7 +196,7 @@ function tensortrace!(C::AbstractArray,
     szA = size(A)
     so = TupleTools.getindices(szA, linearize(p))
     st = prod(TupleTools.getindices(szA, q[1]))
-    Ã = reshape(permutedims(A, (linearize(p)..., linearize(q)...)), (prod(so), st * st))
+    Ã = reshape(permutedims(A, (linearize(p)..., linearize(q)...)), (prod(so), st, st))
 
     if conjA
         if iszero(β)
