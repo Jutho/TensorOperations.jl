@@ -8,7 +8,10 @@ using TensorOperations: IndexError
         p = (3, 1, 4, 2)
         C1 = permutedims(A, p)
         C2 = @inferred tensorcopy((p...,), A, (1:4...,))
-        @test C1 ≈ C2
+        C3 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.StridedNative())
+        C4 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.BaseView())
+        C5 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.BaseCopy())
+        @test C1 ≈ C2 ≈ C3 ≈ C4 ≈ C5
         @test C1 ≈ ncon(Any[A], Any[[-2, -4, -1, -3]])
         @test_throws IndexError tensorcopy(1:4, A, 1:3)
         @test_throws IndexError tensorcopy(1:4, A, [1, 2, 2, 4])
@@ -22,6 +25,16 @@ using TensorOperations: IndexError
         C2 = A + permutedims(B, p)
         @test C1 ≈ C2
         @test C1 ≈ A + ncon(Any[B], Any[[-2, -4, -1, -3]])
+        @test C1 ≈
+              @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
+                                  TensorOperations.StridedNative())
+        @test C1 ≈
+              @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
+                                  TensorOperations.BaseView())
+        @test C1 ≈
+              @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
+                                  TensorOperations.BaseCopy())
+
         @test_throws DimensionMismatch tensoradd(A, 1:4, B, 1:4)
     end
 
@@ -45,6 +58,12 @@ using TensorOperations: IndexError
             end
         end
         @test C1 ≈ C2
+        C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
+                                   TensorOperations.StridedNative())
+        C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
+                                   TensorOperations.BaseView())
+        C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
+                                   TensorOperations.BaseCopy())
         @test C1 ≈ ncon(Any[A], Any[[-2, 1, 2, -3, 1, -1, 2]])
     end
 
@@ -53,14 +72,27 @@ using TensorOperations: IndexError
         B = randn(Float64, (5, 6, 20, 3))
         C1 = @inferred tensorcontract((:a, :g, :e, :d, :f),
                                       A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g))
-        C2 = @inferred tensorcontract((:a, :g, :e, :d, :f),
-                                      A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g))
-        C3 = zeros(3, 3, 4, 3, 6)
+        C2 = zeros(3, 3, 4, 3, 6)
         for a in 1:3, b in 1:20, c in 1:5, d in 1:3, e in 1:4, f in 1:6, g in 1:3
-            C3[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
+            C2[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
         end
-        @test C1 ≈ C3
-        @test C2 ≈ C3
+        @test C1 ≈ C2
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.StridedNative())
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.StridedBLAS())
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.BaseView())
+        @test C1 ≈
+              @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
+                                       TensorOperations.BaseCopy())
         @test C1 ≈ ncon(Any[A, B], Any[[-1, 1, 2, -4, -3], [2, -5, 1, -2]])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :d], B, [:c, :f, :b, :g])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :a, :e], B, [:c, :f, :b, :g])
@@ -87,6 +119,13 @@ using TensorOperations: IndexError
             C2[i, j, k, l] = A[k, i] * B[j, l]
         end
         @test C1 ≈ C2
+        @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
+                                           ((2, 3, 1, 4), ()), 1.0,
+                                           TensorOperations.StridedNative())
+        @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
+                                           ((2, 3, 1, 4), ()), 1.0, TensorOperations.BaseView())
+        @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
+                                           ((2, 3, 1, 4), ()), 1.0, TensorOperations.BaseCopy())
     end
 
     # test in-place methods
@@ -94,7 +133,9 @@ using TensorOperations: IndexError
     # test different versions of in-place methods,
     # with changing element type and with nontrivial strides
 
-    @testset "tensorcopy!" begin
+    @testset "tensorcopy! with backend $b" for b in (TensorOperations.StridedNative(),
+                                                     TensorOperations.BaseView(),
+                                                     TensorOperations.BaseCopy())
         Abig = randn(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:9), 2 .+ 2 * (0:6), 5 .+ 4 * (0:6), 4 .+ 3 * (0:8))
         p = (3, 1, 4, 2)
@@ -102,16 +143,19 @@ using TensorOperations: IndexError
         C = view(Cbig, 13 .+ (0:6), 11 .+ 4 * (0:9), 15 .+ 4 * (0:8), 4 .+ 3 * (0:6))
         Acopy = tensorcopy(A, 1:4)
         Ccopy = tensorcopy(C, 1:4)
-        pC = (p, ())
-        tensorcopy!(C, A, pC, false)
-        tensorcopy!(Ccopy, Acopy, pC, false)
-        @test C ≈ Ccopy
-        @test_throws IndexError tensorcopy!(C, A, ((1, 2, 3), ()), false)
-        @test_throws DimensionMismatch tensorcopy!(C, A, ((1, 2, 3, 4), ()), false)
-        @test_throws IndexError tensorcopy!(C, A, ((1, 2, 2, 3), ()), false)
+        pA = (p, ())
+        α = randn(Float64)
+        tensorcopy!(C, A, pA, false, α, b)
+        tensorcopy!(Ccopy, Acopy, pA, false, 1.0, b)
+        @test C ≈ α * Ccopy
+        @test_throws IndexError tensorcopy!(C, A, ((1, 2, 3), ()), false, 1.0, b)
+        @test_throws DimensionMismatch tensorcopy!(C, A, ((1, 2, 3, 4), ()), false, 1.0, b)
+        @test_throws IndexError tensorcopy!(C, A, ((1, 2, 2, 3), ()), false, 1.0, b)
     end
 
-    @testset "tensoradd!" begin
+    @testset "tensoradd! with backend $b" for b in (TensorOperations.StridedNative(),
+                                                    TensorOperations.BaseView(),
+                                                    TensorOperations.BaseCopy())
         Abig = randn(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:9), 2 .+ 2 * (0:6), 5 .+ 4 * (0:6), 4 .+ 3 * (0:8))
         p = (3, 1, 4, 2)
@@ -121,15 +165,18 @@ using TensorOperations: IndexError
         Ccopy = tensorcopy(1:4, C, 1:4)
         α = randn(Float64)
         β = randn(Float64)
-        tensoradd!(C, A, (p, ()), false, α, β)
+        tensoradd!(C, A, (p, ()), false, α, β, b)
         Ccopy = β * Ccopy + α * Acopy
         @test C ≈ Ccopy
-        @test_throws IndexError tensoradd!(C, A, ((1, 2, 3), ()), false, 1.2, 0.5)
-        @test_throws DimensionMismatch tensoradd!(C, A, ((1, 2, 3, 4), ()), false, 1.2, 0.5)
-        @test_throws IndexError tensoradd!(C, A, ((1, 1, 2, 3), ()), false, 1.2, 0.5)
+        @test_throws IndexError tensoradd!(C, A, ((1, 2, 3), ()), false, 1.2, 0.5, b)
+        @test_throws DimensionMismatch tensoradd!(C, A, ((1, 2, 3, 4), ()), false, 1.2, 0.5,
+                                                  b)
+        @test_throws IndexError tensoradd!(C, A, ((1, 1, 2, 3), ()), false, 1.2, 0.5, b)
     end
 
-    @testset "tensortrace!" begin
+    @testset "tensortrace! with backend $b" for b in (TensorOperations.StridedNative(),
+                                                      TensorOperations.BaseView(),
+                                                      TensorOperations.BaseCopy())
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:8), 2 .+ 2 * (0:14), 5 .+ 4 * (0:6), 7 .+ 2 * (0:8))
         Bbig = rand(ComplexF64, (50, 50))
@@ -138,22 +185,25 @@ using TensorOperations: IndexError
         Bcopy = tensorcopy(B, 1:2)
         α = randn(Float64)
         β = randn(Float64)
-        tensortrace!(B, A, ((2, 3), ()), ((1,), (4,)), false, α, β)
+        tensortrace!(B, A, ((2, 3), ()), ((1,), (4,)), false, α, β, b)
         Bcopy = β * Bcopy
         for i in 1 .+ (0:8)
             Bcopy += α * view(A, i, :, :, i)
         end
         @test B ≈ Bcopy
-        @test_throws IndexError tensortrace!(B, A, ((1,), ()), ((2,), (3,)), false, α, β)
+        @test_throws IndexError tensortrace!(B, A, ((1,), ()), ((2,), (3,)), false, α, β, b)
         @test_throws DimensionMismatch tensortrace!(B, A, ((1, 4), ()), ((2,), (3,)), false,
-                                                    α, β)
+                                                    α, β, b)
         @test_throws IndexError tensortrace!(B, A, ((1, 4), ()), ((1, 1), (4,)), false, α,
-                                             β)
+                                             β, b)
         @test_throws DimensionMismatch tensortrace!(B, A, ((1, 4), ()), ((1,), (3,)), false,
-                                                    α, β)
+                                                    α, β, b)
     end
 
-    @testset "tensorcontract!" begin
+    @testset "tensorcontract! with backend $b" for b in (TensorOperations.StridedNative(),
+                                                         TensorOperations.StridedBLAS(),
+                                                         TensorOperations.BaseView(),
+                                                         TensorOperations.BaseCopy())
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:8), 2 .+ 2 * (0:14), 5 .+ 4 * (0:6), 7 .+ 2 * (0:8))
         Bbig = rand(ComplexF64, (50, 50, 50))
@@ -172,23 +222,23 @@ using TensorOperations: IndexError
             end
         end
         tensorcontract!(C, A, ((4, 1), (2, 3)), false, B, ((3, 1), (2,)), true,
-                        ((1, 2, 3), ()), α, β)
+                        ((1, 2, 3), ()), α, β, b)
         @test C ≈ Ccopy
         @test_throws IndexError tensorcontract!(C,
                                                 A, ((4, 1), (2, 4)), false,
                                                 B, ((1, 3), (2,)), false,
-                                                ((1, 2, 3), ()), α, β)
+                                                ((1, 2, 3), ()), α, β, b)
         @test_throws IndexError tensorcontract!(C,
                                                 A, ((4, 1), (2, 3)), false,
                                                 B, ((1, 3), ()), false,
-                                                ((1, 2, 3), ()), α, β)
+                                                ((1, 2, 3), ()), α, β, b)
         @test_throws IndexError tensorcontract!(C,
                                                 A, ((4, 1), (2, 3)), false,
                                                 B, ((1, 3), (2,)), false,
-                                                ((1, 2), ()), α, β)
+                                                ((1, 2), ()), α, β, b)
         @test_throws DimensionMismatch tensorcontract!(C,
                                                        A, ((4, 1), (2, 3)), false,
                                                        B, ((1, 3), (2,)), false,
-                                                       ((1, 3, 2), ()), α, β)
+                                                       ((1, 3, 2), ()), α, β, b)
     end
 end

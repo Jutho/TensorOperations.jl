@@ -1,6 +1,20 @@
 #-------------------------------------------------------------------------------------------
 # Specialized implementations for contractions involving diagonal matrices
 #-------------------------------------------------------------------------------------------
+
+# backend selection:
+for (TC, TA, TB) in ((:AbstractArray, :AbstractArray, :Diagonal),
+                     (:AbstractArray, :Diagonal, :AbstractArray), (:AbstractArray, :Diagonal, :Diagonal),
+                     (:Diagonal, :Diagonal, :Diagonal))
+    @eval function tensorcontract!(C::$TC,
+                                   A::$TA, pA::Index2Tuple, conjA::Bool,
+                                   B::$TB, pB::Index2Tuple, conjB::Bool,
+                                   pAB::Index2Tuple, α::Number, β::Number)
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedNative())
+    end
+end
+
+# actual implementations:
 function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                          B::Diagonal, pB::Index2Tuple, conjB::Bool,

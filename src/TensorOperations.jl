@@ -6,6 +6,7 @@ using TupleTools: TupleTools, isperm, invperm
 using LinearAlgebra
 using LinearAlgebra: mul!, BlasFloat
 using Strided
+using StridedViews: isstrided
 using LRUCache
 
 using Base.Meta: isexpr

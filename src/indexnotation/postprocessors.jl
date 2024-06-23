@@ -49,7 +49,8 @@ const tensoroperationsfunctions = (:tensoralloc, :tensorfree!,
                                    :tensoradd!, :tensortrace!, :tensorcontract!,
                                    :tensorscalar, :tensorcost, :IndexError, :scalartype,
                                    :checkcontractible, :promote_contract, :promote_add,
-                                   :tensoralloc_add, :tensoralloc_contract)
+                                   :tensoralloc_add, :tensoralloc_contract,
+                                   :treecost, :optimaltree, :tree2indexorder)
 """
     addtensoroperations(ex)
 

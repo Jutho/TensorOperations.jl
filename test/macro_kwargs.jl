@@ -19,7 +19,17 @@ using Logging
         tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                      H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
+    E3 = @tensor backend = BaseView begin
+        tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                     H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+    end
+    E4 = @tensor backend = BaseCopy begin
+        tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                     H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+    end
     @test E1 ≈ E2
+    @test E1 ≈ E3
+    @test E1 ≈ E4
 end
 
 @testset "contractcheck" begin
