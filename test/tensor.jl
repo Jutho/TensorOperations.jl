@@ -1,12 +1,13 @@
-using LinearAlgebra
 # test index notation using @tensor macro
 #-----------------------------------------
-@testset "Macro with index notation" verbose = true begin
+using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
+const backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
+@testset "Macro with index notation and backend = $b" verbose = true for b in backendlist
     @testset "tensorcontract 1" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (4, 1, 3, 2)
         C1 = permutedims(A, p)
-        @tensor C2[4, 1, 3, 2] := A[1, 2, 3, 4]
+        @tensor backend = b C2[4, 1, 3, 2] := A[1, 2, 3, 4]
         @test C1 ≈ C2
         @test_throws IndexError begin
             @tensor C[1, 2, 3, 4] := A[1, 2, 3]
@@ -17,15 +18,15 @@ using LinearAlgebra
 
         B = randn(Float64, (5, 6, 3, 4))
         p = [3, 1, 4, 2]
-        @tensor C1[3, 1, 4, 2] := A[3, 1, 4, 2] + B[1, 2, 3, 4]
+        @tensor backend = b C1[3, 1, 4, 2] := A[3, 1, 4, 2] + B[1, 2, 3, 4]
         C2 = A + permutedims(B, p)
         @test C1 ≈ C2
         @test_throws DimensionMismatch begin
-            @tensor C[1, 2, 3, 4] := A[1, 2, 3, 4] + B[1, 2, 3, 4]
+            @tensor backend = b C[1, 2, 3, 4] := A[1, 2, 3, 4] + B[1, 2, 3, 4]
         end
 
         A = randn(Float64, (50, 100, 100))
-        @tensor C1[a] := A[a, b', b']
+        @tensor backend = b C1[a] := A[a, b', b']
         C2 = zeros(50)
         for i in 1:50
             for j in 1:100
@@ -34,7 +35,7 @@ using LinearAlgebra
         end
         @test C1 ≈ C2
         A = randn(Float64, (3, 20, 5, 3, 20, 4, 5))
-        @tensor C1[e, a, d] := A[a, b, c, d, b, e, c]
+        @tensor backend = b C1[e, a, d] := A[a, b, c, d, b, e, c]
         C2 = zeros(4, 3, 3)
         for i1 in 1:4, i2 in 1:3, i3 in 1:3
             for j1 in 1:20, j2 in 1:5
@@ -45,26 +46,26 @@ using LinearAlgebra
 
         A = randn(Float64, (3, 20, 5, 3, 4))
         B = randn(Float64, (5, 6, 20, 3))
-        @tensor C1[a, g, e, d, f] := A[a, b, c, d, e] * B[c, f, b, g]
+        @tensor backend = b C1[a, g, e, d, f] := A[a, b, c, d, e] * B[c, f, b, g]
         C2 = zeros(3, 3, 4, 3, 6)
         for a in 1:3, b in 1:20, c in 1:5, d in 1:3, e in 1:4, f in 1:6, g in 1:3
             C2[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
         end
         @test C1 ≈ C2
         @test_throws IndexError begin
-            @tensor A[a, b, c, d] * B[c, f, b, g]
+            @tensor backend = b A[a, b, c, d] * B[c, f, b, g]
         end
     end
 
     @testset "tensorcontract 2" begin
         A = randn(Float64, (5, 5, 5, 5))
         B = rand(ComplexF64, (5, 5, 5, 5))
-        @tensor C1[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
+        @tensor backend = b C1[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
         C2 = reshape(kron(reshape(B, (25, 25)), reshape(A, (25, 25))),
                      (5, 5, 5, 5, 5, 5, 5, 5))
         @test C1 ≈ C2
         @test_throws IndexError begin
-            @tensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
+            @tensor backend = b C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
         end
     end
 
@@ -73,8 +74,8 @@ using LinearAlgebra
         A = rand(ComplexF64, (Da, Dc, Df, Da, De, Db, Db, Dg))
         B = rand(ComplexF64, (Dc, Dh, Dg, De, Dd))
         C = rand(ComplexF64, (Dd, Dh, Df))
-        @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
-                               0.5 * C[d, h, f]
+        @tensor backend = b D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
+                                           0.5 * C[d, h, f]
         D2 = zeros(ComplexF64, (Dd, Df, Dh))
         for d in 1:Dd, f in 1:Df, h in 1:Dh
             D2[d, f, h] += 0.5 * C[d, h, f]
@@ -84,7 +85,7 @@ using LinearAlgebra
         end
         @test D1 ≈ D2
         @test norm(vec(D1)) ≈
-              sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
+              sqrt(abs((@tensor backend = b tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
     end
 
     @testset "views" begin

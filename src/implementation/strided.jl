@@ -26,7 +26,7 @@ end
 function tensoradd!(C::StridedView,
                     A::StridedView, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number,
-                    ::Union{StridedNative,StridedBLAS})
+                    ::StridedBackend)
     argcheck_tensoradd(C, A, pA)
     dimcheck_tensoradd(C, A, pA)
     if !istrivialpermutation(pA) && Base.mightalias(C, A)
@@ -43,7 +43,7 @@ end
 function tensortrace!(C::StridedView,
                       A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number,
-                      ::Union{StridedNative,StridedBLAS})
+                      ::StridedBackend)
     argcheck_tensortrace(C, A, p, q)
     dimcheck_tensortrace(C, A, p, q)
 

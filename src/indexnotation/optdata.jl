@@ -40,7 +40,7 @@ function _optdata(indexvec, costvec)
     indices = Vector{Any}()
     costs = Vector{Any}()
     for (index, cost) in zip(indexvec, costvec)
-        if typeof(index) != Symbol && index.head == :tuple
+        if isexpr(index, :tuple)
             for index_ in index.args
                 push!(indices, normalizeindex(index_))
                 push!(costs, parsecost(cost))

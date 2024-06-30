@@ -2,6 +2,7 @@ module TensorOperationscuTENSORExt
 
 using TensorOperations
 using TensorOperations: TensorOperations as TO
+using TensorOperations: cuTENSORBackend
 
 using cuTENSOR
 using cuTENSOR: OP_IDENTITY, OP_CONJ, OP_ADD
@@ -36,7 +37,6 @@ isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
 
 const CuStridedView = StridedViewsCUDAExt.CuStridedView
 const SUPPORTED_CUARRAYS = (:StridedCuArray, :CuStridedView)
-const cuTENSORBackend = TO.Backend{:cuTENSOR}
 
 function TO.tensorscalar(C::StridedCuArray)
     return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())

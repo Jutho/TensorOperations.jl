@@ -19,6 +19,10 @@ function tensoradd! end
 function tensoradd!(C, A, pA::Index2Tuple, conjA::Bool)
     return tensoradd!(C, A, pA, conjA, One(), One())
 end
+# insert default backend
+function tensoradd!(C, A, pA::Index2Tuple, conjA::Bool, α::Number, β::Number)
+    return tensoradd!(C, A, pA, conjA, α, β, select_backend(tensoradd!, C, A))
+end
 
 """
     tensortrace!(C, A, p, q, conjA, α=1, β=0 [, backend])
@@ -38,6 +42,11 @@ function tensortrace! end
 # insert default α and β arguments
 function tensortrace!(C, A, p::Index2Tuple, q::Index2Tuple, conjA::Bool)
     return tensortrace!(C, A, p, q, conjA, One(), Zero())
+end
+# insert default backend
+function tensortrace!(C, A, p::Index2Tuple, q::Index2Tuple, conjA::Bool, α::Number,
+                      β::Number)
+    return tensortrace!(C, A, p, q, conjA, α, β, select_backend(tensortrace!, C, A))
 end
 
 """
@@ -62,6 +71,14 @@ function tensorcontract!(C,
                          B, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple)
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero())
+end
+function tensorcontract!(C,
+                         A, pA::Index2Tuple, conjA::Bool,
+                         B, pB::Index2Tuple, conjB::Bool,
+                         pAB::Index2Tuple,
+                         α::Number, β::Number)
+    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
+                           select_backend(tensorcontract!, C, A, B))
 end
 
 """
@@ -117,7 +134,7 @@ Obtain the type information of `C`, where `C` would be the output of
 function tensorcontract_type end
 
 """
-    tensoralloc(ttype, structure, istemp=false, [backend::Backend])
+    tensoralloc(ttype, structure, istemp=false, [backend::AbstractBackend])
 
 Allocate memory for a tensor of type `ttype` and structure `structure`. The optional third
 argument can be used to indicate that the result is used as a temporary tensor, for which
@@ -129,13 +146,13 @@ See also [`tensoralloc_add`](@ref), [`tensoralloc_contract`](@ref) and [`tensorf
 function tensoralloc end
 
 """
-    tensorfree!(C, [backend::Backend])
+    tensorfree!(C, [backend::AbstractBackend])
 
 Provide a hint that the allocated memory of `C` can be released.
 
 See also [`tensoralloc`](@ref).
 """
-tensorfree!(C) = nothing
+function tensorfree! end
 
 #-------------------------------------------------------------------------------------------
 # Utility
