@@ -1,7 +1,7 @@
 module TensorOperationsChainRulesCoreExt
 
 using TensorOperations
-using TensorOperations: numind, numin, numout, promote_contract, Backend
+using TensorOperations: numind, numin, numout, promote_contract, AbstractBackend
 using ChainRulesCore
 using TupleTools
 using VectorInterface
@@ -44,7 +44,7 @@ end
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
                               C,
                               A, pA::Index2Tuple, conjA::Bool,
-                              α::Number, β::Number, backend::Backend...)
+                              α::Number, β::Number, backend::AbstractBackend...)
     C′ = tensoradd!(copy(C), A, pA, conjA, α, β, backend...)
 
     projectA = ProjectTo(A)
@@ -87,7 +87,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
                               A, pA::Index2Tuple, conjA::Bool,
                               B, pB::Index2Tuple, conjB::Bool,
                               pAB::Index2Tuple,
-                              α::Number, β::Number, backend::Backend...)
+                              α::Number, β::Number, backend::AbstractBackend...)
     C′ = tensorcontract!(copy(C), A, pA, conjA, B, pB, conjB, pAB, α, β, backend...)
 
     projectA = ProjectTo(A)
@@ -156,7 +156,7 @@ end
 # arrays when tracing multiple indices at the same time.
 function ChainRulesCore.rrule(::typeof(tensortrace!), C,
                               A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                              α::Number, β::Number, backend::Backend...)
+                              α::Number, β::Number, backend::AbstractBackend...)
     C′ = tensortrace!(copy(C), A, p, q, conjA, α, β, backend...)
 
     projectA = ProjectTo(A)
@@ -203,8 +203,8 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C,
     return C′, pullback
 end
 
-_kron(Es::NTuple{1}, backend::Backend...) = Es[1]
-function _kron(Es::NTuple{N,Any}, backend::Backend...) where {N}
+_kron(Es::NTuple{1}, backend::AbstractBackend...) = Es[1]
+function _kron(Es::NTuple{N,Any}, backend::AbstractBackend...) where {N}
     E1 = Es[1]
     E2 = _kron(Base.tail(Es), backend...)
     p2 = ((), trivtuple(2 * N - 2))

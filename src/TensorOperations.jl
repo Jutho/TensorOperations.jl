@@ -28,14 +28,11 @@ export IndexTuple, Index2Tuple, linearize
 # export debug functionality
 export checkcontractible, tensorcost
 
-# Backends for tensor operations
-#--------------------------------
-struct Backend{B} end # generic empty parametric struct for dispatching on different backends
-
 # Interface and index types
 #---------------------------
 include("indices.jl")
 include("interface.jl")
+include("backends.jl")
 
 # Index notation via macros
 #---------------------------

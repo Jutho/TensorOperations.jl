@@ -1,8 +1,10 @@
-using TensorOperations: IndexError
-
-# test simple methods
-#---------------------
 @testset "Method syntax" verbose = true begin
+    using TensorOperations
+    using Test
+    using TensorOperations: IndexError
+
+    # test simple methods
+    #---------------------
     @testset "tensorcopy" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (3, 1, 4, 2)

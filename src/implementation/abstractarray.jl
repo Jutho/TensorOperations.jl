@@ -9,53 +9,39 @@ function checkcontractible(A::AbstractArray, iA, conjA::Bool,
     return nothing
 end
 
-const StridedNative = Backend{:StridedNative}
-const StridedBLAS = Backend{:StridedBLAS}
-const BaseView = Backend{:BaseView}
-const BaseCopy = Backend{:BaseCopy}
-
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number)
+function select_backend(::typeof(tensoradd!), C::AbstractArray, A::AbstractArray)
     if isstrided(A) && isstrided(C)
-        return tensoradd!(C, A, pA, conjA, α, β, StridedNative())
+        return StridedNative()
     else
-        return tensoradd!(C, A, pA, conjA, α, β, BaseView())
+        return BaseView()
     end
 end
 
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number)
+function select_backend(::typeof(tensortrace!), C::AbstractArray, A::AbstractArray)
     if isstrided(A) && isstrided(C)
-        return tensortrace!(C, A, p, q, conjA, α, β, StridedNative())
+        return StridedNative()
     else
-        return tensortrace!(C, A, p, q, conjA, α, β, BaseView())
+        return BaseView()
     end
 end
 
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number)
+function select_backend(::typeof(tensorcontract!), C::AbstractArray, A::AbstractArray,
+                        B::AbstractArray)
     if eltype(C) <: LinearAlgebra.BlasFloat
         if isstrided(A) && isstrided(B) && isstrided(C)
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedBLAS())
+            return StridedBLAS()
         elseif (isstrided(A) || isa(A, Diagonal)) && (isstrided(B) || isa(B, Diagonal)) &&
                isstrided(C)
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
-                                   StridedNative())
+            return StridedNative()
         else
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, BaseCopy())
+            return BaseCopy()
         end
     else
         if (isstrided(A) || isa(A, Diagonal)) && (isstrided(B) || isa(B, Diagonal)) &&
            isstrided(C)
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
-                                   StridedNative())
+            return StridedNative()
         else
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, BaseView())
+            return BaseView()
         end
     end
 end
@@ -66,14 +52,14 @@ end
 
 function tensoradd!(C::AbstractArray,
                     A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
+                    α::Number, β::Number, backend::StridedBackend)
     tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
     return C
 end
 
 function tensortrace!(C::AbstractArray,
                       A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
+                      α::Number, β::Number, backend::StridedBackend)
     tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
     return C
 end

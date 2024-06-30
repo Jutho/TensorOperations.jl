@@ -78,13 +78,7 @@ function tensorparser(tensorexpr, kwargs...)
             end
             parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
         elseif name == :backend
-            val isa Symbol ||
-                throw(ArgumentError("Backend should be a symbol."))
-            push!(parser.postprocessors, ex -> insert_operationbackend(ex, val))
-        elseif name == :allocator
-            val isa Symbol ||
-                throw(ArgumentError("Allocator should be a symbol."))
-            push!(parser.postprocessors, ex -> insert_allocatorbackend(ex, val))
+            push!(parser.postprocessors, ex -> insertbackend(ex, val))
         else
             throw(ArgumentError("Unknown keyword argument `name`."))
         end
@@ -300,7 +294,8 @@ macro cutensor(ex::Expr)
     haskey(Base.loaded_modules, Base.identify_package("cuTENSOR")) ||
         throw(ArgumentError("cuTENSOR not loaded: add `using cuTENSOR` or `import cuTENSOR` before using `@cutensor`"))
     parser = TensorParser()
-    push!(parser.postprocessors, ex -> insert_operationbackend(ex, :cuTENSOR))
-    push!(parser.postprocessors, ex -> insert_allocatorbackend(ex, :cuTENSOR))
+    push!(parser.postprocessors,
+          ex -> insertbackend(ex,
+                              Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))))
     return esc(parser(ex))
 end

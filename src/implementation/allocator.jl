@@ -18,7 +18,7 @@ Promote the scalar types of a tensor addition to a common type.
 promote_add(args...) = Base.promote_op(+, args...)
 
 """
-    tensoralloc_add(TC, A, pA, conjA, istemp=false, backend::Backend...)
+    tensoralloc_add(TC, A, pA, conjA, istemp=false, backend::AbstractBackend...)
 
 Allocate a tensor `C` of scalar type `TC` that would be the result of
 
@@ -31,14 +31,14 @@ used to implement different allocation strategies.
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
 function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Bool=false,
-                         backend::Backend...)
+                         backend::AbstractBackend...)
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
 end
 
 """
-    tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, istemp=false, backend::Backend...)
+    tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, istemp=false, backend::AbstractBackend...)
 
 Allocate a tensor `C` of scalar type `TC` that would be the result of
 
@@ -53,7 +53,8 @@ See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 function tensoralloc_contract(TC,
                               A, pA::Index2Tuple, conjA::Bool,
                               B, pB::Index2Tuple, conjB::Bool,
-                              pAB::Index2Tuple, istemp::Bool=false, backend::Backend...)
+                              pAB::Index2Tuple, istemp::Bool=false,
+                              backend::AbstractBackend...)
     ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp, backend...)::ttype
@@ -86,11 +87,15 @@ function tensorcontract_structure(A::AbstractArray, pA, conjA,
     end
 end
 
-function tensoralloc(ttype, structure, istemp=false, backend::Backend...)
+function tensoralloc(ttype, structure, istemp=false, backend::AbstractBackend...)
     C = ttype(undef, structure)
     # fix an issue with undefined references for strided arrays
     if !isbitstype(scalartype(ttype))
         C = zerovector!!(C)
     end
     return C
+end
+
+function tensorfree!(C, backend::AbstractBackend...)
+    return nothing
 end
