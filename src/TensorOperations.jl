@@ -31,8 +31,8 @@ export checkcontractible, tensorcost
 # Interface and index types
 #---------------------------
 include("indices.jl")
-include("interface.jl")
 include("backends.jl")
+include("interface.jl")
 
 # Index notation via macros
 #---------------------------
@@ -59,6 +59,7 @@ include("implementation/ncon.jl")
 include("implementation/abstractarray.jl")
 include("implementation/diagonal.jl")
 include("implementation/strided.jl")
+include("implementation/base.jl")
 include("implementation/indices.jl")
 include("implementation/allocator.jl")
 

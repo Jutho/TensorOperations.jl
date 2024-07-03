@@ -1,18 +1,19 @@
-@testset "Method syntax" verbose = true begin
-    using TensorOperations
-    using Test
-    using TensorOperations: IndexError
+using TensorOperations
+using Test
+using TensorOperations: IndexError
+using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
 
-    # test simple methods
-    #---------------------
+# test simple methods
+#---------------------
+@testset "simple methods" begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (3, 1, 4, 2)
         C1 = permutedims(A, p)
         C2 = @inferred tensorcopy((p...,), A, (1:4...,))
-        C3 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.StridedNative())
-        C4 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.BaseView())
-        C5 = @inferred tensorcopy(A, (p, ()), false, 1, TensorOperations.BaseCopy())
+        C3 = @inferred tensorcopy(A, (p, ()), false, 1, StridedNative())
+        C4 = @inferred tensorcopy(A, (p, ()), false, 1, BaseView())
+        C5 = @inferred tensorcopy(A, (p, ()), false, 1, BaseCopy())
         @test C1 ≈ C2 ≈ C3 ≈ C4 ≈ C5
         @test C1 ≈ ncon(Any[A], Any[[-2, -4, -1, -3]])
         @test_throws IndexError tensorcopy(1:4, A, 1:3)
@@ -29,13 +30,13 @@
         @test C1 ≈ A + ncon(Any[B], Any[[-2, -4, -1, -3]])
         @test C1 ≈
               @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
-                                  TensorOperations.StridedNative())
+                                  StridedNative())
         @test C1 ≈
               @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
-                                  TensorOperations.BaseView())
+                                  BaseView())
         @test C1 ≈
               @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0,
-                                  TensorOperations.BaseCopy())
+                                  BaseCopy())
 
         @test_throws DimensionMismatch tensoradd(A, 1:4, B, 1:4)
     end
@@ -61,11 +62,11 @@
         end
         @test C1 ≈ C2
         C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
-                                   TensorOperations.StridedNative())
+                                   StridedNative())
         C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
-                                   TensorOperations.BaseView())
+                                   BaseView())
         C1 ≈ @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0,
-                                   TensorOperations.BaseCopy())
+                                   BaseCopy())
         @test C1 ≈ ncon(Any[A], Any[[-2, 1, 2, -3, 1, -1, 2]])
     end
 
@@ -81,20 +82,16 @@
         @test C1 ≈ C2
         @test C1 ≈
               @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
-                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
-                                       TensorOperations.StridedNative())
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0, StridedNative())
         @test C1 ≈
               @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
-                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
-                                       TensorOperations.StridedBLAS())
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0, StridedBLAS())
         @test C1 ≈
               @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
-                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
-                                       TensorOperations.BaseView())
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0, BaseView())
         @test C1 ≈
               @inferred tensorcontract(A, ((1, 4, 5), (2, 3)), false, B, ((3, 1), (2, 4)),
-                                       false, ((1, 5, 3, 2, 4), ()), 1.0,
-                                       TensorOperations.BaseCopy())
+                                       false, ((1, 5, 3, 2, 4), ()), 1.0, BaseCopy())
         @test C1 ≈ ncon(Any[A, B], Any[[-1, 1, 2, -4, -3], [2, -5, 1, -2]])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :d], B, [:c, :f, :b, :g])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :a, :e], B, [:c, :f, :b, :g])
@@ -122,22 +119,21 @@
         end
         @test C1 ≈ C2
         @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
-                                           ((2, 3, 1, 4), ()), 1.0,
-                                           TensorOperations.StridedNative())
+                                           ((2, 3, 1, 4), ()), 1.0, StridedNative())
         @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
-                                           ((2, 3, 1, 4), ()), 1.0, TensorOperations.BaseView())
+                                           ((2, 3, 1, 4), ()), 1.0, BaseView())
         @test C1 ≈ @inferred tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
-                                           ((2, 3, 1, 4), ()), 1.0, TensorOperations.BaseCopy())
+                                           ((2, 3, 1, 4), ()), 1.0, BaseCopy())
     end
+end
 
-    # test in-place methods
-    #-----------------------
-    # test different versions of in-place methods,
-    # with changing element type and with nontrivial strides
-
-    @testset "tensorcopy! with backend $b" for b in (TensorOperations.StridedNative(),
-                                                     TensorOperations.BaseView(),
-                                                     TensorOperations.BaseCopy())
+# test in-place methods
+#-----------------------
+# test different versions of in-place methods,
+# with changing element type and with nontrivial strides
+backendlist = (StridedNative(), StridedBLAS(), BaseView(), BaseCopy())
+@testset "in-place methods with backend $b" for b in backendlist
+    @testset "tensorcopy!" begin
         Abig = randn(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:9), 2 .+ 2 * (0:6), 5 .+ 4 * (0:6), 4 .+ 3 * (0:8))
         p = (3, 1, 4, 2)
@@ -155,9 +151,7 @@
         @test_throws IndexError tensorcopy!(C, A, ((1, 2, 2, 3), ()), false, 1.0, b)
     end
 
-    @testset "tensoradd! with backend $b" for b in (TensorOperations.StridedNative(),
-                                                    TensorOperations.BaseView(),
-                                                    TensorOperations.BaseCopy())
+    @testset "tensoradd!" begin
         Abig = randn(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:9), 2 .+ 2 * (0:6), 5 .+ 4 * (0:6), 4 .+ 3 * (0:8))
         p = (3, 1, 4, 2)
@@ -176,9 +170,7 @@
         @test_throws IndexError tensoradd!(C, A, ((1, 1, 2, 3), ()), false, 1.2, 0.5, b)
     end
 
-    @testset "tensortrace! with backend $b" for b in (TensorOperations.StridedNative(),
-                                                      TensorOperations.BaseView(),
-                                                      TensorOperations.BaseCopy())
+    @testset "tensortrace!" begin
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:8), 2 .+ 2 * (0:14), 5 .+ 4 * (0:6), 7 .+ 2 * (0:8))
         Bbig = rand(ComplexF64, (50, 50))
@@ -202,10 +194,7 @@
                                                     α, β, b)
     end
 
-    @testset "tensorcontract! with backend $b" for b in (TensorOperations.StridedNative(),
-                                                         TensorOperations.StridedBLAS(),
-                                                         TensorOperations.BaseView(),
-                                                         TensorOperations.BaseCopy())
+    @testset "tensorcontract!" begin
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:8), 2 .+ 2 * (0:14), 5 .+ 4 * (0:6), 7 .+ 2 * (0:8))
         Bbig = rand(ComplexF64, (50, 50, 50))

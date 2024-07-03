@@ -1,8 +1,9 @@
 # test index notation using @tensor macro
 #-----------------------------------------
 using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
-const backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
-@testset "Macro with index notation and backend = $b" verbose = true for b in backendlist
+backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
+
+@testset "with backend $b" for b in backendlist
     @testset "tensorcontract 1" begin
         A = randn(Float64, (3, 5, 4, 6))
         p = (4, 1, 3, 2)

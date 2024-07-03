@@ -1,7 +1,8 @@
 module TensorOperationsChainRulesCoreExt
 
 using TensorOperations
-using TensorOperations: numind, numin, numout, promote_contract, AbstractBackend
+using TensorOperations: numind, numin, numout, promote_contract
+using TensorOperations: DefaultBackend, DefaultAllocator
 using ChainRulesCore
 using TupleTools
 using VectorInterface
@@ -20,19 +21,21 @@ trivtuple(N) = ntuple(identity, N)
 
 # Cannot free intermediate tensors when using AD
 # Thus we change the forward passes: `istemp=false` and `tensorfree!` is a no-op
-function ChainRulesCore.rrule(::typeof(TensorOperations.tensorfree!), args...)
-    tensorfree!_pullback(Δargs...) = ntuple(x -> NoTangent(), length(args))
+function ChainRulesCore.rrule(::typeof(TensorOperations.tensorfree!),
+                              allocator=DefaultAllocator())
+    tensorfree!_pullback(Δargs...) = (NoTangent(), NoTangent())
     return nothing, tensorfree!_pullback
 end
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoralloc), ttype, structure,
-                              istemp, backend...)
-    output = TensorOperations.tensoralloc(ttype, structure, false, backend...)
-    tensoralloc_pullback(Δargs...) = ntuple(x -> NoTangent(), 4 + length(backend))
+                              istemp=false, allocator=DefaultAllocator())
+    output = TensorOperations.tensoralloc(ttype, structure, false, allocator)
+    function tensoralloc_pullback(Δargs...)
+        return (NoTangent(), NoTangent(), NoTangent(), NoTangent(), NoTangent())
+    end
     return output, tensoralloc_pullback
 end
 
 # TODO: possibly use the non-inplace functions, to avoid depending on Base.copy
-
 function ChainRulesCore.rrule(::typeof(tensorscalar), C)
     function tensorscalar_pullback(Δc)
         ΔC = TensorOperations.tensoralloc(typeof(C), TensorOperations.tensorstructure(C))
@@ -44,8 +47,9 @@ end
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
                               C,
                               A, pA::Index2Tuple, conjA::Bool,
-                              α::Number, β::Number, backend::AbstractBackend...)
-    C′ = tensoradd!(copy(C), A, pA, conjA, α, β, backend...)
+                              α::Number, β::Number,
+                              backend, allocator)
+    C′ = tensoradd!(copy(C), A, pA, conjA, α, β, backend, allocator)
 
     projectA = ProjectTo(A)
     projectC = ProjectTo(C)
@@ -59,24 +63,24 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensoradd!),
             ipA = invperm(linearize(pA))
             _dA = zerovector(A, VectorInterface.promote_add(ΔC, α))
             _dA = tensoradd!(_dA, ΔC, (ipA, ()), conjA, conjA ? α : conj(α), Zero(),
-                             backend...)
+                             backend, allocator)
             return projectA(_dA)
         end
         dα = @thunk begin
             _dα = tensorscalar(tensorcontract(A, ((), linearize(pA)), !conjA,
                                               ΔC, (trivtuple(numind(pA)), ()), false,
-                                              ((), ()), One(), backend...))
+                                              ((), ()), One(), backend, allocator))
             return projectα(_dα)
         end
         dβ = @thunk begin
             # TODO: consider using `inner`
             _dβ = tensorscalar(tensorcontract(C, ((), trivtuple(numind(pA))), true,
                                               ΔC, (trivtuple(numind(pA)), ()), false,
-                                              ((), ()), One(), backend...))
+                                              ((), ()), One(), backend, allocator))
             return projectβ(_dβ)
         end
-        dbackend = map(x -> NoTangent(), backend)
-        return NoTangent(), dC, dA, NoTangent(), NoTangent(), dα, dβ, dbackend...
+        return NoTangent(), dC, dA, NoTangent(), NoTangent(), dα, dβ, NoTangent(),
+               NoTangent()
     end
 
     return C′, pullback
@@ -87,8 +91,9 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
                               A, pA::Index2Tuple, conjA::Bool,
                               B, pB::Index2Tuple, conjB::Bool,
                               pAB::Index2Tuple,
-                              α::Number, β::Number, backend::AbstractBackend...)
-    C′ = tensorcontract!(copy(C), A, pA, conjA, B, pB, conjB, pAB, α, β, backend...)
+                              α::Number, β::Number,
+                              backend, allocator)
+    C′ = tensorcontract!(copy(C), A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
 
     projectA = ProjectTo(A)
     projectB = ProjectTo(B)
@@ -111,7 +116,7 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
                                   ΔC, pΔC, conjΔC,
                                   B, reverse(pB), conjB′,
                                   ipA,
-                                  conjA ? α : conj(α), Zero(), backend...)
+                                  conjA ? α : conj(α), Zero(), backend, allocator)
             return projectA(_dA)
         end
         dB = @thunk begin
@@ -123,30 +128,30 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorcontract!),
                                   A, reverse(pA), conjA′,
                                   ΔC, pΔC, conjΔC,
                                   ipB,
-                                  conjB ? α : conj(α), Zero(), backend...)
+                                  conjB ? α : conj(α), Zero(), backend, allocator)
             return projectB(_dB)
         end
         dα = @thunk begin
             C_αβ = tensorcontract(A, pA, conjA,
                                   B, pB, conjB,
-                                  pAB, One(), backend...)
+                                  pAB, One(), backend, allocator)
             # TODO: consider using `inner`
             _dα = tensorscalar(tensorcontract(C_αβ, ((), trivtuple(numind(pAB))), true,
                                               ΔC, (trivtuple(numind(pAB)), ()), false,
-                                              ((), ()), One(), backend...))
+                                              ((), ()), One(), backend, allocator))
             return projectα(_dα)
         end
         dβ = @thunk begin
             # TODO: consider using `inner`
             _dβ = tensorscalar(tensorcontract(C, ((), trivtuple(numind(pAB))), true,
                                               ΔC, (trivtuple(numind(pAB)), ()), false,
-                                              ((), ()), One(), backend...))
+                                              ((), ()), One(), backend, allocator))
             return projectβ(_dβ)
         end
         dbackend = map(x -> NoTangent(), backend)
         return NoTangent(), dC,
                dA, NoTangent(), NoTangent(), dB, NoTangent(), NoTangent(),
-               NoTangent(), dα, dβ, dbackend...
+               NoTangent(), dα, dβ, NoTangent(), NoTangent()
     end
 
     return C′, pullback
@@ -156,8 +161,9 @@ end
 # arrays when tracing multiple indices at the same time.
 function ChainRulesCore.rrule(::typeof(tensortrace!), C,
                               A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                              α::Number, β::Number, backend::AbstractBackend...)
-    C′ = tensortrace!(copy(C), A, p, q, conjA, α, β, backend...)
+                              α::Number, β::Number,
+                              backend, allocator)
+    C′ = tensortrace!(copy(C), A, p, q, conjA, α, β, backend, allocator)
 
     projectA = ProjectTo(A)
     projectC = ProjectTo(C)
@@ -178,38 +184,37 @@ function ChainRulesCore.rrule(::typeof(tensortrace!), C,
             _dA = tensorproduct!(_dA, ΔC, (trivtuple(numind(p)), ()), conjA,
                                  E, ((), trivtuple(numind(q))), conjA,
                                  (ip, ()),
-                                 conjA ? α : conj(α), Zero(), backend...)
+                                 conjA ? α : conj(α), Zero(), backend, allocator)
             return projectA(_dA)
         end
         dα = @thunk begin
-            C_αβ = tensortrace(A, p, q, false, One(), backend...)
+            C_αβ = tensortrace(A, p, q, false, One(), backend, allocator)
             _dα = tensorscalar(tensorcontract(C_αβ, ((), trivtuple(numind(p))),
                                               !conjA,
                                               ΔC, (trivtuple(numind(p)), ()), false,
-                                              ((), ()), One(), backend...))
+                                              ((), ()), One(), backend, allocator))
             return projectα(_dα)
         end
         dβ = @thunk begin
             _dβ = tensorscalar(tensorcontract(C, ((), trivtuple(numind(p))), true,
                                               ΔC, (trivtuple(numind(p)), ()), false,
-                                              ((), ()), One(), backend...))
+                                              ((), ()), One(), backend, allocator))
             return projectβ(_dβ)
         end
-        dbackend = map(x -> NoTangent(), backend)
         return NoTangent(), dC, dA, NoTangent(), NoTangent(), NoTangent(), dα, dβ,
-               dbackend...
+               NoTangent(), NoTangent()
     end
 
     return C′, pullback
 end
 
-_kron(Es::NTuple{1}, backend::AbstractBackend...) = Es[1]
-function _kron(Es::NTuple{N,Any}, backend::AbstractBackend...) where {N}
+_kron(Es::NTuple{1}, backend=DefaultBackend()) = Es[1]
+function _kron(Es::NTuple{N,Any}, backend=DefaultBackend()) where {N}
     E1 = Es[1]
     E2 = _kron(Base.tail(Es), backend...)
     p2 = ((), trivtuple(2 * N - 2))
     p = ((1, (2 .+ trivtuple(N - 1))...), (2, ((N + 1) .+ trivtuple(N - 1))...))
-    return tensorproduct(p, E1, ((1, 2), ()), false, E2, p2, false, One(), backend...)
+    return tensorproduct(p, E1, ((1, 2), ()), false, E2, p2, false, One(), backend)
 end
 
 # NCON functions

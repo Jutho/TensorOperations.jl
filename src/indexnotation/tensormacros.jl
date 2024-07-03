@@ -49,21 +49,38 @@ end
 
 function tensorparser(tensorexpr, kwargs...)
     parser = TensorParser()
-
-    for param in kwargs
-        name, val = param
-
+    # the order of backend and allocator are important so let's find them first
+    hasbackend = false
+    for (name, val) in kwargs
+        if name == :backend
+            hasbackend = true
+            backend = val
+            push!(parser.postprocessors, ex -> insertbackend(ex, backend))
+            break
+        end
+    end
+    for (name, val) in kwargs
+        if name == :allocator
+            allocator = val
+            if !hasbackend
+                backend = Expr(:call, GlobalRef(TensorOperations, :DefaultBackend))
+                push!(parser.postprocessors, ex -> insertbackend(ex, backend))
+            end
+            push!(parser.postprocessors, ex -> insertallocator(ex, allocator))
+            break
+        end
+    end
+    # now handle the remaining keyword arguments
+    for (name, val) in kwargs
         if name == :order
             isexpr(val, :tuple) ||
                 throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
             indexorder = map(normalizeindex, val.args)
             parser.contractiontreebuilder = network -> indexordertree(network, indexorder)
-
         elseif name == :contractcheck
             val isa Bool ||
                 throw(ArgumentError("Invalid use of `contractcheck`, should be `contractcheck=bool`."))
             val && push!(parser.preprocessors, ex -> insertcontractionchecks(ex))
-
         elseif name == :costcheck
             val in (:warn, :cache) ||
                 throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
@@ -77,13 +94,10 @@ function tensorparser(tensorexpr, kwargs...)
                 throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
             end
             parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
-        elseif name == :backend
-            push!(parser.postprocessors, ex -> insertbackend(ex, val))
-        else
+        elseif !(name == :backend || name == :allocator) # these two have been handled
             throw(ArgumentError("Unknown keyword argument `name`."))
         end
     end
-
     return parser
 end
 
@@ -284,7 +298,7 @@ will transfer all arrays to the GPU before performing the requested operations. 
 output is an existing host array, the result will be transferred back. If a new array is
 created (i.e. using `:=`), it will remain on the GPU device and it is up to the user to
 transfer it back. This macro is equivalent to
-`@tensor backend=cuTENSOR allocator=cuTENSOR tensor_expr`.
+`@tensor backend=cuTENSORBackend() allocator=CUDAAllocator() tensor_expr`.
 
 !!! note
     This macro requires the cuTENSOR library to be installed and loaded. This can be
@@ -297,5 +311,8 @@ macro cutensor(ex::Expr)
     push!(parser.postprocessors,
           ex -> insertbackend(ex,
                               Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))))
+    push!(parser.postprocessors,
+          ex -> insertallocator(ex,
+                                Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))))
     return esc(parser(ex))
 end
