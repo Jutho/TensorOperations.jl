@@ -1,41 +1,40 @@
 using TensorOperations
 using LinearAlgebra
 using Test
-using TestExtras
 using Random
 using Aqua
 
 Random.seed!(1234567)
-@timedtestset "tensoropt" verbose = true begin
+@testset "tensoropt" verbose = true begin
     include("tensoropt.jl")
 end
-@timedtestset "auxiliary" verbose = true begin
+@testset "auxiliary" verbose = true begin
     include("auxiliary.jl")
 end
-@timedtestset "macro keywords" verbose = true begin
+@testset "macro keywords" verbose = true begin
     include("macro_kwargs.jl")
 end
-@timedtestset "method syntax" verbose = true begin
+@testset "method syntax" verbose = true begin
     include("methods.jl")
 end
-@timedtestset "macro with index notation" verbose = true begin
+@testset "macro with index notation" verbose = true begin
     include("tensor.jl")
 end
-@timedtestset "ad" verbose = false begin
+@testset "ad" verbose = false begin
     include("ad.jl")
 end
 
 # note: cuTENSOR should not be loaded before this point
 # as there is a test which requires it to be loaded after
-@timedtestset "cuTENSOR" verbose = true begin
+@testset "cuTENSOR" verbose = true begin
     include("cutensor.jl")
 end
 
-@timedtestset "Polynomials" begin
+@testset "Polynomials" begin
     include("polynomials.jl")
 end
 
-@timedtestset "Aqua" verbose = true begin
+@testset "Aqua" verbose = true begin
     using Aqua
     Aqua.test_all(TensorOperations)
 end

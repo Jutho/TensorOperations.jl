@@ -28,7 +28,7 @@ parameters `Min`, `Mout`, `Mtemp`` can be any of the CUDA.jl memory types, i.e.
   `CUDA.default_memory` which is `CUDA.DeviceMemory`. Only if many or huge temporary tensors
   are expected could it be useful to choose `CUDA.UnifiedMemory`.
 """
-struct CUDAAllocator{M} end
+struct CUDAAllocator{Mout,Min,Mtemp} end
 
 # ------------------------------------------------------------------------------------------
 # Generic implementation
@@ -98,8 +98,20 @@ end
 tensorstructure(A::AbstractArray) = size(A)
 tensorstructure(A::AbstractArray, iA::Int, conjA::Bool) = size(A, iA)
 
+function tensoradd_type(TC, A::Array, pA::Index2Tuple, conjA::Bool)
+    return Array{TC,sum(length.(pA))}
+end
 function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool)
     return Array{TC,sum(length.(pA))}
+end
+function tensoradd_type(TC, A::SubArray, pA::Index2Tuple, conjA::Bool)
+    return tensoradd_type(TC, A.parent, pA, conjA)
+end
+function tensoradd_type(TC, A::Base.ReshapedArray, pA::Index2Tuple, conjA::Bool)
+    return tensoradd_type(TC, A.parent, pA, conjA)
+end
+function tensoradd_type(TC, A::Base.PermutedDimsArray, pA::Index2Tuple, conjA::Bool)
+    return tensoradd_type(TC, A.parent, pA, conjA)
 end
 
 function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool)
@@ -107,12 +119,18 @@ function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool)
 end
 
 function tensorcontract_type(TC, A::AbstractArray, pA, conjA,
-                             B::AbstractArray, pB, conjB, pAB, backend...)
-    return Array{TC,sum(length.(pAB))}
+                             B::AbstractArray, pB, conjB, pAB)
+    T1 = tensoradd_type(TC, A, pAB, conjA)
+    T2 = tensoradd_type(TC, B, pAB, conjB)
+    if T1 == T2
+        return T1
+    else
+        error("incompatible types for tensorcontract!: $T1 and $T2")
+    end
 end
 
 function tensorcontract_structure(A::AbstractArray, pA, conjA,
-                                  B::AbstractArray, pB, conjB, pAB, backend...)
+                                  B::AbstractArray, pB, conjB, pAB)
     return let lA = length(pA[1])
         map(n -> n <= lA ? size(A, pA[1][n]) : size(B, pB[2][n - lA]), linearize(pAB))
     end

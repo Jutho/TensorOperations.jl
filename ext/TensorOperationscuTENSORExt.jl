@@ -2,7 +2,8 @@ module TensorOperationscuTENSORExt
 
 using TensorOperations
 using TensorOperations: TensorOperations as TO
-using TensorOperations: cuTENSORBackend, CUDAAllocator
+using TensorOperations: cuTENSORBackend, CUDAAllocator, DefaultAllocator
+using TensorOperations: isstrided
 
 using cuTENSOR
 using cuTENSOR: OP_IDENTITY, OP_CONJ, OP_ADD
@@ -39,17 +40,14 @@ const CuStridedView = StridedViewsCUDAExt.CuStridedView
 # A Base wrapper over `CuArray` will first pass via the `select_backend` methods for 
 # `AbstractArray` and be converted into a `StridedView` if it satisfies `isstrided`. Hence,
 # we only need to capture `CuStridedView` here.
-function TO.select_backend(typeof(TO.tensoradd!), ::Type{CuStridedView},
-                           ::Type{CuStridedView})
+function TO.select_backend(::typeof(TO.tensoradd!), ::CuStridedView, ::CuStridedView)
     return cuTENSORBackend()
 end
-function TO.select_backend(typeof(TO.tensortrace!), ::Type{CuStridedView},
-                           ::Type{CuStridedView})
+function TO.select_backend(::typeof(TO.tensortrace!), ::CuStridedView, ::CuStridedView)
     return cuTENSORBackend()
 end
-function TO.select_backend(typeof(TO.tensorcontract!), ::Type{CuStridedView},
-                           ::Type{CuStridedView},
-                           ::Type{CuStridedView})
+function TO.select_backend(::typeof(TO.tensorcontract!), ::CuStridedView, ::CuStridedView,
+                           ::CuStridedView)
     return cuTENSORBackend()
 end
 
@@ -93,6 +91,7 @@ function TO.tensortrace!(C::AbstractArray,
     return C
 end
 
+_custrided(A::AbstractArray, ::DefaultAllocator) = _custrided(A, CUDAAllocator())
 function _custrided(A::AbstractArray,
                     allocator::CUDAAllocator{Mout,Min,Mtemp}) where {Mout,Min,Mtemp}
     if isstrided(A)
@@ -101,16 +100,12 @@ function _custrided(A::AbstractArray,
         return StridedView(CuArray{eltype(A),ndims(A),Mtemp}(A)), false
     end
 end
-function _custrided(A::CuArray,
-                    allocator::CUDAAllocator{Mout,Min,Mtemp}) where {Mout,Min,Mtemp}
-    return StridedView(A), true
-end
 function _custrided(A::StridedView,
                     allocator::CUDAAllocator{Mout,Min,Mtemp}) where {Mout,Min,Mtemp}
     P = A.parent
-    if p isa CuArray
+    if P isa CuArray
         return A, true
-    elseif p isa Array && Min === CUDA.HostMemory
+    elseif P isa Array && Min === CUDA.HostMemory
         P_cuda = unsafe_wrap(CuArray, P)
         return StridedView(P_cuda, A.size, A.strides, A.offset, A.op), true
     else
@@ -146,6 +141,11 @@ function TO.tensoralloc_contract(TC,
     ttype = CuArray{TC,TO.numind(pAB)}
     structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp, allocator)::ttype
+end
+
+# Overwrite tensoradd_type
+function TO.tensoradd_type(TC, A::CuArray, pA::Index2Tuple, conjA::Bool)
+    return CuArray{TC,sum(length.(pA))}
 end
 
 # NOTE: the general implementation in the `DefaultAllocator` case works just fine, without
