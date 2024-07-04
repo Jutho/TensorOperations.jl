@@ -36,18 +36,16 @@ end
 function tensoradd!(C,
                     A, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number,
-                    ::DefaultBackend, allocator)
-    backend = select_backend(tensoradd!, C, A)
-    return tensoradd!(C, A, pA, conjA, α, β, backend, allocator)
-end
-# error for no backend
-function tensoradd!(C,
-                    A, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number,
-                    ::NoBackend, allocator)
-    TC = typeof(C)
-    TA = typeof(A)
-    throw(ArgumentError("No suitable backend found for tensoradd! and tensor types $TC and $TA"))
+                    backend, allocator)
+    if backend isa DefaultBackend
+        backend = select_backend(tensoradd!, C, A)
+        return tensoradd!(C, A, pA, conjA, α, β, backend, allocator)
+    else
+        # error for unknown backend
+        TC = typeof(C)
+        TA = typeof(A)
+        throw(ArgumentError("No suitable backend found for tensoradd! and tensor types $TC and $TA"))
+    end
 end
 
 """
@@ -86,18 +84,16 @@ end
 function tensortrace!(C,
                       A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number,
-                      ::DefaultBackend, allocator)
-    backend = select_backend(tensortrace!, C, A)
-    return tensortrace!(C, A, p, q, conjA, α, β, backend, allocator)
-end
-# error for no backend
-function tensortrace!(C,
-                      A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number,
-                      ::NoBackend, allocator)
-    TC = typeof(C)
-    TA = typeof(A)
-    throw(ArgumentError("No suitable backend found for tensortrace! and tensor types $TC and $TA"))
+                      backend, allocator)
+    if backend isa DefaultBackend
+        backend = select_backend(tensortrace!, C, A)
+        return tensortrace!(C, A, p, q, conjA, α, β, backend, allocator)
+    else
+        # error for unknown backend
+        TC = typeof(C)
+        TA = typeof(A)
+        throw(ArgumentError("No suitable backend found for tensortrace! and tensor types $TC and $TA"))
+    end
 end
 
 """
@@ -147,21 +143,17 @@ function tensorcontract!(C,
                          B, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
                          α::Number, β::Number,
-                         ::DefaultBackend, allocator)
-    backend = select_backend(tensorcontract!, C, A, B)
-    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
-end
-# error for no backend
-function tensorcontract!(C,
-                         A, pA::Index2Tuple, conjA::Bool,
-                         B, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::NoBackend, allocator)
-    TC = typeof(C)
-    TA = typeof(A)
-    TB = typeof(B)
-    throw(ArgumentError("No suitable backend found for tensorcontract! and tensor types $TC, $TA and $TB"))
+                         backend, allocator)
+    if backend isa DefaultBackend
+        backend = select_backend(tensorcontract!, C, A, B)
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
+    else
+        # error for unknown backend
+        TC = typeof(C)
+        TA = typeof(A)
+        TB = typeof(B)
+        throw(ArgumentError("No suitable backend found for tensorcontract! and tensor types $TC, $TA and $TB"))
+    end
 end
 
 """
