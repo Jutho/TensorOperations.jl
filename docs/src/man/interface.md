@@ -5,8 +5,8 @@ any tensor type that implements the following interface can be supported. In the
 `C` will indicate an output tensor which is changed in-place, while `A` and `B` denote input
 tensors that are left unaltered. `pC`, `pA` and `pB` denote an `Index2Tuple`, a tuple of two
 tuples that represents a permutation and partition of the original tensor indices. Finally,
-`conjA` and `conjB` are symbols that are used to indicate if the input tensor should be
-conjugated (`:C`) or used as-is (`:N`).
+`conjA` and `conjB` are boolean values that are used to indicate if the input tensor should be
+conjugated (`true`) or used as-is (`false`).
 
 ## Operations
 
@@ -17,14 +17,31 @@ and correspond to
 * [`tensortrace!`](@ref),
 * [`tensorcontract!`](@ref).
 
-All other functions described in the previous section are
-implemented in terms of those. Hence, those are the only methods that need to be overloaded
-to support e.g. a new tensor type of to implement a new backend. There is one more necessary
-tensor operation, which is to convert back from a rank zero tensor to a scalar quantity.
+All other functions described in the previous section are implemented in terms of those. 
+Hence, those are the only methods that need to be overloaded to support e.g. a new tensor 
+type of to implement a new backend and/or allocator. For new types of tensors, it is
+possible to implement the methods without the final two arguments `backend` and `allocator`,
+if you know that you will never need them. They will not be inserted by the `@tensor` macro
+if they are not explicitly specified as keyword arguments. However, it is possible to add
+those arguments with the default values and ignore them in case they are not needed.
+
+Alternatively, if some new tensor type is backed by an `AbstractArray` instance, and the
+tensor operations are also implemented by applying the same operations to the underlying
+array, it is possible to forward the value of the `backend` and `allocator` arguments in
+order to still support the full flexibility of the `@tensor` macro.
+
+* [`TensorOperations.DefaultBackend`](@ref)
+* [`TensorOperations.DefaultAllocator`](@ref)
+
+There is one more necessary tensor operation, which is to convert back from a rank zero
+tensor to a scalar quantity. 
 
 ```@docs
 tensorscalar
 ```
+
+As there is typically a simple and unique way of doing so, this method does not have any
+`backend` or `allocator` arguments.
 
 ## Allocations
 
@@ -63,6 +80,10 @@ explicitly freed by implementing `tensorfree!`, which by default does nothing.
 tensoralloc
 tensorfree!
 ```
+
+These functions also depend on the optional `allocator` argument that can be used to
+control different allocation strategies, and for example to differentiate between
+allocations of temporary tensors as opposed to tensors that are part of the output.
 
 The `@tensor` macro will however only insert the calls to the following functions, which
 have a default implementation in terms of the functions above.

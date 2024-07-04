@@ -43,6 +43,8 @@ The TensorOperations.jl package is centered around the following features:
   - The ability to support different tensor types by overloading a minimal interface of
     tensor operations, or to support different implementation backends for the same tensor
     type.
+  - The ability to support different allocation strategies, e.g. in order to deal with the
+    allocation of temporary tensor objects in evaluating tensor network contractions.
   - An efficient default implementation for Julia Base arrays that qualify as strided, i.e.
     such that its entries are layed out according to a regular pattern in memory. The only
     exceptions are `ReinterpretedArray` objects. Additionally, `Diagonal` objects whose
@@ -59,6 +61,10 @@ The TensorOperations.jl package is centered around the following features:
     [CUDA.jl and cuTENSOR.jl](https://github.com/JuliaGPU/CUDA.jl), by relying on (and thus
     providing a high level interface into) NVidia's
     [cuTENSOR](https://developer.nvidia.com/cutensor) library.
+  - Fall-back support for `AbstractArray` instances which are not strided, by using a
+    general implementation using only constructions from Julia's `Base` and `LinearAlgebra`
+    modules (`reshape`, `permutedims`, `mul!`, etc.) and some indexing in the case of
+    partial traces (see below).
 
 ## Tensor operations
 

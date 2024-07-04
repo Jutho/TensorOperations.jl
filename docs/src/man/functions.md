@@ -33,7 +33,7 @@ uniformity and generality (e.g. for compatibility with libraries that always rep
 tensors as linear maps, such as [TensorKit.jl](http://github.com/Jutho/TensorKit.jl)).
 
 Note, finally, that only the expert mode call style exposes the ability to select custom
-backends.
+backends and allocators.
 
 ## Non-mutating functions
 
