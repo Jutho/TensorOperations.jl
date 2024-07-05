@@ -1,25 +1,12 @@
 #-------------------------------------------------------------------------------------------
 # Specialized implementations for contractions involving diagonal matrices
 #-------------------------------------------------------------------------------------------
-
-# backend selection:
-for (TC, TA, TB) in ((:AbstractArray, :AbstractArray, :Diagonal),
-                     (:AbstractArray, :Diagonal, :AbstractArray), (:AbstractArray, :Diagonal, :Diagonal),
-                     (:Diagonal, :Diagonal, :Diagonal))
-    @eval function tensorcontract!(C::$TC,
-                                   A::$TA, pA::Index2Tuple, conjA::Bool,
-                                   B::$TB, pB::Index2Tuple, conjB::Bool,
-                                   pAB::Index2Tuple, α::Number, β::Number)
-        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedNative())
-    end
-end
-
-# actual implementations:
 function tensorcontract!(C::AbstractArray,
                          A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                          B::Diagonal, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedNative)
+                         α::Number, β::Number,
+                         ::StridedNative, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -34,7 +21,8 @@ function tensorcontract!(C::AbstractArray,
                          A::Diagonal, pA::Index2Tuple, conjA::Bool,
                          B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedNative)
+                         α::Number, β::Number,
+                         ::StridedNative, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -58,7 +46,8 @@ function tensorcontract!(C::AbstractArray,
                          A::Diagonal, pA::Index2Tuple, conjA::Bool,
                          B::Diagonal, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedNative)
+                         α::Number, β::Number,
+                         ::StridedNative, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
     if numin(pA) == 1 # matrix multiplication
@@ -102,7 +91,8 @@ function tensorcontract!(C::Diagonal,
                          A::Diagonal, pA::Index2Tuple, conjA::Bool,
                          B::Diagonal, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedNative)
+                         α::Number, β::Number,
+                         ::StridedNative, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 

@@ -1,4 +1,5 @@
 using TensorOperations
+using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
 using Test
 using Logging
 
@@ -11,19 +12,19 @@ using Logging
     rhoR = randn(D3, D3) .- 1 // 2
     H = randn(d1, d2, d1, d2) .- 1 // 2
 
-    E1 = @tensor backend = StridedNative begin
+    E1 = @tensor backend = StridedNative() begin
         tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                      H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
-    E2 = @tensor backend = StridedBLAS begin
+    E2 = @tensor backend = StridedBLAS() begin
         tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                      H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
-    E3 = @tensor backend = BaseView begin
+    E3 = @tensor backend = BaseView() begin
         tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                      H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end
-    E4 = @tensor backend = BaseCopy begin
+    E4 = @tensor backend = BaseCopy() begin
         tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                      H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
     end

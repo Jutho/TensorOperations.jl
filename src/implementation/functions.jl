@@ -4,7 +4,6 @@
 # ------------------------------------------------------------------------------------------
 # tensorcopy
 # ------------------------------------------------------------------------------------------
-
 """
     tensorcopy([IC=IA], A, IA, [conjA=false, [α=1]])
     tensorcopy(A, pA::Index2Tuple, conjA, α, [backend]) # expert mode
@@ -34,10 +33,10 @@ function tensorcopy(A, IA::Labels, conjA::Bool=false, α::Number=One())
 end
 # expert mode
 function tensorcopy(A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
-                    backend::Backend...)
+                    backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_add(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, A, pA, conjA)
-    return tensorcopy!(C, A, pA, conjA, α, backend...)
+    return tensorcopy!(C, A, pA, conjA, α, backend, allocator)
 end
 
 """
@@ -57,14 +56,13 @@ conjugated (`true`) or not (`false`).
 See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
 """
 function tensorcopy!(C, A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
-                     backend::Backend...)
-    return tensoradd!(C, A, pA, conjA, α, false, backend...)
+                     backend=DefaultBackend(), allocator=DefaultAllocator())
+    return tensoradd!(C, A, pA, conjA, α, false, backend, allocator)
 end
 
 # ------------------------------------------------------------------------------------------
 # tensoradd
 # ------------------------------------------------------------------------------------------
-
 """
     tensoradd([IC=IA], A, IA, [conjA], B, IB, [conjB], [α=1, [β=1]])
     tensoradd(A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, pB::Index2Tuple, conjB, α=1, β=1, [backend]) # expert mode
@@ -104,17 +102,17 @@ end
 # expert mode
 function tensoradd(A, pA::Index2Tuple, conjA::Bool,
                    B, pB::Index2Tuple, conjB::Bool,
-                   α::Number=One(), β::Number=One(), backend::Backend...)
+                   α::Number=One(), β::Number=One(),
+                   backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
-    C = tensoralloc_add(TC, A, pA, conjA)
-    C = tensorcopy!(C, A, pA, conjA, α)
-    return tensoradd!(C, B, pB, conjB, β, One(), backend...)
+    C = tensoralloc_add(TC, A, pA, conjA, false, allocator)
+    C = tensorcopy!(C, A, pA, conjA, α, backend, allocator)
+    return tensoradd!(C, B, pB, conjB, β, One(), backend, allocator)
 end
 
 # ------------------------------------------------------------------------------------------
 # tensortrace
 # ------------------------------------------------------------------------------------------
-
 """
     tensortrace([IC], A, IA, [conjA], [α=1])
     tensortrace(A, p::Index2Tuple, q::Index2Tuple, conjA, α=1, [backend]) # expert mode
@@ -151,10 +149,10 @@ function tensortrace(IC::Labels, A, IA::Labels, conjA::Bool, α::Number=One())
 end
 # expert mode
 function tensortrace(A, p::Index2Tuple, q::Index2Tuple, conjA::Bool, α::Number=One(),
-                     backend::Backend...)
+                     backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_contract(scalartype(A), scalartype(α))
-    C = tensoralloc_add(TC, A, p, conjA)
-    return tensortrace!(C, A, p, q, conjA, α, Zero(), backend...)
+    C = tensoralloc_add(TC, A, p, conjA, false, allocator)
+    return tensortrace!(C, A, p, q, conjA, α, Zero(), backend, allocator)
 end
 
 # ------------------------------------------------------------------------------------------
@@ -202,10 +200,12 @@ end
 # expert mode
 function tensorcontract(A, pA::Index2Tuple, conjA::Bool,
                         B, pB::Index2Tuple, conjB::Bool,
-                        pAB::Index2Tuple, α::Number=One(), backend::Backend...)
+                        pAB::Index2Tuple, α::Number=One(),
+                        backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
-    C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB)
-    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend...)
+    C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, false, allocator)
+    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend,
+                           allocator)
 end
 
 # ------------------------------------------------------------------------------------------
@@ -251,10 +251,11 @@ end
 # expert mode
 function tensorproduct(A, pA::Index2Tuple, conjA::Bool,
                        B, pB::Index2Tuple, conjB::Bool,
-                       pAB::Index2Tuple, α::Number=One(), backend::Backend...)
+                       pAB::Index2Tuple, α::Number=One(),
+                       backend=DefaultBackend(), allocator=DefaultAllocator())
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
-    return tensorcontract(A, pA, conjA, B, pB, conjB, pAB, α, backend...)
+    return tensorcontract(A, pA, conjA, B, pB, conjB, pAB, α, backend, allocator)
 end
 
 """
@@ -273,8 +274,9 @@ function tensorproduct!(C,
                         A, pA::Index2Tuple, conjA::Bool,
                         B, pB::Index2Tuple, conjB::Bool,
                         pAB::Index2Tuple,
-                        α::Number=One(), β::Number=Zero(), backend::Backend...)
+                        α::Number=One(), β::Number=Zero(),
+                        backend=DefaultBackend(), allocator=DefaultAllocator())
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
-    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend...)
+    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
 end

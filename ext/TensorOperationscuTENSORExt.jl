@@ -2,6 +2,8 @@ module TensorOperationscuTENSORExt
 
 using TensorOperations
 using TensorOperations: TensorOperations as TO
+using TensorOperations: cuTENSORBackend, CUDAAllocator, DefaultAllocator
+using TensorOperations: isstrided
 
 using cuTENSOR
 using cuTENSOR: OP_IDENTITY, OP_CONJ, OP_ADD
@@ -31,155 +33,149 @@ StridedViewsCUDAExt = Base.get_extension(Strided.StridedViews, :StridedViewsCUDA
 isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
 
 #-------------------------------------------------------------------------------------------
-# Utility
+# Backend selection and passing
 #-------------------------------------------------------------------------------------------
-
 const CuStridedView = StridedViewsCUDAExt.CuStridedView
-const SUPPORTED_CUARRAYS = (:StridedCuArray, :CuStridedView)
-const cuTENSORBackend = TO.Backend{:cuTENSOR}
 
-function TO.tensorscalar(C::StridedCuArray)
-    return ndims(C) == 0 ? tensorscalar(collect(C)) : throw(DimensionMismatch())
+# A Base wrapper over `CuArray` will first pass via the `select_backend` methods for 
+# `AbstractArray` and be converted into a `StridedView` if it satisfies `isstrided`. Hence,
+# we only need to capture `CuStridedView` here.
+function TO.select_backend(::typeof(TO.tensoradd!), ::CuStridedView, ::CuStridedView)
+    return cuTENSORBackend()
 end
-function TO.tensorscalar(C::CuStridedView)
-    return ndims(C) == 0 ? CUDA.@allowscalar(C[]) : throw(DimensionMismatch())
+function TO.select_backend(::typeof(TO.tensortrace!), ::CuStridedView, ::CuStridedView)
+    return cuTENSORBackend()
 end
-
-function tensorop(A::StridedCuArray, conjA::Bool=false)
-    return (eltype(A) <: Real || !conjA) ? OP_IDENTITY : OP_CONJ
-end
-function tensorop(A::CuStridedView, conjA::Bool=false)
-    return if (eltype(A) <: Real || !xor(conjA, A.op === conj))
-        OP_IDENTITY
-    else
-        OP_CONJ
-    end
+function TO.select_backend(::typeof(TO.tensorcontract!), ::CuStridedView, ::CuStridedView,
+                           ::CuStridedView)
+    return cuTENSORBackend()
 end
 
-#-------------------------------------------------------------------------------------------
-# Default backends
-#-------------------------------------------------------------------------------------------
+# TODO: with `CUDA.HostMemory` and `unsafe_wrap(CuArray, ::Array)` we could in principle 
+# support mixed argument lists with some `CuStridedView` and some `HostStridedView`, but
+# I am not sure if we want to go that way.
 
-# making sure that if no backend is specified, the cuTENSOR backend is used:
-
-for ArrayType in SUPPORTED_CUARRAYS
-    @eval function TO.tensoradd!(C::$ArrayType, A::$ArrayType, pA::Index2Tuple,
-                                 conjA::Bool,
-                                 α::Number, β::Number)
-        return tensoradd!(C, A, pA, conjA, α, β, cuTENSORBackend())
-    end
-    @eval function TO.tensorcontract!(C::$ArrayType,
-                                      A::$ArrayType, pA::Index2Tuple, conjA::Bool,
-                                      B::$ArrayType, pB::Index2Tuple, conjB::Bool,
-                                      pAB::Index2Tuple, α::Number, β::Number)
-        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, cuTENSORBackend())
-    end
-    @eval function TO.tensortrace!(C::$ArrayType,
-                                   A::$ArrayType, p::Index2Tuple, q::Index2Tuple,
-                                   conjA::Bool,
-                                   α::Number, β::Number)
-        return tensortrace!(C, A, p, q, conjA, α, β, cuTENSORBackend())
-    end
-    @eval function TO.tensoradd_type(TC, ::$ArrayType, pA::Index2Tuple, conjA::Bool)
-        return CUDA.CuArray{TC,TO.numind(pA)}
-    end
-    @eval function TO.tensorcontract_type(TC,
-                                          ::$ArrayType, pA::Index2Tuple, conjA::Bool,
-                                          ::$ArrayType, pB::Index2Tuple, conjB::Bool,
-                                          pAB::Index2Tuple)
-        return CUDA.CuArray{TC,TO.numind(pAB)}
-    end
-    @eval TO.tensorfree!(C::$ArrayType) = TO.tensorfree!(C::$ArrayType, cuTENSORBackend())
-end
-
-# making sure that if the backend is specified, arrays are converted to CuArrays
-
+# Make sure that if the `cuTensorBackend` is specified, arrays are converted to CuArrays
 function TO.tensoradd!(C::AbstractArray,
                        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                        α::Number, β::Number,
-                       backend::cuTENSORBackend)
-    C_cuda = adapt(CuArray, C)
-    A_cuda = adapt(CuArray, A)
-    tensoradd!(C_cuda, A_cuda, pA, conjA, α, β, backend)
-    C === C_cuda || copy!(C, C_cuda)
+                       backend::cuTENSORBackend, allocator=CUDAAllocator())
+    C_cuda, isview = _custrided(C, allocator)
+    A_cuda, = _custrided(A, allocator)
+    tensoradd!(C_cuda, A_cuda, pA, conjA, α, β, backend, allocator)
+    isview || copy!(C, C_cuda)
     return C
 end
 function TO.tensorcontract!(C::AbstractArray,
                             A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                             B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                             pAB::Index2Tuple,
-                            α::Number, β::Number, backend::cuTENSORBackend)
-    C_cuda = adapt(CuArray, C)
-    A_cuda = adapt(CuArray, A)
-    B_cuda = adapt(CuArray, B)
-    tensorcontract!(C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend)
-    C === C_cuda || copy!(C, C_cuda)
+                            α::Number, β::Number,
+                            backend::cuTENSORBackend, allocator=CUDAAllocator())
+    C_cuda, isview = _custrided(C, allocator)
+    A_cuda, = _custrided(A, allocator)
+    B_cuda, = _custrided(B, allocator)
+    tensorcontract!(C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend,
+                    allocator)
+    isview || copy!(C, C_cuda)
     return C
 end
 function TO.tensortrace!(C::AbstractArray,
                          A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                         α::Number, β::Number, backend::cuTENSORBackend)
-    C_cuda = adapt(CuArray, C)
-    A_cuda = adapt(CuArray, A)
-    tensortrace!(C_cuda, A_cuda, p, q, conjA, α, β, backend)
-    C === C_cuda || copy!(C, C_cuda)
+                         α::Number, β::Number,
+                         backend::cuTENSORBackend, allocator=CUDAAllocator())
+    C_cuda, isview = _custrided(C, allocator)
+    A_cuda, = _custrided(A, allocator)
+    tensortrace!(C_cuda, A_cuda, p, q, conjA, α, β, backend, allocator)
+    isview || copy!(C, C_cuda)
     return C
+end
+
+_custrided(A::AbstractArray, ::DefaultAllocator) = _custrided(A, CUDAAllocator())
+function _custrided(A::AbstractArray,
+                    allocator::CUDAAllocator{Mout,Min,Mtemp}) where {Mout,Min,Mtemp}
+    if isstrided(A)
+        return _custrided(StridedView(A), allocator)
+    else
+        return StridedView(CuArray{eltype(A),ndims(A),Mtemp}(A)), false
+    end
+end
+function _custrided(A::StridedView,
+                    allocator::CUDAAllocator{Mout,Min,Mtemp}) where {Mout,Min,Mtemp}
+    P = A.parent
+    if P isa CuArray
+        return A, true
+    elseif P isa Array && Min === CUDA.HostMemory
+        P_cuda = unsafe_wrap(CuArray, P)
+        return StridedView(P_cuda, A.size, A.strides, A.offset, A.op), true
+    else
+        P_cuda = CuArray{eltype(P),ndims(P),Mtemp}(P)
+        return StridedView(P_cuda, A.size, A.strides, A.offset, A.op), false
+    end
+end
+
+#-------------------------------------------------------------------------------------------
+# Allocator
+#-------------------------------------------------------------------------------------------
+function CUDAAllocator()
+    Mout = CUDA.UnifiedMemory
+    Min = CUDA.default_memory
+    Mtemp = CUDA.default_memory
+    return CUDAAllocator{Mout,Min,Mtemp}()
 end
 
 function TO.tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                             istemp::Bool,
-                            ::cuTENSORBackend)
+                            allocator::CUDAAllocator)
     ttype = CuArray{TC,TO.numind(pA)}
     structure = TO.tensoradd_structure(A, pA, conjA)
-    return TO.tensoralloc(ttype, structure, istemp)::ttype
+    return TO.tensoralloc(ttype, structure, istemp, allocator)::ttype
 end
 
 function TO.tensoralloc_contract(TC,
                                  A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                                  B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                                  pAB::Index2Tuple,
-                                 istemp::Bool, ::cuTENSORBackend)
+                                 istemp::Bool,
+                                 allocator::CUDAAllocator)
     ttype = CuArray{TC,TO.numind(pAB)}
     structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
-    return tensoralloc(ttype, structure, istemp)::ttype
+    return tensoralloc(ttype, structure, istemp, allocator)::ttype
 end
 
-function TO.tensorfree!(C::CuArray, ::cuTENSORBackend)
+# Overwrite tensoradd_type
+function TO.tensoradd_type(TC, A::CuArray, pA::Index2Tuple, conjA::Bool)
+    return CuArray{TC,sum(length.(pA))}
+end
+
+# NOTE: the general implementation in the `DefaultAllocator` case works just fine, without
+# selecting an explicit memory model
+function TO.tensoralloc(::Type{CuArray{T,N}}, structure, istemp::Bool,
+                        allocator::CUDAAllocator{Mout,Min,Mtemp}) where {T,N,Mout,Min,Mtemp}
+    M = istemp ? Mtemp : Mout
+    return CuArray{T,N,M}(undef, structure)
+end
+
+function TO.tensorfree!(C::CuArray, ::CUDAAllocator)
     CUDA.unsafe_free!(C)
     return nothing
-end
-
-# Convert all implementations to StridedViews
-# This should work for wrapper types that are supported by StridedViews
-function TO.tensoradd!(C::AnyCuArray,
-                       A::AnyCuArray, pA::Index2Tuple, conjA::Bool,
-                       α::Number, β::Number, backend::cuTENSORBackend)
-    tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
-    return C
-end
-function TO.tensorcontract!(C::AnyCuArray, A::AnyCuArray,
-                            pA::Index2Tuple, conjA::Bool, B::AnyCuArray,
-                            pB::Index2Tuple, conjB::Bool, pAB::Index2Tuple, α::Number,
-                            β::Number,
-                            backend::cuTENSORBackend)
-    tensorcontract!(StridedView(C), StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB, pAB, α, β, backend)
-    return C
-end
-function TO.tensortrace!(C::AnyCuArray,
-                         A::AnyCuArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                         α::Number, β::Number, backend::cuTENSORBackend)
-    tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
-    return C
 end
 
 #-------------------------------------------------------------------------------------------
 # Implementation
 #-------------------------------------------------------------------------------------------
+function TO.tensorscalar(C::CuStridedView)
+    return ndims(C) == 0 ? CUDA.@allowscalar(C[]) : throw(DimensionMismatch())
+end
+
+function tensorop(A::CuStridedView, conjA::Bool=false)
+    return (eltype(A) <: Real || !xor(conjA, A.op === conj)) ? OP_IDENTITY : OP_CONJ
+end
 
 function TO.tensoradd!(C::CuStridedView,
                        A::CuStridedView, pA::Index2Tuple, conjA::Bool,
-                       α::Number, β::Number, ::cuTENSORBackend)
+                       α::Number, β::Number,
+                       backend::cuTENSORBackend, allocator)
     # convert arguments
     Ainds, Cinds = collect.(TO.add_labels(pA))
     opA = tensorop(A, conjA)
@@ -201,7 +197,9 @@ function TO.tensorcontract!(C::CuStridedView,
                             A::CuStridedView, pA::Index2Tuple, conjA::Bool,
                             B::CuStridedView, pB::Index2Tuple, conjB::Bool,
                             pAB::Index2Tuple,
-                            α::Number, β::Number, ::cuTENSORBackend)
+                            α::Number, β::Number,
+                            backend::cuTENSORBackend, allocator)
+
     # convert arguments
     Ainds, Binds, Cinds = collect.(TO.contract_labels(pA, pB, pAB))
     opA = tensorop(A, conjA)
@@ -218,7 +216,8 @@ end
 
 function TO.tensortrace!(C::CuStridedView,
                          A::CuStridedView, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                         α::Number, β::Number, ::cuTENSORBackend)
+                         α::Number, β::Number,
+                         backend::cuTENSORBackend, allocator)
     # convert arguments
     Ainds, Cinds = collect.(TO.trace_labels(p, q))
     opA = tensorop(A, conjA)
@@ -228,8 +227,8 @@ function TO.tensortrace!(C::CuStridedView,
     return reduce!(plan, α, A, β, C)
 end
 
-function cuTENSOR.CuTensorDescriptor(a::CuStridedView; size=size(a), strides=strides(a),
-                                     eltype=eltype(a))
+function cuTENSOR.CuTensorDescriptor(a::CuStridedView;
+                                     size=size(a), strides=strides(a), eltype=eltype(a))
     sz = collect(Int64, size)
     st = collect(Int64, strides)
     alignment = UInt32(find_alignment(a))
@@ -243,7 +242,6 @@ find_alignment(A::CuStridedView) = gcd(MAX_ALIGNMENT, convert(UInt, pointer(A)))
 # trace!
 # ------
 # not actually part of cuTENSOR, just a special case of reduce
-
 function plan_trace(@nospecialize(A::AbstractArray), Ainds::ModeType,
                     opA::cutensorOperator_t,
                     @nospecialize(C::AbstractArray), Cinds::ModeType,

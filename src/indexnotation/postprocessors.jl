@@ -68,26 +68,28 @@ function addtensoroperations(ex)
 end
 
 """
-    insertbackend(ex, backend, operations)
+    insertargument(ex, args, methods)
 
-Insert a backend into a tensor operation, e.g. for any `op` ∈ `operations`, transform
-`TensorOperations.op(args...)` -> `TensorOperations.op(args..., Backend{:backend}())`
+Insert an extra argument into a tensor operation, e.g. for any `op` ∈ `methods`, transform
+`TensorOperations.op(args...)` -> `TensorOperations.op(args..., arg)`
 """
-function insertbackend(ex, backend, operations)
+function insertargument(ex, arg, methods)
     if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
        ex.args[1].mod == TensorOperations &&
-       ex.args[1].name ∈ operations
-        b = Backend{backend}()
-        return Expr(:call, ex.args..., b)
+       ex.args[1].name ∈ methods
+        return Expr(:call, ex.args..., arg)
     elseif isa(ex, Expr)
-        return Expr(ex.head, (insertbackend(e, backend, operations) for e in ex.args)...)
+        return Expr(ex.head, (insertargument(e, arg, methods) for e in ex.args)...)
     else
         return ex
     end
 end
 
-const operators = (:tensoradd!, :tensorcontract!, :tensortrace!)
-const allocators = (:tensoralloc_add, :tensoralloc_contract, :tensorfree!)
-
-insert_operationbackend(ex, backend) = insertbackend(ex, backend, operators)
-insert_allocatorbackend(ex, backend) = insertbackend(ex, backend, allocators)
+function insertbackend(ex, backend)
+    return insertargument(ex, backend, (:tensoradd!, :tensortrace!, :tensorcontract!))
+end
+function insertallocator(ex, allocator)
+    return insertargument(ex, allocator,
+                          (:tensoradd!, :tensortrace!, :tensorcontract!, :tensoralloc,
+                           :tensoralloc_add, :tensoralloc_contract))
+end

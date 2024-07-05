@@ -1,29 +1,26 @@
-using Test
 using TensorOperations
+using LinearAlgebra
+using Test
 using Random
 using Aqua
 
 Random.seed!(1234567)
-
-@testset "tensoropt" begin
+@testset "tensoropt" verbose = true begin
     include("tensoropt.jl")
 end
 @testset "auxiliary" verbose = true begin
     include("auxiliary.jl")
 end
-
 @testset "macro keywords" verbose = true begin
     include("macro_kwargs.jl")
 end
-
-@testset "strided" verbose = true begin
-    using TensorOperations
-    using Test
+@testset "method syntax" verbose = true begin
     include("methods.jl")
+end
+@testset "macro with index notation" verbose = true begin
     include("tensor.jl")
 end
-
-@testset "ad" verbose = true begin
+@testset "ad" verbose = false begin
     include("ad.jl")
 end
 
@@ -38,5 +35,6 @@ end
 end
 
 @testset "Aqua" verbose = true begin
+    using Aqua
     Aqua.test_all(TensorOperations)
 end

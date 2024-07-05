@@ -1,32 +1,92 @@
+const HostStridedView{T,N,A<:Array{T}} = StridedView{T,N,A}
+const HostStridedViewOrDiagonal{T} = Union{HostStridedView{T},Diagonal{T,Vector{T}}}
+const StridedViewOrDiagonal = Union{StridedView,Diagonal}
+
+function select_backend(::typeof(tensoradd!), C::HostStridedView, A::HostStridedView)
+    return StridedNative()
+end
+function select_backend(::typeof(tensortrace!), C::HostStridedView, A::HostStridedView)
+    return StridedNative()
+end
+
+function select_backend(::typeof(tensorcontract!), C::HostStridedView, A::HostStridedView,
+                        B::HostStridedView)
+    return eltype(C) <: LinearAlgebra.BlasFloat ? StridedBLAS() : StridedNative()
+end
+function select_backend(::typeof(tensorcontract!), C::HostStridedViewOrDiagonal,
+                        A::HostStridedViewOrDiagonal, B::HostStridedViewOrDiagonal)
+    return StridedNative()
+end
+
+# We can only end up with the following methods if one of the tensors is on the gpu
+# However, if the cuTENSOR extension is loaded, then the case where they are all on the 
+# GPU is intercepted and the `cuTENSORBackend` will be selected
+function select_backend(::typeof(tensoradd!), C::StridedView, A::StridedView)
+    return NoBackend()
+end
+function select_backend(::typeof(tensortrace!), C::StridedView, A::StridedView)
+    return NoBackend()
+end
+function select_backend(::typeof(tensorcontract!), C::StridedViewOrDiagonal,
+                        A::StridedViewOrDiagonal, B::StridedViewOrDiagonal)
+    return NoBackend()
+end
+
+#-------------------------------------------------------------------------------------------
+# Force strided implementation on AbstractArray instances with Strided backend
+#-------------------------------------------------------------------------------------------
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                    α::Number, β::Number,
+                    backend::StridedBackend, allocator=DefaultAllocator())
+    tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend, allocator)
+    return C
+end
+
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+                      α::Number, β::Number,
+                      backend::StridedBackend, allocator=DefaultAllocator())
+    tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend, allocator)
+    return C
+end
+
+function tensorcontract!(C::AbstractArray,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+                         pAB::Index2Tuple,
+                         α::Number, β::Number,
+                         ::StridedBLAS, allocator=DefaultAllocator())
+    tensorcontract!(StridedView(C),
+                    StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB,
+                    pAB, α, β,
+                    StridedBLAS(), allocator)
+    return C
+end
+
+function tensorcontract!(C::AbstractArray,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+                         pAB::Index2Tuple,
+                         α::Number, β::Number,
+                         ::StridedNative, allocator=DefaultAllocator())
+    tensorcontract!(StridedView(C),
+                    StridedView(A), pA, conjA,
+                    StridedView(B), pB, conjB,
+                    pAB,
+                    α, β,
+                    StridedNative(), allocator)
+    return C
+end
+
 #-------------------------------------------------------------------------------------------
 # StridedView implementation
 #-------------------------------------------------------------------------------------------
-
-# default backends
-function tensoradd!(C::StridedView,
-                    A::StridedView, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number)
-    backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
-    return tensoradd!(C, A, pA, conjA, α, β, backend)
-end
-function tensortrace!(C::StridedView,
-                      A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number)
-    backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
-    return tensortrace!(C, A, p, q, conjA, α, β, backend)
-end
-function tensorcontract!(C::StridedView,
-                         A::StridedView, pA::Index2Tuple, conjA::Bool,
-                         B::StridedView, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple, α::Number, β::Number)
-    backend = eltype(C) isa BlasFloat ? StridedBLAS() : StridedNative()
-    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend)
-end
-
 function tensoradd!(C::StridedView,
                     A::StridedView, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number,
-                    ::Union{StridedNative,StridedBLAS})
+                    ::StridedBackend, allocator=DefaultAllocator())
     argcheck_tensoradd(C, A, pA)
     dimcheck_tensoradd(C, A, pA)
     if !istrivialpermutation(pA) && Base.mightalias(C, A)
@@ -43,7 +103,7 @@ end
 function tensortrace!(C::StridedView,
                       A::StridedView, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number,
-                      ::Union{StridedNative,StridedBLAS})
+                      ::StridedBackend, allocator=DefaultAllocator())
     argcheck_tensortrace(C, A, p, q)
     dimcheck_tensortrace(C, A, p, q)
 
@@ -67,7 +127,8 @@ function tensorcontract!(C::StridedView,
                          A::StridedView, pA::Index2Tuple, conjA::Bool,
                          B::StridedView, pB::Index2Tuple, conjB::Bool,
                          pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedBLAS)
+                         α::Number, β::Number,
+                         ::StridedBLAS, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -84,9 +145,9 @@ function tensorcontract!(C::StridedView,
             TupleTools.getindices(indCinoBA, tpAB[2]))
     if contract_memcost(C, A, pA, conjA, B, pB, conjB, pAB) <=
        contract_memcost(C, B, rpB, conjB, A, rpA, conjA, rpAB)
-        return blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β)
+        return blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, allocator)
     else
-        return blas_contract!(C, B, rpB, conjB, A, rpA, conjA, rpAB, α, β)
+        return blas_contract!(C, B, rpB, conjB, A, rpA, conjA, rpAB, α, β, allocator)
     end
 end
 
@@ -117,8 +178,9 @@ end
 function tensorcontract!(C::StridedView,
                          A::StridedView, pA::Index2Tuple, conjA::Bool,
                          B::StridedView, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple, α::Number, β::Number,
-                         ::StridedNative)
+                         pAB::Index2Tuple,
+                         α::Number, β::Number,
+                         ::StridedNative, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -146,11 +208,11 @@ end
 #-------------------------------------------------------------------------------------------
 # StridedViewBLAS contraction implementation
 #-------------------------------------------------------------------------------------------
-function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β)
+function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, allocator)
     TC = eltype(C)
 
-    A_, pA, flagA = makeblascontractable(flag2op(conjA)(A), pA, TC)
-    B_, pB, flagB = makeblascontractable(flag2op(conjB)(B), pB, TC)
+    A_, pA, flagA = makeblascontractable(flag2op(conjA)(A), pA, TC, allocator)
+    B_, pB, flagB = makeblascontractable(flag2op(conjB)(B), pB, TC, allocator)
 
     ipAB = oindABinC(pAB, pA, pB)
     flagC = isblasdestination(C, ipAB)
@@ -158,14 +220,15 @@ function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β)
         C_ = C
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, ipAB, α, β)
     else
-        C_ = StridedView(TensorOperations.tensoralloc_add(TC, C, ipAB, false, true))
+        C_ = StridedView(TensorOperations.tensoralloc_add(TC, C, ipAB, false, true,
+                                                          allocator))
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
                                one(TC), zero(TC))
         tensoradd!(C, C_, pAB, false, α, β)
-        tensorfree!(C_.parent)
+        tensorfree!(C_.parent, allocator)
     end
-    flagA || tensorfree!(A_.parent)
-    flagB || tensorfree!(B_.parent)
+    flagA || tensorfree!(A_.parent, allocator)
+    flagB || tensorfree!(B_.parent, allocator)
     return C
 end
 
@@ -188,10 +251,11 @@ function _unsafe_blas_contract!(C::StridedView{T},
     return C
 end
 
-@inline function makeblascontractable(A, pA, TC)
+@inline function makeblascontractable(A, pA, TC, allocator)
     flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
-        A_ = StridedView(TensorOperations.tensoralloc_add(TC, A, pA, false, true))
+        A_ = StridedView(TensorOperations.tensoralloc_add(TC, A, pA, false, true,
+                                                          allocator))
         A = tensoradd!(A_, A, pA, false, One(), Zero())
         pA = trivialpermutation(pA)
     end

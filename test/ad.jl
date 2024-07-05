@@ -8,8 +8,9 @@ ChainRulesTestUtils.test_method_tables()
 precision(::Type{<:Union{Float32,Complex{Float32}}}) = 1e-2
 precision(::Type{<:Union{Float64,Complex{Float64}}}) = 1e-8
 
-@testset "tensortrace! ($T₁, $T₂)" for (T₁, T₂) in ((Float64, Float64), (Float32, Float64),
-                                                    (ComplexF64, ComplexF64), (Float64, ComplexF64))
+@testset "tensortrace! ($T₁, $T₂)" for (T₁, T₂) in
+                                       ((Float64, Float64), (Float32, Float64),
+                                        (ComplexF64, ComplexF64), (Float64, ComplexF64))
     T = promote_type(T₁, T₂)
     atol = max(precision(T₁), precision(T₂))
     rtol = max(precision(T₁), precision(T₂))
@@ -28,8 +29,9 @@ precision(::Type{<:Union{Float64,Complex{Float64}}}) = 1e-8
     test_rrule(tensortrace!, C, A, p, q, false, α, β, StridedNative(); atol, rtol)
 end
 
-@testset "tensoradd! ($T₁, $T₂)" for (T₁, T₂) in ((Float64, Float64), (Float32, Float64),
-                                                  (ComplexF64, ComplexF64), (Float64, ComplexF64))
+@testset "tensoradd! ($T₁, $T₂)" for (T₁, T₂) in
+                                     ((Float64, Float64), (Float32, Float64),
+                                      (ComplexF64, ComplexF64), (Float64, ComplexF64))
     T = promote_type(T₁, T₂)
     atol = max(precision(T₁), precision(T₂))
     rtol = max(precision(T₁), precision(T₂))
@@ -48,7 +50,8 @@ end
 
 @testset "tensorcontract! ($T₁, $T₂)" for (T₁, T₂) in
                                           ((Float64, Float64), (Float32, Float64),
-                                           (ComplexF64, ComplexF64), (Float64, ComplexF64))
+                                           (ComplexF64, ComplexF64),
+                                           (Float64, ComplexF64))
     T = promote_type(T₁, T₂)
     atol = max(precision(T₁), precision(T₂))
     rtol = max(precision(T₁), precision(T₂))
@@ -70,7 +73,8 @@ end
 
     test_rrule(tensorcontract!, C, A, pA, false, B, pB, false, pAB, α, β, StridedBLAS();
                atol, rtol)
-    test_rrule(tensorcontract!, C, A, pA, true, B, pB, false, pAB, α, β, StridedNative();
+    test_rrule(tensorcontract!, C, A, pA, true, B, pB, false, pAB, α, β,
+               StridedNative();
                atol, rtol)
 end
 

@@ -1,4 +1,8 @@
-tensorscalar(C::AbstractArray) = ndims(C) == 0 ? C[] : throw(DimensionMismatch())
+# ------------------------------------------------------------------------------------------
+# General definitions for AbstractArray instances
+# ------------------------------------------------------------------------------------------
+tensorscalar(C::AbstractArray) = ndims(C) == 0 ? sum(C) : throw(DimensionMismatch())
+# sum is a trick to get the scalar value of a 0-dimensional array, that also works on CuArray
 
 tensorcost(C::AbstractArray, i) = size(C, i)
 
@@ -9,301 +13,41 @@ function checkcontractible(A::AbstractArray, iA, conjA::Bool,
     return nothing
 end
 
-const StridedNative = Backend{:StridedNative}
-const StridedBLAS = Backend{:StridedBLAS}
-const BaseView = Backend{:BaseView}
-const BaseCopy = Backend{:BaseCopy}
-
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number)
+# ------------------------------------------------------------------------------------------
+# Default backend selection mechanism for AbstractArray instances
+# ------------------------------------------------------------------------------------------
+function select_backend(::typeof(tensoradd!), C::AbstractArray, A::AbstractArray)
     if isstrided(A) && isstrided(C)
-        return tensoradd!(C, A, pA, conjA, α, β, StridedNative())
+        return select_backend(tensoradd!, StridedView(C), StridedView(A))
     else
-        return tensoradd!(C, A, pA, conjA, α, β, BaseView())
+        return BaseView()
     end
 end
 
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number)
+function select_backend(::typeof(tensortrace!), C::AbstractArray, A::AbstractArray)
     if isstrided(A) && isstrided(C)
-        return tensortrace!(C, A, p, q, conjA, α, β, StridedNative())
+        return select_backend(tensortrace!, StridedView(C), StridedView(A))
     else
-        return tensortrace!(C, A, p, q, conjA, α, β, BaseView())
+        return BaseView()
     end
 end
 
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number)
-    if eltype(C) <: LinearAlgebra.BlasFloat
-        if isstrided(A) && isstrided(B) && isstrided(C)
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, StridedBLAS())
-        elseif (isstrided(A) || isa(A, Diagonal)) && (isstrided(B) || isa(B, Diagonal)) &&
-               isstrided(C)
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
-                                   StridedNative())
-        else
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, BaseCopy())
-        end
+function select_backend(::typeof(tensorcontract!), C::AbstractArray, A::AbstractArray,
+                        B::AbstractArray)
+    if all(_isstridedordiag, (A, B, C))
+        return select_backend(tensorcontract!, _stridedordiag(C), _stridedordiag(A),
+                              _stridedordiag(B))
     else
-        if (isstrided(A) || isa(A, Diagonal)) && (isstrided(B) || isa(B, Diagonal)) &&
-           isstrided(C)
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
-                                   StridedNative())
+        if eltype(C) <: LinearAlgebra.BlasFloat
+            return BaseCopy()
         else
-            return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, BaseView())
+            return BaseView()
         end
     end
 end
-
-#-------------------------------------------------------------------------------------------
-# Implementation based on StridedViews
-#-------------------------------------------------------------------------------------------
-
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
-    tensoradd!(StridedView(C), StridedView(A), pA, conjA, α, β, backend)
-    return C
-end
-
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number, backend::Union{StridedNative,StridedBLAS})
-    tensortrace!(StridedView(C), StridedView(A), p, q, conjA, α, β, backend)
-    return C
-end
-
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedBLAS)
-    tensorcontract!(StridedView(C),
-                    StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB,
-                    pAB, α, β, StridedBLAS())
-    return C
-end
-
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number, ::StridedNative)
-    tensorcontract!(StridedView(C),
-                    StridedView(A), pA, conjA,
-                    StridedView(B), pB, conjB,
-                    pAB, α, β, StridedNative())
-    return C
-end
-
-#-------------------------------------------------------------------------------------------
-# Implementation based on Base + LinearAlgebra
-#-------------------------------------------------------------------------------------------
-# Note that this is mostly for convenience + checking, and not for performance
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number, ::BaseView)
-    argcheck_tensoradd(C, A, pA)
-    dimcheck_tensoradd(C, A, pA)
-
-    # can we assume that C is mutable?
-    # is there more functionality in base that we can use?
-    if conjA
-        if iszero(β)
-            C .= α .* conj.(PermutedDimsArray(A, linearize(pA)))
-        else
-            C .= β .* C .+ α .* conj.(PermutedDimsArray(A, linearize(pA)))
-        end
-    else
-        if iszero(β)
-            C .= α .* PermutedDimsArray(A, linearize(pA))
-        else
-            C .= β .* C .+ α .* PermutedDimsArray(A, linearize(pA))
-        end
-    end
-    return C
-end
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number, ::BaseCopy)
-    argcheck_tensoradd(C, A, pA)
-    dimcheck_tensoradd(C, A, pA)
-
-    # can we assume that C is mutable?
-    # is there more functionality in base that we can use?
-    if conjA
-        if iszero(β)
-            C .= α .* conj.(permutedims(A, linearize(pA)))
-        else
-            C .= β .* C .+ α .* conj.(permutedims(A, linearize(pA)))
-        end
-    else
-        if iszero(β)
-            C .= α .* permutedims(A, linearize(pA))
-        else
-            C .= β .* C .+ α .* permutedims(A, linearize(pA))
-        end
-    end
-    return C
-end
-
-# tensortrace
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number, ::BaseView)
-    argcheck_tensortrace(C, A, p, q)
-    dimcheck_tensortrace(C, A, p, q)
-
-    szA = size(A)
-    so = TupleTools.getindices(szA, linearize(p))
-    st = prod(TupleTools.getindices(szA, q[1]))
-    Ã = reshape(PermutedDimsArray(A, (linearize(p)..., linearize(q)...)),
-                 (prod(so), st, st))
-
-    if conjA
-        if iszero(β)
-            C .= α .* conj.(reshape(view(Ã, :, 1, 1), so))
-        else
-            C .= β .* C .+ α .* conj.(reshape(view(Ã, :, 1, 1), so))
-        end
-        for i in 2:st
-            C .+= α .* conj.(reshape(view(Ã, :, i, i), so))
-        end
-    else
-        if iszero(β)
-            C .= α .* reshape(view(Ã, :, 1, 1), so)
-        else
-            C .= β .* C .+ α .* reshape(view(Ã, :, 1, 1), so)
-        end
-        for i in 2:st
-            C .+= α .* reshape(view(Ã, :, i, i), so)
-        end
-    end
-    return C
-end
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number, ::BaseCopy)
-    argcheck_tensortrace(C, A, p, q)
-    dimcheck_tensortrace(C, A, p, q)
-
-    szA = size(A)
-    so = TupleTools.getindices(szA, linearize(p))
-    st = prod(TupleTools.getindices(szA, q[1]))
-    Ã = reshape(permutedims(A, (linearize(p)..., linearize(q)...)), (prod(so), st, st))
-
-    if conjA
-        if iszero(β)
-            C .= α .* conj.(reshape(view(Ã, :, 1, 1), so))
-        else
-            C .= β .* C .+ α .* conj.(reshape(view(Ã, :, 1, 1), so))
-        end
-        for i in 2:st
-            C .+= α .* conj.(reshape(view(Ã, :, i, i), so))
-        end
-    else
-        if iszero(β)
-            C .= α .* reshape(view(Ã, :, 1, 1), so)
-        else
-            C .= β .* C .+ α .* reshape(view(Ã, :, 1, 1), so)
-        end
-        for i in 2:st
-            C .+= α .* reshape(view(Ã, :, i, i), so)
-        end
-    end
-    return C
-end
-
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number, ::BaseView)
-    argcheck_tensorcontract(C, A, pA, B, pB, pAB)
-    dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
-
-    szA = size(A)
-    szB = size(B)
-    soA = TupleTools.getindices(szA, pA[1])
-    soB = TupleTools.getindices(szB, pB[2])
-    sc = TupleTools.getindices(szA, pA[2])
-    soA1 = prod(soA)
-    soB1 = prod(soB)
-    sc1 = prod(sc)
-    pC = invperm(linearize(pAB))
-    C̃ = reshape(PermutedDimsArray(C, pC), (soA1, soB1))
-
-    if conjA && conjB
-        Ã = reshape(PermutedDimsArray(A, linearize(reverse(pA))), (sc1, soA1))
-        B̃ = reshape(PermutedDimsArray(B, linearize(reverse(pB))), (soB1, sc1))
-        C̃ = mul!(C̃, adjoint(Ã), adjoint(B̃), α, β)
-    elseif conjA
-        Ã = reshape(PermutedDimsArray(A, linearize(reverse(pA))), (sc1, soA1))
-        B̃ = reshape(PermutedDimsArray(B, linearize(pB)), (sc1, soB1))
-        C̃ = mul!(C̃, adjoint(Ã), B̃, α, β)
-    elseif conjB
-        Ã = reshape(PermutedDimsArray(A, linearize(pA)), (soA1, sc1))
-        B̃ = reshape(PermutedDimsArray(B, linearize(reverse(pB))), (soB1, sc1))
-        C̃ = mul!(C̃, Ã, adjoint(B̃), α, β)
-    else
-        Ã = reshape(PermutedDimsArray(A, linearize(pA)), (soA1, sc1))
-        B̃ = reshape(PermutedDimsArray(B, linearize(pB)), (sc1, soB1))
-        C̃ = mul!(C̃, Ã, B̃, α, β)
-    end
-    return C
-end
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number, ::BaseCopy)
-    argcheck_tensorcontract(C, A, pA, B, pB, pAB)
-    dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
-
-    szA = size(A)
-    szB = size(B)
-    soA = TupleTools.getindices(szA, pA[1])
-    soB = TupleTools.getindices(szB, pB[2])
-    sc = TupleTools.getindices(szA, pA[2])
-    soA1 = prod(soA)
-    soB1 = prod(soB)
-    sc1 = prod(sc)
-
-    if conjA && conjB
-        Ã = reshape(permutedims(A, linearize(reverse(pA))), (sc1, soA1))
-        B̃ = reshape(permutedims(B, linearize(reverse(pB))), (soB1, sc1))
-        ÃB̃ = reshape(adjoint(Ã) * adjoint(B̃), (soA..., soB...))
-    elseif conjA
-        Ã = reshape(permutedims(A, linearize(reverse(pA))), (sc1, soA1))
-        B̃ = reshape(permutedims(B, linearize(pB)), (sc1, soB1))
-        ÃB̃ = reshape(adjoint(Ã) * B̃, (soA..., soB...))
-    elseif conjB
-        Ã = reshape(permutedims(A, linearize(pA)), (soA1, sc1))
-        B̃ = reshape(permutedims(B, linearize(reverse(pB))), (soB1, sc1))
-        ÃB̃ = reshape(Ã * adjoint(B̃), (soA..., soB...))
-    else
-        Ã = reshape(permutedims(A, linearize(pA)), (soA1, sc1))
-        B̃ = reshape(permutedims(B, linearize(pB)), (sc1, soB1))
-        ÃB̃ = reshape(Ã * B̃, (soA..., soB...))
-    end
-    if istrivialpermutation(linearize(pAB))
-        pÃB̃ = ÃB̃
-    else
-        pÃB̃ = permutedims(ÃB̃, linearize(pAB))
-    end
-    if iszero(β)
-        C .= α .* pÃB̃
-    else
-        C .= β .* C .+ α .* pÃB̃
-    end
-    return C
-end
+_isstridedordiag(A::AbstractArray) = isstrided(A) || isa(A, Diagonal)
+_stridedordiag(A::AbstractArray) = StridedView(A)
+_stridedordiag(A::Diagonal) = A
 
 # ------------------------------------------------------------------------------------------
 # Argument Checking: can be used by backends to check the validity of the arguments
@@ -419,5 +163,4 @@ end
 #-------------------------------------------------------------------------------------------
 # Utility functions
 #-------------------------------------------------------------------------------------------
-
 flag2op(flag::Bool) = flag ? conj : identity
