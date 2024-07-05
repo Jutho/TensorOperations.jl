@@ -316,3 +316,26 @@ macro cutensor(ex::Expr)
                                 Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))))
     return esc(parser(ex))
 end
+
+"""
+    @butensor tensor_expr
+
+Use Bumper.jl to handle allocation of temporary tensors. This macro will use the default
+buffer and automatically reset it after the tensor expression has been evaluated. This macro
+is equivalent to `@no_escape @tensor tensor_expr` with all temporary allocations handled by
+Bumper.jl.
+"""
+macro butensor(ex...)
+    buf_sym = gensym("buffer")
+    cp_sym = gensym("checkpoint")
+    res_sym = gensym("result")
+    return esc(quote
+                   $buf_sym = $(Expr(:call, GlobalRef(Bumper, :default_buffer)))
+                   $cp_sym = $(Expr(:call, GlobalRef(Bumper, :checkpoint_save), buf_sym))
+                   $res_sym = $(Expr(:macrocall,
+                                     GlobalRef(TensorOperations, Symbol("@tensor")),
+                                     __source__, :(allocator = $buf_sym), ex...))
+                   $(Expr(:call, GlobalRef(Bumper, :checkpoint_restore!), cp_sym))
+                   $res_sym
+               end)
+end

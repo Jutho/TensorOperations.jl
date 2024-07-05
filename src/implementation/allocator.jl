@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------------------
-# DefaultAllocator
+# Allocator backends
 # ------------------------------------------------------------------------------------------
 """
     DefaultAllocator()
@@ -29,6 +29,17 @@ parameters `Min`, `Mout`, `Mtemp`` can be any of the CUDA.jl memory types, i.e.
   are expected could it be useful to choose `CUDA.UnifiedMemory`.
 """
 struct CUDAAllocator{Mout,Min,Mtemp} end
+
+"""
+    ManualAllocator()
+
+Allocator that bypasses Julia's memory management for temporary tensors by leveraging `Libc.malloc`
+and `Libc.free` directly. This can be useful for reducing the pressure on the garbage collector.
+This backend will allocate using `DefaultAllocator` for output tensors that escape the `@tensor`
+block, which will thus still be managed using Julia's GC. The other tensors will be backed by
+`PtrArray` instances, from `PtrArrays.jl`, thus requiring compatibility with that interface.
+"""
+struct ManualAllocator end
 
 # ------------------------------------------------------------------------------------------
 # Generic implementation
@@ -147,4 +158,72 @@ end
 
 function tensorfree!(C, allocator=DefaultAllocator())
     return nothing
+end
+
+# ------------------------------------------------------------------------------------------
+# ManualAllocator implementation
+# ------------------------------------------------------------------------------------------
+Base.@constprop :aggressive function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool,
+                                                     istemp::Bool,
+                                                     ::ManualAllocator)
+    structure = tensoradd_structure(A, pA, conjA)
+    if istemp
+        return malloc(TC, structure...)
+    else
+        ttype = tensoradd_type(TC, A, pA, conjA)
+        return tensoralloc(ttype, structure, istemp)::ttype
+    end
+end
+
+Base.@constprop :aggressive function tensoralloc_contract(TC,
+                                                          A, pA::Index2Tuple, conjA::Bool,
+                                                          B, pB::Index2Tuple, conjB::Bool,
+                                                          pAB::Index2Tuple, istemp::Bool,
+                                                          ::ManualAllocator)
+    structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
+    if istemp
+        return malloc(TC, structure...)
+    else
+        ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
+        return tensoralloc(ttype, structure, istemp)::ttype
+    end
+end
+
+function tensorfree!(C, ::ManualAllocator)
+    free(C)
+    return nothing
+end
+
+# ------------------------------------------------------------------------------------------
+# BumperAllocator implementation
+# ------------------------------------------------------------------------------------------
+
+Base.@constprop :aggressive function tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple,
+                                                     conjA::Bool,
+                                                     istemp::Bool,
+                                                     buf::Union{SlabBuffer,AllocBuffer})
+    structure = tensoradd_structure(A, pA, conjA)
+    if istemp
+        return Bumper.alloc!(buf, TC, structure...)
+    else
+        ttype = tensoradd_type(TC, A, pA, conjA)
+        return tensoralloc(ttype, structure, istemp)::ttype
+    end
+end
+
+Base.@constprop :aggressive function tensoralloc_contract(TC,
+                                                          A::AbstractArray, pA::Index2Tuple,
+                                                          conjA::Bool,
+                                                          B::AbstractArray, pB::Index2Tuple,
+                                                          conjB::Bool,
+                                                          pAB::Index2Tuple, istemp::Bool,
+                                                          buf::Union{SlabBuffer,
+                                                                     AllocBuffer})
+    structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
+    if istemp
+        return Bumper.alloc!(buf, TC, structure...)
+    else
+        ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
+        return tensoralloc(ttype, structure, istemp)::ttype
+    end
 end
