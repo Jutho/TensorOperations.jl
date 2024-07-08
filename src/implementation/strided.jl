@@ -223,7 +223,7 @@ function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, allocator)
         C_ = C
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, ipAB, α, β)
     else
-        C_ = StridedView(TensorOperations.tensoralloc_add(TC, C, ipAB, false, true,
+        C_ = StridedView(TensorOperations.tensoralloc_add(TC, C, ipAB, false, Val(true),
                                                           allocator))
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
                                one(TC), zero(TC))
@@ -257,7 +257,7 @@ end
 @inline function makeblascontractable(A, pA, TC, allocator)
     flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
-        A_ = StridedView(TensorOperations.tensoralloc_add(TC, A, pA, false, true,
+        A_ = StridedView(TensorOperations.tensoralloc_add(TC, A, pA, false, Val(true),
                                                           allocator))
         A = tensoradd!(A_, A, pA, false, One(), Zero())
         pA = trivialpermutation(pA)

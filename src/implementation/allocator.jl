@@ -72,7 +72,7 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Bool=false,
+function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val=Val(false),
                          allocator=DefaultAllocator())
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
@@ -95,7 +95,7 @@ See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 function tensoralloc_contract(TC,
                               A, pA::Index2Tuple, conjA::Bool,
                               B, pB::Index2Tuple, conjB::Bool,
-                              pAB::Index2Tuple, istemp::Bool=false,
+                              pAB::Index2Tuple, istemp::Val=Val(false),
                               allocator=DefaultAllocator())
     ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
@@ -147,7 +147,7 @@ function tensorcontract_structure(A::AbstractArray, pA, conjA,
     end
 end
 
-function tensoralloc(ttype, structure, istemp=false, allocator=DefaultAllocator())
+function tensoralloc(ttype, structure, ::Val=Val(false), allocator=DefaultAllocator())
     C = ttype(undef, structure)
     # fix an issue with undefined references for strided arrays
     if !isbitstype(scalartype(ttype))
@@ -163,11 +163,10 @@ end
 # ------------------------------------------------------------------------------------------
 # ManualAllocator implementation
 # ------------------------------------------------------------------------------------------
-Base.@constprop :aggressive function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool,
-                                                     istemp::Bool,
-                                                     ::ManualAllocator)
+function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val{T},
+                         ::ManualAllocator) where {T}
     structure = tensoradd_structure(A, pA, conjA)
-    if istemp
+    if T
         return malloc(TC, structure...)
     else
         ttype = tensoradd_type(TC, A, pA, conjA)
@@ -175,13 +174,13 @@ Base.@constprop :aggressive function tensoralloc_add(TC, A, pA::Index2Tuple, con
     end
 end
 
-Base.@constprop :aggressive function tensoralloc_contract(TC,
-                                                          A, pA::Index2Tuple, conjA::Bool,
-                                                          B, pB::Index2Tuple, conjB::Bool,
-                                                          pAB::Index2Tuple, istemp::Bool,
-                                                          ::ManualAllocator)
+function tensoralloc_contract(TC,
+                              A, pA::Index2Tuple, conjA::Bool,
+                              B, pB::Index2Tuple, conjB::Bool,
+                              pAB::Index2Tuple, istemp::Val{T},
+                              ::ManualAllocator) where {T}
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
-    if istemp
+    if T
         return malloc(TC, structure...)
     else
         ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
@@ -198,12 +197,12 @@ end
 # BumperAllocator implementation
 # ------------------------------------------------------------------------------------------
 
-Base.@constprop :aggressive function tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple,
-                                                     conjA::Bool,
-                                                     istemp::Bool,
-                                                     buf::Union{SlabBuffer,AllocBuffer})
+function tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple,
+                         conjA::Bool,
+                         istemp::Val{T},
+                         buf::Union{SlabBuffer,AllocBuffer}) where {T}
     structure = tensoradd_structure(A, pA, conjA)
-    if istemp
+    if T
         return Bumper.alloc!(buf, TC, structure...)
     else
         ttype = tensoradd_type(TC, A, pA, conjA)
@@ -211,16 +210,16 @@ Base.@constprop :aggressive function tensoralloc_add(TC, A::AbstractArray, pA::I
     end
 end
 
-Base.@constprop :aggressive function tensoralloc_contract(TC,
-                                                          A::AbstractArray, pA::Index2Tuple,
-                                                          conjA::Bool,
-                                                          B::AbstractArray, pB::Index2Tuple,
-                                                          conjB::Bool,
-                                                          pAB::Index2Tuple, istemp::Bool,
-                                                          buf::Union{SlabBuffer,
-                                                                     AllocBuffer})
+function tensoralloc_contract(TC,
+                              A::AbstractArray, pA::Index2Tuple,
+                              conjA::Bool,
+                              B::AbstractArray, pB::Index2Tuple,
+                              conjB::Bool,
+                              pAB::Index2Tuple, istemp::Val{T},
+                              buf::Union{SlabBuffer,
+                                         AllocBuffer}) where {T}
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
-    if istemp
+    if T
         return Bumper.alloc!(buf, TC, structure...)
     else
         ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)

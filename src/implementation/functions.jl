@@ -35,7 +35,7 @@ end
 function tensorcopy(A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
                     backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_add(scalartype(A), scalartype(α))
-    C = tensoralloc_add(TC, A, pA, conjA)
+    C = tensoralloc_add(TC, A, pA, conjA, Val(false), allocator)
     return tensorcopy!(C, A, pA, conjA, α, backend, allocator)
 end
 
@@ -105,7 +105,7 @@ function tensoradd(A, pA::Index2Tuple, conjA::Bool,
                    α::Number=One(), β::Number=One(),
                    backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
-    C = tensoralloc_add(TC, A, pA, conjA, false, allocator)
+    C = tensoralloc_add(TC, A, pA, conjA, Val(false), allocator)
     C = tensorcopy!(C, A, pA, conjA, α, backend, allocator)
     return tensoradd!(C, B, pB, conjB, β, One(), backend, allocator)
 end
@@ -151,7 +151,7 @@ end
 function tensortrace(A, p::Index2Tuple, q::Index2Tuple, conjA::Bool, α::Number=One(),
                      backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_contract(scalartype(A), scalartype(α))
-    C = tensoralloc_add(TC, A, p, conjA, false, allocator)
+    C = tensoralloc_add(TC, A, p, conjA, Val(false), allocator)
     return tensortrace!(C, A, p, q, conjA, α, Zero(), backend, allocator)
 end
 
@@ -203,7 +203,7 @@ function tensorcontract(A, pA::Index2Tuple, conjA::Bool,
                         pAB::Index2Tuple, α::Number=One(),
                         backend=DefaultBackend(), allocator=DefaultAllocator())
     TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
-    C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, false, allocator)
+    C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, Val(false), allocator)
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend,
                            allocator)
 end
