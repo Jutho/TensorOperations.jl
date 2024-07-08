@@ -98,8 +98,8 @@ end
     @tensor opt = ((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5) begin
         D3[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
-    @tensor opt = ((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5) begin
-        D4[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    @tensor opt = ((1, 4)=χ, 2=χ^2, (3, 6)=2 * χ, 5=5) begin
+        D4[1, 2, 3, 4] := A[1, 5, 3, 6] * B[7, 4, 5] * C[7, 6, 2]
     end
     @tensor opt = true begin
         D5[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]

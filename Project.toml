@@ -1,6 +1,10 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
-authors = ["Lukas Devos <lukas.devos@ugent.be>", "Maarten Van Damme <maartenvd1994@gmail.com>", "Jutho Haegeman <jutho.haegeman@ugent.be>"]
+authors = [
+    "Lukas Devos <lukas.devos@ugent.be>",
+    "Maarten Van Damme <maartenvd1994@gmail.com>",
+    "Jutho Haegeman <jutho.haegeman@ugent.be>",
+]
 version = "5.0.0"
 
 [deps]
@@ -38,7 +42,6 @@ Random = "1"
 Strided = "2.0.4"
 StridedViews = "0.3"
 Test = "1"
-TestExtras = "0.2"
 TupleTools = "1.1"
 VectorInterface = "0.4.1"
 cuTENSOR = "2.1.1"
@@ -56,4 +59,14 @@ TestExtras = "5ed8adda-3752-4e41-b88a-e8b09835ee3a"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
-test = ["Test", "TestExtras", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging"]
+test = [
+    "Test",
+    "TestExtras",
+    "Random",
+    "DynamicPolynomials",
+    "ChainRulesTestUtils",
+    "CUDA",
+    "cuTENSOR",
+    "Aqua",
+    "Logging",
+]
