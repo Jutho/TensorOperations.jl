@@ -1,35 +1,38 @@
-const HostStridedView{T,N,A<:Array{T}} = StridedView{T,N,A}
-const HostStridedViewOrDiagonal{T} = Union{HostStridedView{T},Diagonal{T,Vector{T}}}
 const StridedViewOrDiagonal = Union{StridedView,Diagonal}
 
-function select_backend(::typeof(tensoradd!), C::HostStridedView, A::HostStridedView)
-    return StridedNative()
-end
-function select_backend(::typeof(tensortrace!), C::HostStridedView, A::HostStridedView)
-    return StridedNative()
-end
+_ishostarray(x::StridedView) = (pointer(x) isa Ptr)
+_ishostarray(x::Diagonal) = (pointer(x.diag) isa Ptr)
 
-function select_backend(::typeof(tensorcontract!), C::HostStridedView, A::HostStridedView,
-                        B::HostStridedView)
-    return eltype(C) <: LinearAlgebra.BlasFloat ? StridedBLAS() : StridedNative()
-end
-function select_backend(::typeof(tensorcontract!), C::HostStridedViewOrDiagonal,
-                        A::HostStridedViewOrDiagonal, B::HostStridedViewOrDiagonal)
-    return StridedNative()
-end
-
-# We can only end up with the following methods if one of the tensors is on the gpu
-# However, if the cuTENSOR extension is loaded, then the case where they are all on the 
-# GPU is intercepted and the `cuTENSORBackend` will be selected
 function select_backend(::typeof(tensoradd!), C::StridedView, A::StridedView)
-    return NoBackend()
+    if _ishostarray(C) && _ishostarray(A)
+        return StridedNative()
+    else
+        return NoBackend()
+    end
 end
 function select_backend(::typeof(tensortrace!), C::StridedView, A::StridedView)
-    return NoBackend()
+    if _ishostarray(C) && _ishostarray(A)
+        return StridedNative()
+    else
+        return NoBackend()
+    end
+end
+
+function select_backend(::typeof(tensorcontract!), C::StridedView, A::StridedView,
+                        B::StridedView)
+    if _ishostarray(C) && _ishostarray(A) && _ishostarray(B)
+        return eltype(C) <: LinearAlgebra.BlasFloat ? StridedBLAS() : StridedNative()
+    else
+        return NoBackend()
+    end
 end
 function select_backend(::typeof(tensorcontract!), C::StridedViewOrDiagonal,
                         A::StridedViewOrDiagonal, B::StridedViewOrDiagonal)
-    return NoBackend()
+    if _ishostarray(C) && _ishostarray(A) && _ishostarray(B)
+        return StridedNative()
+    else
+        return NoBackend()
+    end
 end
 
 #-------------------------------------------------------------------------------------------
