@@ -183,39 +183,35 @@ function tensorcontract!(C::AbstractArray,
     soB1 = prod(soB)
     sc1 = prod(sc)
 
-    AB′ = tensoralloc_contract(eltype(C), A, pA, conjA, B, pB, conjB,
-                               trivialpermutation(pAB), Val(true), allocator)
-    ÃB̃ = reshape(AB′, (soA1, soB1))
+    AB = tensoralloc_contract(eltype(C), A, pA, conjA, B, pB, conjB,
+                              trivialpermutation(pAB), Val(true), allocator)
+    ÃB̃ = reshape(AB, (soA1, soB1))
     if conjA && conjB
-        Atemp′ = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)
-        Btemp′ = tensoralloc_add(eltype(C), B, reverse(pB), conjB, Val(true), allocator)
-        Ãtemp = adjoint(reshape(permutedims!(Atemp′, A, linearize(reverse(pA))),
-                                 (sc1, soA1)))
-        B̃temp = adjoint(reshape(permutedims!(Btemp′, B, linearize(reverse(pB))),
-                                 (soB1, sc1)))
+        Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, reverse(pB), conjB, Val(true), allocator)
+        Ã = adjoint(reshape(permutedims!(Atemp, A, linearize(reverse(pA))), (sc1, soA1)))
+        B̃ = adjoint(reshape(permutedims!(Btemp, B, linearize(reverse(pB))), (soB1, sc1)))
     elseif conjA
-        Atemp′ = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)
-        Btemp′ = tensoralloc_add(eltype(C), B, pB, conjB, Val(true), allocator)
-        Ãtemp = adjoint(reshape(permutedims!(Atemp′, A, linearize(reverse(pA))),
-                                 (sc1, soA1)))
-        B̃temp = reshape(permutedims!(Btemp′, B, linearize(pB)), (sc1, soB1))
+        Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, pB, conjB, Val(true), allocator)
+        Ã = adjoint(reshape(permutedims!(Atemp, A, linearize(reverse(pA))), (sc1, soA1)))
+        B̃ = reshape(permutedims!(Btemp, B, linearize(pB)), (sc1, soB1))
     elseif conjB
-        Atemp′ = tensoralloc_add(eltype(C), A, pA, conjA, Val(true), allocator)
-        Btemp′ = tensoralloc_add(eltype(C), B, reverse(pB), conjB, Val(true), allocator)
-        Ã = reshape(permutedims!(Atemp′, A, linearize(pA)), (soA1, sc1))
-        B̃ = adjoint(reshape(permutedims!(Btemp′, B, linearize(reverse(pB))), (soB1, sc1)))
-        mul!(ÃB̃, Ã, adjoint(B̃))
+        Atemp = tensoralloc_add(eltype(C), A, pA, conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, reverse(pB), conjB, Val(true), allocator)
+        Ã = reshape(permutedims!(Atemp, A, linearize(pA)), (soA1, sc1))
+        B̃ = adjoint(reshape(permutedims!(Btemp, B, linearize(reverse(pB))), (soB1, sc1)))
     else
-        Atemp′ = tensoralloc_add(eltype(C), A, pA, conjA, Val(true), allocator)
-        Btemp′ = tensoralloc_add(eltype(C), B, pB, conjB, Val(true), allocator)
-        Ã = reshape(permutedims!(Atemp′, A, linearize(pA)), (soA1, sc1))
-        B̃ = reshape(permutedims!(Btemp′, B, linearize(pB)), (sc1, soB1))
+        Atemp = tensoralloc_add(eltype(C), A, pA, conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, pB, conjB, Val(true), allocator)
+        Ã = reshape(permutedims!(Atemp, A, linearize(pA)), (soA1, sc1))
+        B̃ = reshape(permutedims!(Btemp, B, linearize(pB)), (sc1, soB1))
     end
-    mul!(ÃB̃, adjoint(Ãtemp), adjoint(B̃temp))
-    tensorfree!(Atemp′, allocator)
-    tensorfree!(Btemp′, allocator)
-    ABtemp = !istrivialpermutation(linearize(pAB))
-    if ABtemp
+    mul!(ÃB̃, Ã, B̃)
+    tensorfree!(Btemp, allocator)
+    tensorfree!(Atemp, allocator)
+
+    if istrivialpermutation(linearize(pAB))
         pAB = AB
     else
         pABtemp = tensoralloc_add(eltype(C), AB, pAB, false, Val(true), allocator)
@@ -226,7 +222,7 @@ function tensorcontract!(C::AbstractArray,
     else
         C .= β .* C .+ α .* pAB
     end
-    ABtemp || tensorfree!(pAB, allocator)
-    tensorfree!(AB′, allocator)
+    pAB === AB || tensorfree!(pAB, allocator)
+    tensorfree!(AB, allocator)
     return C
 end
