@@ -129,8 +129,9 @@ function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool)
     return size.(Ref(A), linearize(pA))
 end
 
-function tensorcontract_type(TC, A::AbstractArray, pA, conjA,
-                             B::AbstractArray, pB, conjB, pAB)
+function tensorcontract_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                             B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+                             pAB::Index2Tuple)
     T1 = tensoradd_type(TC, A, pAB, conjA)
     T2 = tensoradd_type(TC, B, pAB, conjB)
     if T1 == T2
@@ -140,8 +141,9 @@ function tensorcontract_type(TC, A::AbstractArray, pA, conjA,
     end
 end
 
-function tensorcontract_structure(A::AbstractArray, pA, conjA,
-                                  B::AbstractArray, pB, conjB, pAB)
+function tensorcontract_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                                  B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+                                  pAB::Index2Tuple)
     return let lA = length(pA[1])
         map(n -> n <= lA ? size(A, pA[1][n]) : size(B, pB[2][n - lA]), linearize(pAB))
     end
@@ -156,9 +158,7 @@ function tensoralloc(ttype, structure, ::Val=Val(false), allocator=DefaultAlloca
     return C
 end
 
-function tensorfree!(C, allocator=DefaultAllocator())
-    return nothing
-end
+tensorfree!(C, allocator=DefaultAllocator()) = nothing
 
 # ------------------------------------------------------------------------------------------
 # ManualAllocator implementation
