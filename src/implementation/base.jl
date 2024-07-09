@@ -37,7 +37,7 @@ function tensoradd!(C::AbstractArray,
     # can we assume that C is mutable?
     # is there more functionality in base that we can use?
     Atemp = tensoralloc_add(eltype(A), A, pA, conjA, Val(true), allocator)
-    Ãtemp = permutedims!(Atemp, A, linearize(pA))
+    Atemp = permutedims!(Atemp, A, linearize(pA))
     if conjA
         if iszero(β)
             C .= α .* conj.(Atemp)
