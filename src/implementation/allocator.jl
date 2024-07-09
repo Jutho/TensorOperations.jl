@@ -76,7 +76,7 @@ function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val=Val(fa
                          allocator=DefaultAllocator())
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
-    return tensoralloc(ttype, structure, istemp, allocator)::ttype
+    return tensoralloc(ttype, structure, istemp, allocator)
 end
 
 """
@@ -99,7 +99,7 @@ function tensoralloc_contract(TC,
                               allocator=DefaultAllocator())
     ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
-    return tensoralloc(ttype, structure, istemp, allocator)::ttype
+    return tensoralloc(ttype, structure, istemp, allocator)
 end
 
 # ------------------------------------------------------------------------------------------
@@ -163,32 +163,16 @@ tensorfree!(C, allocator=DefaultAllocator()) = nothing
 # ------------------------------------------------------------------------------------------
 # ManualAllocator implementation
 # ------------------------------------------------------------------------------------------
-function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val{T},
-                         ::ManualAllocator) where {T}
-    structure = tensoradd_structure(A, pA, conjA)
-    if T
-        return malloc(TC, structure...)
+function tensoralloc(::Type{A}, structure, ::Val{istemp},
+                     ::ManualAllocator) where {A<:AbstractArray,istemp}
+    if istemp
+        return malloc(eltype(A), structure...)
     else
-        ttype = tensoradd_type(TC, A, pA, conjA)
-        return tensoralloc(ttype, structure, istemp)::ttype
+        return tensoralloc(A, structure, istemp)
     end
 end
 
-function tensoralloc_contract(TC,
-                              A, pA::Index2Tuple, conjA::Bool,
-                              B, pB::Index2Tuple, conjB::Bool,
-                              pAB::Index2Tuple, istemp::Val{T},
-                              ::ManualAllocator) where {T}
-    structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
-    if T
-        return malloc(TC, structure...)
-    else
-        ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
-        return tensoralloc(ttype, structure, istemp)::ttype
-    end
-end
-
-function tensorfree!(C, ::ManualAllocator)
+function tensorfree!(C::PtrArray, ::ManualAllocator)
     free(C)
     return nothing
 end
@@ -196,33 +180,11 @@ end
 # ------------------------------------------------------------------------------------------
 # BumperAllocator implementation
 # ------------------------------------------------------------------------------------------
-
-function tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple,
-                         conjA::Bool,
-                         istemp::Val{T},
-                         buf::Union{SlabBuffer,AllocBuffer}) where {T}
-    structure = tensoradd_structure(A, pA, conjA)
-    if T
-        return Bumper.alloc!(buf, TC, structure...)
+function tensoralloc(::Type{A}, structure, ::Val{istemp},
+                     buf::Union{SlabBuffer,AllocBuffer}) where {A<:AbstractArray,istemp}
+    if istemp
+        return Bumper.alloc!(buf, eltype(A), structure...)
     else
-        ttype = tensoradd_type(TC, A, pA, conjA)
-        return tensoralloc(ttype, structure, istemp)::ttype
-    end
-end
-
-function tensoralloc_contract(TC,
-                              A::AbstractArray, pA::Index2Tuple,
-                              conjA::Bool,
-                              B::AbstractArray, pB::Index2Tuple,
-                              conjB::Bool,
-                              pAB::Index2Tuple, istemp::Val{T},
-                              buf::Union{SlabBuffer,
-                                         AllocBuffer}) where {T}
-    structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
-    if T
-        return Bumper.alloc!(buf, TC, structure...)
-    else
-        ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
-        return tensoralloc(ttype, structure, istemp)::ttype
+        return tensoralloc(A, structure, istemp)
     end
 end
