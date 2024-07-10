@@ -16,10 +16,12 @@ end
 function TensorOperations.blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
                                          allocator::Union{SlabBuffer,AllocBuffer})
     @no_escape allocator begin
-        C = @invoke TensorOperations.blas_contract!(C::Any, A::Any, pA::Any, conjA::Any,
-                                                    B::Any, pB::Any,
-                                                    conjB::Any, pAB::Any, α::Any, β::Any,
-                                                    allocator::Any)
+        C = Base.@invoke TensorOperations.blas_contract!(C::Any, A::Any, pA::Any,
+                                                         conjA::Any,
+                                                         B::Any, pB::Any,
+                                                         conjB::Any, pAB::Any, α::Any,
+                                                         β::Any,
+                                                         allocator::Any)
     end
     return C
 end
