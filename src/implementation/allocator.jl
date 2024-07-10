@@ -168,7 +168,7 @@ function tensoralloc(::Type{A}, structure, ::Val{istemp},
     if istemp
         return malloc(eltype(A), structure...)
     else
-        return tensoralloc(A, structure, istemp)
+        return tensoralloc(A, structure, Val(istemp))
     end
 end
 
@@ -185,6 +185,6 @@ function tensoralloc(::Type{A}, structure, ::Val{istemp},
     if istemp
         return Bumper.alloc!(buf, eltype(A), structure...)
     else
-        return tensoralloc(A, structure, istemp)
+        return tensoralloc(A, structure, Val(istemp))
     end
 end
