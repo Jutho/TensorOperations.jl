@@ -32,21 +32,15 @@ function TensorOperations._butensor(src, ex...)
     res_sym = gensym("result")
 
     # TODO: there is no check for doubled tensor kwargs
-    return Base.remove_linenums!(quote
-                                     $buf_sym = $(Expr(:call,
-                                                       GlobalRef(Bumper, :default_buffer)))
-                                     $cp_sym = $(Expr(:call,
-                                                      GlobalRef(Bumper, :checkpoint_save),
-                                                      buf_sym))
-                                     $res_sym = $(Expr(:macrocall,
-                                                       GlobalRef(TensorOperations,
-                                                                 Symbol("@tensor")),
-                                                       src, :(allocator = $buf_sym),
-                                                       ex...))
-                                     $(Expr(:call, GlobalRef(Bumper, :checkpoint_restore!),
-                                            cp_sym))
-                                     $res_sym
-                                 end)
+    newex = quote
+        $buf_sym = $(Expr(:call, GlobalRef(Bumper, :default_buffer)))
+        $cp_sym = $(Expr(:call, GlobalRef(Bumper, :checkpoint_save), buf_sym))
+        $res_sym = $(Expr(:macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
+                          src, :(allocator = $buf_sym), ex...))
+        $(Expr(:call, GlobalRef(Bumper, :checkpoint_restore!), cp_sym))
+        $res_sym
+    end
+    return return Base.remove_linenums!(newex)
 end
 
 end

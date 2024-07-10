@@ -10,12 +10,14 @@ if cuTENSOR.has_cutensor()
     using CUDA
     using LinearAlgebra: norm
     using TensorOperations: IndexError
+    using TensorOperations: cuTENSORBackend, CUDAAllocator
 
     @testset "elementary operations" verbose = true begin
         @testset "tensorcopy" begin
             A = randn(Float32, (3, 5, 4, 6))
             @tensor C1[4, 1, 3, 2] := A[1, 2, 3, 4]
             @tensor C2[4, 1, 3, 2] := CuArray(A)[1, 2, 3, 4]
+            @test C2 isa CuArray
             @test collect(C2) ≈ C1
         end
 
@@ -122,16 +124,25 @@ if cuTENSOR.has_cutensor()
             H = randn(T, d1, d2, d1, d2)
 
             @tensor begin
-                HrA12[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
+                HRAA1[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
                                        ρᵣ[c', c] *
                                        H[s1, s2, t1, t2]
             end
             @tensor begin
-                HrA12′[a, s1, s2, c] := CuArray(ρₗ)[a, a'] * CuArray(A1)[a', t1, b] *
-                                        CuArray(A2)[b, t2, c'] * CuArray(ρᵣ)[c', c] *
-                                        CuArray(H)[s1, s2, t1, t2]
+                HRAA2[a, s1, s2, c] := CuArray(ρₗ)[a, a'] * CuArray(A1)[a', t1, b] *
+                                       CuArray(A2)[b, t2, c'] * CuArray(ρᵣ)[c', c] *
+                                       CuArray(H)[s1, s2, t1, t2]
             end
-            @test collect(HrA12′) ≈ HrA12
+            @test HRAA2 isa CuArray{T}
+            @test collect(HRAA2) ≈ HRAA1
+
+            @tensor backend = cuTENSORBackend() allocator = CUDAAllocator() begin
+                HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
+                                        ρᵣ[c', c] *
+                                        H[s1, s2, t1, t2]
+            end
+            @test HRAA3 isa CuArray{T}
+            @test collect(HRAA3) ≈ HRAA1
 
             @tensor begin
                 E1 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *

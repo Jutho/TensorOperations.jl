@@ -33,6 +33,18 @@ StridedViewsCUDAExt = Base.get_extension(Strided.StridedViews, :StridedViewsCUDA
 isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
 
 #-------------------------------------------------------------------------------------------
+# @cutensor macro
+#-------------------------------------------------------------------------------------------
+function TensorOperations._cutensor(src, ex...)
+    # TODO: there is no check for doubled tensor kwargs
+    Expr(:macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
+         src,
+         Expr(:(=), :backend, Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))),
+         Expr(:(=), :allocator, Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
+         ex...)
+end
+
+#-------------------------------------------------------------------------------------------
 # Backend selection and passing
 #-------------------------------------------------------------------------------------------
 const CuStridedView = StridedViewsCUDAExt.CuStridedView

@@ -304,19 +304,14 @@ transfer it back. This macro is equivalent to
     This macro requires the cuTENSOR library to be installed and loaded. This can be
     achieved by running `using cuTENSOR` or `import cuTENSOR` before using the macro.
 """
-macro cutensor(ex::Expr)
-    haskey(Base.loaded_modules, Base.identify_package("cuTENSOR")) ||
-        throw(ArgumentError("cuTENSOR not loaded: add `using cuTENSOR` or `import cuTENSOR` before using `@cutensor`"))
-    parser = TensorParser()
-    push!(parser.postprocessors,
-          ex -> insertbackend(ex,
-                              Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))))
-    push!(parser.postprocessors,
-          ex -> insertallocator(ex,
-                                Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))))
-    return esc(parser(ex))
+macro cutensor(ex...)
+    if length(methods(_cutensor)) == 0
+        throw(ArgumentError("cuTENSOR.jl not loaded: add `using cuTENSOR` or `import cuTENSOR` before using `@cutensor`"))
+    end
+    return esc(_cutensor(__source__, ex...))
 end
 
+function _cutensor end
 """
     @butensor tensor_expr
 
@@ -330,6 +325,9 @@ Bumper.jl.
     `using Bumper` or `import Bumper` before using the macro.
 """
 macro butensor(ex...)
+    if length(methods(_butensor)) == 0
+        throw(ArgumentError("Bumper.jl not loaded: add `using Bumper` or `import Bumper` before using `@butensor`"))
+    end
     return esc(_butensor(__source__, ex...))
 end
 

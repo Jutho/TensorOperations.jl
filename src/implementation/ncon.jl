@@ -41,11 +41,14 @@ function ncon(tensors, network,
     (tensors, network) = resolve_traces(tensors, network)
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
-    A, IA, CA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
-    B, IB, CB = contracttree(tensors, network, conjlist, tree[2]; kwargs...)
+    A, IA, conjA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
+    B, IB, conjB = contracttree(tensors, network, conjlist, tree[2]; kwargs...)
     IC = tuple(output′...)
-
-    return tensorcontract(IC, A, IA, CA, B, IB, CB; kwargs...)
+    C = tensorcontract(IC, A, IA, conjA, B, IB, conjB; kwargs...)
+    allocator = haskey(kwargs, :allocator) ? kwargs[:allocator] : DefaultAllocator()
+    tree[1] isa Int || tensorfree!(A, allocator)
+    tree[2] isa Int || tensorfree!(B, allocator)
+    return C
 end
 
 function contracttree(tensors, network, conjlist, tree; kwargs...)
@@ -53,10 +56,18 @@ function contracttree(tensors, network, conjlist, tree; kwargs...)
     if tree isa Int
         return tensors[tree], tuple(network[tree]...), (conjlist[tree])
     end
-    A, IA, CA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
-    B, IB, CB = contracttree(tensors, network, conjlist, tree[2]; kwargs...)
+    A, IA, conjA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
+    B, IB, conjB = contracttree(tensors, network, conjlist, tree[2]; kwargs...)
     IC = tuple(symdiff(IA, IB)...)
-    C = tensorcontract(IC, A, IA, CA, B, IB, CB; kwargs...)
+    pA, pB, pAB = contract_indices(IA, IB, IC)
+    TC = promote_contract(scalartype(A), scalartype(B))
+    allocator = haskey(kwargs, :allocator) ? kwargs[:allocator] : DefaultAllocator()
+    backend = haskey(kwargs, :backend) ? kwargs[:backend] : DefaultBackend()
+    C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, Val(true), allocator)
+    C = tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero(), backend,
+                        allocator)
+    tree[1] isa Int || tensorfree!(A, allocator)
+    tree[2] isa Int || tensorfree!(B, allocator)
     return C, IC, false
 end
 
