@@ -63,7 +63,7 @@ function TO.tensoradd!(C::AbstractArray,
     C_cuda, isview = _custrided(C, allocator)
     A_cuda, = _custrided(A, allocator)
     tensoradd!(C_cuda, A_cuda, pA, conjA, α, β, backend, allocator)
-    isview || copy!(C, C_cuda)
+    isview || copy!(C, C_cuda.parent)
     return C
 end
 function TO.tensorcontract!(C::AbstractArray,
@@ -77,7 +77,7 @@ function TO.tensorcontract!(C::AbstractArray,
     B_cuda, = _custrided(B, allocator)
     tensorcontract!(C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend,
                     allocator)
-    isview || copy!(C, C_cuda)
+    isview || copy!(C, C_cuda.parent)
     return C
 end
 function TO.tensortrace!(C::AbstractArray,
@@ -87,7 +87,7 @@ function TO.tensortrace!(C::AbstractArray,
     C_cuda, isview = _custrided(C, allocator)
     A_cuda, = _custrided(A, allocator)
     tensortrace!(C_cuda, A_cuda, p, q, conjA, α, β, backend, allocator)
-    isview || copy!(C, C_cuda)
+    isview || copy!(C, C_cuda.parent)
     return C
 end
 
