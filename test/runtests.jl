@@ -2,9 +2,12 @@ using TensorOperations
 using LinearAlgebra
 using Test
 using Random
-using Aqua
-
 Random.seed!(1234567)
+
+using TensorOperations: IndexError
+using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
+using TensorOperations: DefaultAllocator, ManualAllocator
+
 @testset "tensoropt" verbose = true begin
     include("tensoropt.jl")
 end
