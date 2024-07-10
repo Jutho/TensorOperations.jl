@@ -37,18 +37,18 @@ function tensoradd!(C::AbstractArray,
     # can we assume that C is mutable?
     # is there more functionality in base that we can use?
     Atemp = tensoralloc_add(eltype(A), A, pA, conjA, Val(true), allocator)
-    Atemp = permutedims!(Atemp, A, linearize(pA))
+    Ã = permutedims!(Atemp, A, linearize(pA))
     if conjA
         if iszero(β)
-            C .= α .* conj.(Atemp)
+            C .= α .* conj.(Ã)
         else
-            C .= β .* C .+ α .* conj.(Atemp)
+            C .= β .* C .+ α .* conj.(Ã)
         end
     else
         if iszero(β)
-            C .= α .* Atemp
+            C .= α .* Ã
         else
-            C .= β .* C .+ α .* Atemp
+            C .= β .* C .+ α .* Ã
         end
     end
     tensorfree!(Atemp, allocator)
@@ -101,28 +101,28 @@ function tensortrace!(C::AbstractArray,
     so = TupleTools.getindices(szA, linearize(p))
     st = prod(TupleTools.getindices(szA, q[1]))
     perm = (linearize(p)..., linearize(q)...)
-    Atemp′ = tensoralloc_add(eltype(A), A, (perm, ()), conjA, Val(true), allocator)
-    Ãtemp = reshape(permutedims!(Atemp′, A, perm), (prod(so), st, st))
+    Atemp = tensoralloc_add(eltype(A), A, (perm, ()), conjA, Val(true), allocator)
+    Ã = reshape(permutedims!(Atemp, A, perm), (prod(so), st, st))
     if conjA
         if iszero(β)
-            C .= α .* conj.(reshape(view(Ãtemp, :, 1, 1), so))
+            C .= α .* conj.(reshape(view(Ã, :, 1, 1), so))
         else
-            C .= β .* C .+ α .* conj.(reshape(view(Ãtemp, :, 1, 1), so))
+            C .= β .* C .+ α .* conj.(reshape(view(Ã, :, 1, 1), so))
         end
         for i in 2:st
-            C .+= α .* conj.(reshape(view(Ãtemp, :, i, i), so))
+            C .+= α .* conj.(reshape(view(Ã, :, i, i), so))
         end
     else
         if iszero(β)
-            C .= α .* reshape(view(Ãtemp, :, 1, 1), so)
+            C .= α .* reshape(view(Ã, :, 1, 1), so)
         else
-            C .= β .* C .+ α .* reshape(view(Ãtemp, :, 1, 1), so)
+            C .= β .* C .+ α .* reshape(view(Ã, :, 1, 1), so)
         end
         for i in 2:st
-            C .+= α .* reshape(view(Ãtemp, :, i, i), so)
+            C .+= α .* reshape(view(Ã, :, i, i), so)
         end
     end
-    tensorfree!(Atemp′, allocator)
+    tensorfree!(Atemp, allocator)
     return C
 end
 
@@ -222,7 +222,7 @@ function tensorcontract!(C::AbstractArray,
     else
         C .= β .* C .+ α .* pAB
     end
-    pAB === AB || tensorfree!(pAB, allocator)
+    pAB === AB || tensorfree!(pABtemp, allocator)
     tensorfree!(AB, allocator)
     return C
 end
