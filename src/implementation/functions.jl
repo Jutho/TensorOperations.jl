@@ -65,7 +65,7 @@ end
 # ------------------------------------------------------------------------------------------
 """
     tensoradd([IC=IA], A, IA, [conjA], B, IB, [conjB], [α=1, [β=1]])
-    tensoradd(A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, pB::Index2Tuple, conjB, α=1, β=1, [backend]) # expert mode
+    tensoradd(A, pA::Index2Tuple, conjA, B, pB::Index2Tuple, conjB, α=1, β=1, [backend]) # expert mode
 
 Return the result of adding arrays `A` and `B` where the iterables `IA` and `IB`
 denote how the array data should be permuted in order to be added. More specifically,
