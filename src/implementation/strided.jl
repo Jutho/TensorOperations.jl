@@ -234,6 +234,15 @@ function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, allocator)
     flagB || tensorfree!(B_.parent, allocator)
     return C
 end
+function blas_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β,
+                        allocator::Union{SlabBuffer,AllocBuffer})
+    @no_escape allocator begin
+        C = @invoke blas_contract!(C::Any, A::Any, pA::Any, conjA::Any, B::Any, pB::Any,
+                                   conjB::Any, pAB::Any, α::Any, β::Any,
+                                   allocator::Any)
+    end
+    return C
+end
 
 function _unsafe_blas_contract!(C::StridedView{T},
                                 A::StridedView{T}, pA,
