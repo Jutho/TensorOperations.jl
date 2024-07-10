@@ -60,6 +60,8 @@ Users can also define their own backends, to facilitate experimentation with new
 This can be done by defining a new type that is a subtype of `AbstractBackend`, and dispatching on this type in the implementation of the primitive tensor operations.
 In particular, the only required implemented methods are [`tensoradd!`](@ref), [`tensortrace!`](@ref), [`tensorcontract!`](@ref).
 
+For example, [`TensorOperationsTBLIS`](https://github.com/lkdvos/TensorOperationsTBLIS.jl) is a wrapper that provides a backend for tensor contractions using the [TBLIS](https://github.com/devinamatthews/tblis) library.
+
 ## Allocators
 
 Evaluating complex tensor networks is typically done most efficiently by pairwise operations.
