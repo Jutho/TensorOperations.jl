@@ -9,7 +9,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C1 = permutedims(A, p)
         C2 = @inferred tensorcopy((p...,), A, (1:4...,); backend=b)
         C3 = @inferred tensorcopy(A, (p, ()), false, 1, b)
-        @test C1 ≈ C2 ≈ C3
+        @test C1 ≈ C2
+        @test C2 == C3
         @test C1 ≈ ncon(Any[A], Any[[-2, -4, -1, -3]])
         @test_throws IndexError tensorcopy(1:4, A, 1:3)
         @test_throws IndexError tensorcopy(1:4, A, [1, 2, 2, 4])
@@ -22,7 +23,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C1 = A + permutedims(B, p)
         C2 = @inferred tensoradd(A, p, B, (1:4...,); backend=b)
         C3 = @inferred tensoradd(A, ((1:4...,), ()), false, B, (p, ()), false, 1.0, 1.0, b)
-        @test C1 ≈ C2 ≈ C3
+        @test C1 ≈ C2
+        @test C2 == C3
         @test C1 ≈ A + ncon(Any[B], Any[[-2, -4, -1, -3]]; backend=b)
         @test_throws DimensionMismatch tensoradd(A, 1:4, B, 1:4)
     end
@@ -37,7 +39,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         end
         C2 = tensortrace(A, [:a, :b, :b]; backend=b)
         C3 = ncon(Any[A], Any[[-1, 1, 1]]; backend=b)
-        @test C1 ≈ C2 ≈ C3
+        @test C1 ≈ C2
+        @test C2 == C3
         A = randn(Float64, (3, 20, 5, 3, 20, 4, 5))
         C1 = zeros(4, 3, 3)
         for i1 in 1:4, i2 in 1:3, i3 in 1:3
@@ -48,7 +51,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C2 = @inferred tensortrace((:e, :a, :d), A, (:a, :b, :c, :d, :b, :e, :c); backend=b)
         C3 = @inferred tensortrace(A, ((6, 1, 4), ()), ((2, 3), (5, 7)), false, 1.0, b)
         C4 = ncon(Any[A], Any[[-2, 1, 2, -3, 1, -1, 2]]; backend=b)
-        @test C1 ≈ C2 ≈ C3 ≈ C4
+        @test C1 ≈ C2
+        @test C2 == C3 == C4
     end
 
     @testset "tensorcontract" begin
@@ -69,7 +73,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C5 = ncon(Any[A, B], Any[[-1, 1, 2, -4, -3], [2, -5, 1, -2]]; backend=b,
                   allocator=ManualAllocator())
 
-        @test C1 ≈ C2 ≈ C3 ≈ C4 ≈ C5
+        @test C1 ≈ C2
+        @test C2 == C3 == C4 == C5
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :d], B, [:c, :f, :b, :g])
         @test_throws IndexError tensorcontract(A, [:a, :b, :c, :a, :e], B, [:c, :f, :b, :g])
     end
@@ -99,7 +104,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
                            ((2, 3, 1, 4), ()), 1.0, b)
         C4 = tensorproduct(A, ((1, 2), ()), false, B, ((), (1, 2)), false,
                            ((2, 3, 1, 4), ()), 1.0, b, ManualAllocator())
-        @test C1 ≈ C2 ≈ C3 ≈ C4
+        @test C1 ≈ C2
+        @test C2 == C3 == C4
     end
 end
 
