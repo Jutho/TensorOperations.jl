@@ -27,7 +27,7 @@ mybackend = StridedNative()
 D = ncon([A, B, C], [[1, 2], [2, 3], [3, 1]]; backend=mybackend)
 
 # inserting a backend into the function-based interface
-tensoradd(A, pA, conjA, B, pB, conjB, C, pC, conjC, α, β, mybackend)
+tensoradd(A, pA, conjA, B, pB, conjB, α, β, mybackend)
 ```
 
 ### Available Backends
@@ -85,7 +85,7 @@ myallocator = ManualAllocator()
 D = ncon([A, B, C], [[1, 2], [2, 3], [3, 1]]; allocator=myallocator)
 
 # inserting a backend into the function-based interface
-tensoradd(A, pA, conjA, B, pB, conjB, C, pC, conjC, α, β, DefaultBackend(), myallocator)
+tensoradd(A, pA, conjA, B, pB, conjB, α, β, DefaultBackend(), myallocator)
 ```
 
 Important to note here is that the backend system is prioritized over the allocator system.
