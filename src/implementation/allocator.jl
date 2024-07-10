@@ -60,7 +60,7 @@ Promote the scalar types of a tensor addition to a common type.
 promote_add(args...) = Base.promote_op(+, args...)
 
 """
-    tensoralloc_add(TC, A, pA, conjA, [istemp=false, allocator])
+    tensoralloc_add(TC, A, pA, conjA, [istemp=Val(false), allocator])
 
 Allocate a tensor `C` of scalar type `TC` that would be the result of
 
@@ -80,7 +80,7 @@ function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val=Val(fa
 end
 
 """
-    tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, [istemp=false, allocator])
+    tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, [istemp=Val(false), allocator])
 
 Allocate a tensor `C` of scalar type `TC` that would be the result of
 

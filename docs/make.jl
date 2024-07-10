@@ -9,6 +9,7 @@ makedocs(; modules=[TensorOperations],
                 "Manual" => ["man/indexnotation.md",
                              "man/functions.md",
                              "man/interface.md",
+                             "man/backends.md",
                              "man/autodiff.md",
                              "man/implementation.md"],
                 "Index" => "index/index.md"])
