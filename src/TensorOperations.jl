@@ -7,7 +7,7 @@ using LinearAlgebra
 using LinearAlgebra: mul!, BlasFloat
 using Strided
 using StridedViews: isstrided
-using PtrArrays, Bumper
+using PtrArrays
 using LRUCache
 
 using Base.Meta: isexpr

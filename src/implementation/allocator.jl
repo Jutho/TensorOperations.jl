@@ -176,15 +176,3 @@ function tensorfree!(C::PtrArray, ::ManualAllocator)
     free(C)
     return nothing
 end
-
-# ------------------------------------------------------------------------------------------
-# BumperAllocator implementation
-# ------------------------------------------------------------------------------------------
-function tensoralloc(::Type{A}, structure, ::Val{istemp},
-                     buf::Union{SlabBuffer,AllocBuffer}) where {A<:AbstractArray,istemp}
-    if istemp
-        return Bumper.alloc!(buf, eltype(A), structure...)
-    else
-        return tensoralloc(A, structure, Val(istemp))
-    end
-end

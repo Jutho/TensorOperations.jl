@@ -324,18 +324,14 @@ Use Bumper.jl to handle allocation of temporary tensors. This macro will use the
 buffer and automatically reset it after the tensor expression has been evaluated. This macro
 is equivalent to `@no_escape @tensor tensor_expr` with all temporary allocations handled by
 Bumper.jl.
+
+!!! note
+    This macro requires Bumper.jl to be installed and loaded. This can be achieved by running
+    `using Bumper` or `import Bumper` before using the macro.
 """
 macro butensor(ex...)
-    buf_sym = gensym("buffer")
-    cp_sym = gensym("checkpoint")
-    res_sym = gensym("result")
-    return esc(quote
-                   $buf_sym = $(Expr(:call, GlobalRef(Bumper, :default_buffer)))
-                   $cp_sym = $(Expr(:call, GlobalRef(Bumper, :checkpoint_save), buf_sym))
-                   $res_sym = $(Expr(:macrocall,
-                                     GlobalRef(TensorOperations, Symbol("@tensor")),
-                                     __source__, :(allocator = $buf_sym), ex...))
-                   $(Expr(:call, GlobalRef(Bumper, :checkpoint_restore!), cp_sym))
-                   $res_sym
-               end)
+    return esc(_butensor(__source__, ex...))
 end
+
+# construction to move implementation to a package extension
+function _butensor end
