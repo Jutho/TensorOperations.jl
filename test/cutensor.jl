@@ -138,8 +138,8 @@ if cuTENSOR.has_cutensor()
 
             @tensor backend = cuTENSORBackend() allocator = CUDAAllocator() begin
                 HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                                        ρᵣ[c', c] *
-                                        H[s1, s2, t1, t2]
+                                       ρᵣ[c', c] *
+                                       H[s1, s2, t1, t2]
             end
             @test HRAA3 isa CuArray{T}
             @test collect(HRAA3) ≈ HRAA1
