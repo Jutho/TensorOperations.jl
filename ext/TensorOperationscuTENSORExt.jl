@@ -29,7 +29,11 @@ using CUDA.Adapt: adapt
 using Strided
 using TupleTools: TupleTools as TT
 
-StridedViewsCUDAExt = Base.get_extension(Strided.StridedViews, :StridedViewsCUDAExt)
+const StridedViewsCUDAExt = @static if isdefined(Base, :get_extension)
+    Base.get_extension(Strided.StridedViews, :StridedViewsCUDAExt)
+else
+    Strided.StridedViews.StridedViewsCUDAExt
+end
 isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
 
 #-------------------------------------------------------------------------------------------
@@ -37,11 +41,13 @@ isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
 #-------------------------------------------------------------------------------------------
 function TensorOperations._cutensor(src, ex...)
     # TODO: there is no check for doubled tensor kwargs
-    Expr(:macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
-         src,
-         Expr(:(=), :backend, Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))),
-         Expr(:(=), :allocator, Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
-         ex...)
+    return Expr(:macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
+                src,
+                Expr(:(=), :backend,
+                     Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))),
+                Expr(:(=), :allocator,
+                     Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
+                ex...)
 end
 
 #-------------------------------------------------------------------------------------------
