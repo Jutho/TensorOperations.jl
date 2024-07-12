@@ -13,6 +13,7 @@ ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PackageExtensionCompat = "65ce6f38-6b18-4e1d-a461-8949797d7930"
+PtrArrays = "43287f4e-b6f4-7ad1-bb20-aadabca52c3d"
 Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
 StridedViews = "4db3bf67-4bd7-4b4e-b153-31dc3fb37143"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
@@ -20,16 +21,19 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [weakdeps]
+Bumper = "8ce10254-0962-460f-a3d8-1f77fea1446e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [extensions]
+TensorOperationsBumperExt = "Bumper"
 TensorOperationsChainRulesCoreExt = "ChainRulesCore"
 TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
 Aqua = "0.6, 0.7, 0.8"
+Bumper = "0.6"
 CUDA = "5.4.0"
 ChainRulesCore = "1"
 ChainRulesTestUtils = "1"
@@ -38,6 +42,7 @@ LRUCache = "1"
 LinearAlgebra = "1.6"
 Logging = "1.6"
 PackageExtensionCompat = "1"
+PtrArrays = "1.2"
 Random = "1"
 Strided = "2.0.4"
 StridedViews = "0.3"
@@ -49,6 +54,7 @@ julia = "1.8"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Bumper = "8ce10254-0962-460f-a3d8-1f77fea1446e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesTestUtils = "cdddcdb0-9152-4a09-a978-84456f9df70a"
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
@@ -67,4 +73,5 @@ test = [
     "cuTENSOR",
     "Aqua",
     "Logging",
+    "Bumper",
 ]

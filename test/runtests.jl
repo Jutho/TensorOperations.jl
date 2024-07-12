@@ -2,9 +2,12 @@ using TensorOperations
 using LinearAlgebra
 using Test
 using Random
-using Aqua
-
 Random.seed!(1234567)
+
+using TensorOperations: IndexError
+using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
+using TensorOperations: DefaultAllocator, ManualAllocator
+
 @testset "tensoropt" verbose = true begin
     include("tensoropt.jl")
 end
@@ -26,8 +29,14 @@ end
 
 # note: cuTENSOR should not be loaded before this point
 # as there is a test which requires it to be loaded after
-@testset "cuTENSOR" verbose = true begin
+@testset "cuTENSOR extension" verbose = true begin
     include("cutensor.jl")
+end
+
+# note: Bumper should not be loaded before this point
+# as there is a test which requires it to be loaded after
+@testset "Bumper extension" verbose = true begin
+    include("butensor.jl")
 end
 
 @testset "Polynomials" begin

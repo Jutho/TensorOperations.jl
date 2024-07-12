@@ -1,5 +1,5 @@
 """
-    ncon(tensorlist, indexlist, [conjlist, sym]; order = ..., output = ...)
+    ncon(tensorlist, indexlist, [conjlist, sym]; order = ..., output = ..., backend = ..., allocator = ...)
 
 Contract the tensors in `tensorlist` (of type `Vector` or `Tuple`) according to the network
 as specified by `indexlist`. Here, `indexlist` is a list (i.e. a `Vector` or `Tuple`) with
@@ -24,7 +24,7 @@ See also the macro version [`@ncon`](@ref).
 """
 function ncon(tensors, network,
               conjlist=fill(false, length(tensors));
-              order=nothing, output=nothing)
+              order=nothing, output=nothing, kwargs...)
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
@@ -32,31 +32,42 @@ function ncon(tensors, network,
 
     if length(tensors) == 1
         if length(output′) == length(network[1])
-            return tensorcopy(output′, tensors[1], network[1], conjlist[1])
+            return tensorcopy(output′, tensors[1], network[1], conjlist[1]; kwargs...)
         else
-            return tensortrace(output′, tensors[1], network[1], conjlist[1])
+            return tensortrace(output′, tensors[1], network[1], conjlist[1]; kwargs...)
         end
     end
 
     (tensors, network) = resolve_traces(tensors, network)
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
-    A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
-    B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
+    A, IA, conjA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
+    B, IB, conjB = contracttree(tensors, network, conjlist, tree[2]; kwargs...)
     IC = tuple(output′...)
-
-    return tensorcontract(IC, A, IA, CA, B, IB, CB)
+    C = tensorcontract(IC, A, IA, conjA, B, IB, conjB; kwargs...)
+    allocator = haskey(kwargs, :allocator) ? kwargs[:allocator] : DefaultAllocator()
+    tree[1] isa Int || tensorfree!(A, allocator)
+    tree[2] isa Int || tensorfree!(B, allocator)
+    return C
 end
 
-function contracttree(tensors, network, conjlist, tree)
+function contracttree(tensors, network, conjlist, tree; kwargs...)
     @nospecialize
     if tree isa Int
         return tensors[tree], tuple(network[tree]...), (conjlist[tree])
     end
-    A, IA, CA = contracttree(tensors, network, conjlist, tree[1])
-    B, IB, CB = contracttree(tensors, network, conjlist, tree[2])
+    A, IA, conjA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
+    B, IB, conjB = contracttree(tensors, network, conjlist, tree[2]; kwargs...)
     IC = tuple(symdiff(IA, IB)...)
-    C = tensorcontract(IC, A, IA, CA, B, IB, CB)
+    pA, pB, pAB = contract_indices(IA, IB, IC)
+    TC = promote_contract(scalartype(A), scalartype(B))
+    allocator = haskey(kwargs, :allocator) ? kwargs[:allocator] : DefaultAllocator()
+    backend = haskey(kwargs, :backend) ? kwargs[:backend] : DefaultBackend()
+    C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, Val(true), allocator)
+    C = tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero(), backend,
+                        allocator)
+    tree[1] isa Int || tensorfree!(A, allocator)
+    tree[2] isa Int || tensorfree!(B, allocator)
     return C, IC, false
 end
 

@@ -1,6 +1,5 @@
 # test index notation using @tensor macro
 #-----------------------------------------
-using TensorOperations: BaseCopy, BaseView, StridedNative, StridedBLAS
 backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
 
 @testset "with backend $b" for b in backendlist
@@ -97,16 +96,16 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
         Acopy = copy(A)
         Ccopy = copy(C)
-        @tensor C[3, 1, 4, 2] = A[1, 2, 3, 4]
-        @tensor Ccopy[3, 1, 4, 2] = Acopy[1, 2, 3, 4]
+        @tensor backend = b C[3, 1, 4, 2] = A[1, 2, 3, 4]
+        @tensor backend = b Ccopy[3, 1, 4, 2] = Acopy[1, 2, 3, 4]
         @test C ≈ Ccopy
-        @test_throws TensorOperations.IndexError begin
+        @test_throws IndexError begin
             @tensor C[3, 1, 4, 2] = A[1, 2, 3]
         end
         @test_throws DimensionMismatch begin
             @tensor C[3, 1, 4, 2] = A[3, 1, 4, 2]
         end
-        @test_throws TensorOperations.IndexError begin
+        @test_throws IndexError begin
             @tensor C[1, 1, 2, 3] = A[1, 2, 3, 4]
         end
     end
@@ -121,7 +120,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         Ccopy = copy(C)
         α = randn(Float64)
         β = randn(Float64)
-        @tensor C[3, 1, 4, 2] = β * C[3, 1, 4, 2] + α * A[1, 2, 3, 4]
+        @tensor backend = b C[3, 1, 4, 2] = β * C[3, 1, 4, 2] + α * A[1, 2, 3, 4]
         Ccopy = β * Ccopy + α * Acopy
         @test C ≈ Ccopy
         @test_throws IndexError begin
@@ -143,7 +142,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         Acopy = copy(A)
         Bcopy = copy(B)
         α = randn(Float64)
-        @tensor B[b, c] += α * A[a, b, c, a]
+        @tensor backend = b B[b, c] += α * A[a, b, c, a]
         for i in 1 .+ (0:8)
             Bcopy += α * view(A, i, :, :, i)
         end
@@ -178,7 +177,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
                 Ccopy[d, a, e] -= α * A[a, b, c, d] * conj(B[c, e, b])
             end
         end
-        @tensor C[d, a, e] -= α * A[a, b, c, d] * conj(B[c, e, b])
+        @tensor backend = b C[d, a, e] -= α * A[a, b, c, d] * conj(B[c, e, b])
         @test C ≈ Ccopy
     end
 
@@ -196,7 +195,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
                 Ccopy[d, a, e] += α * A[a, b, c, d] * conj(B[c, e, b])
             end
         end
-        @tensor C[d, a, e] += α * A[a, b, c, d] * conj(B[c, e, b])
+        @tensor backend = b C[d, a, e] += α * A[a, b, c, d] * conj(B[c, e, b])
         @test C ≈ Ccopy
         @test_throws IndexError begin
             @tensor C[d, a, e] += α * A[a, b, c, a] * B[c, e, b]
@@ -238,9 +237,12 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
     end
 
     # Some tensor network examples
-    @testset "tensor network examples ($T)" for T in
-                                                (Float32, Float64, ComplexF32, ComplexF64,
-                                                 BigFloat)
+    if !(b isa StridedBLAS)
+        scalartypelist = (Float32, Float64, ComplexF32, ComplexF64, BigFloat)
+    else
+        scalartypelist = (Float32, Float64, ComplexF32, ComplexF64)
+    end
+    @testset "tensor network examples ($T)" for T in scalartypelist
         D1, D2, D3 = 30, 40, 20
         d1, d2 = 2, 3
         A1 = rand(T, D1, d1, D2) .- 1 // 2
@@ -256,11 +258,13 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
                                             (d1 * d2, D1 * D3)), (d1, d2, D1, D3)),
                             (3, 1, 2, 4))
         E = dot(A12, HrA12)
-        @tensor HrA12′[a, s1, s2, c] := rhoL[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                                        rhoR[c', c] * H[s1, s2, t1, t2]
-        @tensor HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] * rhoR[3, -4] *
-                              A1[1, 4, 2] # should be contracted in exactly same order
-        @tensor order = (a', b, c', t1, t2) begin
+        @tensor backend = b HrA12′[a, s1, s2, c] := rhoL[a, a'] * A1[a', t1, b] *
+                                                    A2[b, t2, c'] *
+                                                    rhoR[c', c] * H[s1, s2, t1, t2]
+        @tensor backend = b HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] *
+                                          rhoR[3, -4] *
+                                          A1[1, 4, 2] # should be contracted in exactly same order
+        @tensor backend = b order = (a', b, c', t1, t2) begin
             HrA12′′′[a, s1, s2, c] := rhoL[a, a'] * H[s1, s2, t1, t2] * A2[b, t2, c'] *
                                       rhoR[c', c] * A1[a', t1, b] # should be contracted in exactly same order
         end
@@ -270,58 +274,135 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         @test HrA12′ == HrA12′′ == HrA12′′′ # should be exactly equal
         @test HrA12 ≈ HrA12′
         @test HrA12 ≈ HrA12′′′′
-        @test HrA12′′ == ncon([rhoL, H, A2, rhoR, A1],
-                              [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]])
+        @test HrA12′′ ≈ ncon([rhoL, H, A2, rhoR, A1],
+                             [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]])
         @test HrA12′′ == @ncon([rhoL, H, A2, rhoR, A1],
                                [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]];
-                               order=[1, 2, 3, 4, 5], output=[-1, -2, -3, -4])
+                               order=[1, 2, 3, 4, 5], output=[-1, -2, -3, -4], backend=b)
         @test E ≈
               @tensor tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                                    H[t, t', s, s'] * conj(A1[a', t, b']) *
                                    conj(A2[b', t', c']))
     end
+end
+@testset "tensoropt" begin
+    A = randn(5, 5, 5, 5)
+    B = randn(5, 5, 5)
+    C = randn(5, 5, 5)
+    @tensoropt (a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ) begin
+        D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+    @tensoropt (a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ) begin
+        D2[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+    @tensoropt ((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5) begin
+        D3[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+    @tensoropt ((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5) begin
+        D4[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+    @test D1 == D2 == D3 == D4
+    _optdata = optex -> TensorOperations.optdata(optex,
+                                                 :(D1[a, b, c, d] := A[a, e, c, f] *
+                                                                     B[g, d, e] *
+                                                                     C[g, f, b]))
+    optex1 = :((a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ))
+    optex2 = :((a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ))
+    optex3 = :(((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5))
+    optex4 = :(((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5))
+    optex5 = :(((a,) => χ, b => χ^2, (c,) => 2χ, d => χ, e => 5, f => χ * 2,
+                () => 12345))
+    @test _optdata(optex1) == _optdata(optex2) == _optdata(optex3) ==
+          _optdata(optex4) == _optdata(optex5)
+    optex6 = :(((a, b, c)=χ,))
+    optex7 = :((a, b, c))
+    @test _optdata(optex6) == _optdata(optex7)
+    optex8 = :(((a, b, c)=1, (d, e, f, g)=χ))
+    optex9 = :(!(a, b, c))
+    @test _optdata(optex8) == _optdata(optex9)
+    optex10 = :((a => χ, b => χ^2, c=2 * χ, d => χ, e => 5, f=2 * χ))
+    optex11 = :((a=χ, b=χ^2, c=2 * χ, d, e=5, f))
+    @test_throws ErrorException _optdata(optex10)
+    @test_throws ErrorException _optdata(optex11)
+end
 
-    @testset "tensoropt" begin
-        A = randn(5, 5, 5, 5)
-        B = randn(5, 5, 5)
-        C = randn(5, 5, 5)
-        @tensoropt (a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ) begin
-            D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-        end
-        @tensoropt (a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ) begin
-            D2[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-        end
-        @tensoropt ((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5) begin
-            D3[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-        end
-        @tensoropt ((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5) begin
-            D4[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
-        end
-        @test D1 == D2 == D3 == D4
-        _optdata = optex -> TensorOperations.optdata(optex,
-                                                     :(D1[a, b, c, d] := A[a, e, c, f] *
-                                                                         B[g, d, e] *
-                                                                         C[g, f, b]))
-        optex1 = :((a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ))
-        optex2 = :((a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ))
-        optex3 = :(((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5))
-        optex4 = :(((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5))
-        optex5 = :(((a,) => χ, b => χ^2, (c,) => 2χ, d => χ, e => 5, f => χ * 2,
-                    () => 12345))
-        @test _optdata(optex1) == _optdata(optex2) == _optdata(optex3) ==
-              _optdata(optex4) == _optdata(optex5)
-        optex6 = :(((a, b, c)=χ,))
-        optex7 = :((a, b, c))
-        @test _optdata(optex6) == _optdata(optex7)
-        optex8 = :(((a, b, c)=1, (d, e, f, g)=χ))
-        optex9 = :(!(a, b, c))
-        @test _optdata(optex8) == _optdata(optex9)
-        optex10 = :((a => χ, b => χ^2, c=2 * χ, d => χ, e => 5, f=2 * χ))
-        optex11 = :((a=χ, b=χ^2, c=2 * χ, d, e=5, f))
-        @test_throws ErrorException _optdata(optex10)
-        @test_throws ErrorException _optdata(optex11)
+# diagonal matrices
+@testset "Diagonal($T)" for T in (Float32, Float64, ComplexF32, ComplexF64)
+    A = randn(T, 10, 10, 10, 10)
+    @tensor C[3, 1, 4, 2] := A[1, 2, 3, 4]
+    U, S, V = svd(reshape(C, (100, 100)))
+    U2 = reshape(view(U, 1:2:100, :), (5, 10, 100))
+    S2 = Diagonal(S)
+    V2 = reshape(view(V, 1:2:100, :), (5, 10, 100))
+    @tensor A2[1, 2, 3, 4] := U2[3, 1, a] * S2[a, a'] * conj(V2[4, 2, a'])
+    @test A2 ≈ view(A, :, :, 1:2:10, 1:2:10)
+
+    S = Diagonal(randn(T, 5))
+    @tensor S2[i, k] := S[i, j] * S[k, j]
+    S3 = similar(S)
+    @tensor S3[i, k] = S[i, j] * S[j, k]
+    @test S2 ≈ S3 ≈ S * S
+    Str = @tensor S[i, j] * S[i, j]
+    @test Str ≈ sum(S.diag .^ 2)
+
+    @tensor SS[i, j, k, l] := S[i, j] * S[k, l]
+    @tensor SS2[i, j, k, l] := Array(S)[i, j] * Array(S)[k, l]
+    @test SS ≈ SS2
+
+    B = randn(T, 10)
+    @tensor C1[3, 1, 4, 2] := A[a, 2, 3, 4] * Diagonal(B)[a, 1]
+    @tensor C2[3, 1, 4, 2] := A[1, a, 3, 4] * conj(Diagonal(B)[a, 2])
+    @tensor C3[3, 1, 4, 2] := conj(A[1, 2, a, 4]) * Diagonal(B)[a, 3]
+    @tensor C4[3, 1, 4, 2] := conj(A[1, 2, 3, a]) * conj(Diagonal(B)[a, 4])
+    @tensor C1′[3, 1, 4, 2] := Diagonal(B)[a, 1] * A[a, 2, 3, 4]
+    @tensor C2′[3, 1, 4, 2] := conj(Diagonal(B)[a, 2]) * A[1, a, 3, 4]
+    @tensor C3′[3, 1, 4, 2] := Diagonal(B)[a, 3] * conj(A[1, 2, a, 4])
+    @tensor C4′[3, 1, 4, 2] := conj(Diagonal(B)[a, 4]) * conj(A[1, 2, 3, a])
+    @test C1 == C1′
+    @test C2 == C2′
+    @test C3 == C3′
+    @test C4 == C4′
+    for i in 1:10
+        @test C1[:, i, :, :] ≈ permutedims(A[i, :, :, :], (2, 3, 1)) * B[i]
+        @test C2[:, :, :, i] ≈ permutedims(A[:, i, :, :], (2, 1, 3)) * conj(B[i])
+        @test C3[i, :, :, :] ≈ conj(permutedims(A[:, :, i, :], (1, 3, 2))) * B[i]
+        @test C4[:, :, i, :] ≈ conj(permutedims(A[:, :, :, i], (3, 1, 2))) * conj(B[i])
     end
 
+    @tensor D1[1, 2] := A[1, 2, a, b] * Diagonal(B)[a, b]
+    @tensor D2[1, 2] := A[1, b, 2, a] * conj(Diagonal(B)[a, b])
+    @tensor D3[1, 2] := conj(A[a, 2, 1, b]) * Diagonal(B)[a, b]
+    @tensor D4[1, 2] := conj(A[a, 1, b, 2]) * conj(Diagonal(B)[a, b])
+    @tensor D1′[1, 2] := Diagonal(B)[a, b] * A[1, 2, a, b]
+    @tensor D2′[1, 2] := conj(Diagonal(B)[a, b]) * A[1, b, 2, a]
+    @tensor D3′[1, 2] := Diagonal(B)[a, b] * conj(A[a, 2, 1, b])
+    @tensor D4′[1, 2] := conj(Diagonal(B)[a, b]) * conj(A[a, 1, b, 2])
+    @test D1 == D1′
+    @test D2 == D2′
+    @test D3 == D3′
+    @test D4 == D4′
+
+    E1 = zero(D1)
+    E2 = zero(D2)
+    E3 = zero(D3)
+    E4 = zero(D4)
+    for i in 1:10
+        E1[:, :] += A[:, :, i, i] * B[i]
+        E2[:, :] += A[:, i, :, i] * conj(B[i])
+        E3[:, :] += A[i, :, :, i]' * B[i]
+        E4[:, :] += conj(A[i, :, i, :]) * conj(B[i])
+    end
+    @test D1 ≈ E1
+    @test D2 ≈ E2
+    @test D3 ≈ E3
+    @test D4 ≈ E4
+
+    F = randn(T, (10, 10))
+    @tensor G[a, c, b, d] := F[a, b] * Diagonal(B)[c, d]
+    @test reshape(G, (100, 100)) ≈ kron(Diagonal(B), F)
+end
+
+@testset "Specific issues" begin
     @testset "Issue 83" begin
         op1 = randn(2, 2)
         op2 = randn(2, 2)
@@ -334,82 +415,6 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         c = f83(op2, op3)
         @test b == bcopy
         @test b != c
-    end
-
-    # diagonal matrices
-    @testset "Diagonal($T)" for T in (Float32, Float64, ComplexF32, ComplexF64)
-        A = randn(T, 10, 10, 10, 10)
-        @tensor C[3, 1, 4, 2] := A[1, 2, 3, 4]
-        U, S, V = svd(reshape(C, (100, 100)))
-        U2 = reshape(view(U, 1:2:100, :), (5, 10, 100))
-        S2 = Diagonal(S)
-        V2 = reshape(view(V, 1:2:100, :), (5, 10, 100))
-        @tensor A2[1, 2, 3, 4] := U2[3, 1, a] * S2[a, a'] * conj(V2[4, 2, a'])
-        @test A2 ≈ view(A, :, :, 1:2:10, 1:2:10)
-
-        S = Diagonal(randn(T, 5))
-        @tensor S2[i, k] := S[i, j] * S[k, j]
-        S3 = similar(S)
-        @tensor S3[i, k] = S[i, j] * S[j, k]
-        @test S2 ≈ S3 ≈ S * S
-        Str = @tensor S[i, j] * S[i, j]
-        @test Str ≈ sum(S.diag .^ 2)
-
-        @tensor SS[i, j, k, l] := S[i, j] * S[k, l]
-        @tensor SS2[i, j, k, l] := Array(S)[i, j] * Array(S)[k, l]
-        @test SS ≈ SS2
-
-        B = randn(T, 10)
-        @tensor C1[3, 1, 4, 2] := A[a, 2, 3, 4] * Diagonal(B)[a, 1]
-        @tensor C2[3, 1, 4, 2] := A[1, a, 3, 4] * conj(Diagonal(B)[a, 2])
-        @tensor C3[3, 1, 4, 2] := conj(A[1, 2, a, 4]) * Diagonal(B)[a, 3]
-        @tensor C4[3, 1, 4, 2] := conj(A[1, 2, 3, a]) * conj(Diagonal(B)[a, 4])
-        @tensor C1′[3, 1, 4, 2] := Diagonal(B)[a, 1] * A[a, 2, 3, 4]
-        @tensor C2′[3, 1, 4, 2] := conj(Diagonal(B)[a, 2]) * A[1, a, 3, 4]
-        @tensor C3′[3, 1, 4, 2] := Diagonal(B)[a, 3] * conj(A[1, 2, a, 4])
-        @tensor C4′[3, 1, 4, 2] := conj(Diagonal(B)[a, 4]) * conj(A[1, 2, 3, a])
-        @test C1 == C1′
-        @test C2 == C2′
-        @test C3 == C3′
-        @test C4 == C4′
-        for i in 1:10
-            @test C1[:, i, :, :] ≈ permutedims(A[i, :, :, :], (2, 3, 1)) * B[i]
-            @test C2[:, :, :, i] ≈ permutedims(A[:, i, :, :], (2, 1, 3)) * conj(B[i])
-            @test C3[i, :, :, :] ≈ conj(permutedims(A[:, :, i, :], (1, 3, 2))) * B[i]
-            @test C4[:, :, i, :] ≈ conj(permutedims(A[:, :, :, i], (3, 1, 2))) * conj(B[i])
-        end
-
-        @tensor D1[1, 2] := A[1, 2, a, b] * Diagonal(B)[a, b]
-        @tensor D2[1, 2] := A[1, b, 2, a] * conj(Diagonal(B)[a, b])
-        @tensor D3[1, 2] := conj(A[a, 2, 1, b]) * Diagonal(B)[a, b]
-        @tensor D4[1, 2] := conj(A[a, 1, b, 2]) * conj(Diagonal(B)[a, b])
-        @tensor D1′[1, 2] := Diagonal(B)[a, b] * A[1, 2, a, b]
-        @tensor D2′[1, 2] := conj(Diagonal(B)[a, b]) * A[1, b, 2, a]
-        @tensor D3′[1, 2] := Diagonal(B)[a, b] * conj(A[a, 2, 1, b])
-        @tensor D4′[1, 2] := conj(Diagonal(B)[a, b]) * conj(A[a, 1, b, 2])
-        @test D1 == D1′
-        @test D2 == D2′
-        @test D3 == D3′
-        @test D4 == D4′
-
-        E1 = zero(D1)
-        E2 = zero(D2)
-        E3 = zero(D3)
-        E4 = zero(D4)
-        for i in 1:10
-            E1[:, :] += A[:, :, i, i] * B[i]
-            E2[:, :] += A[:, i, :, i] * conj(B[i])
-            E3[:, :] += A[i, :, :, i]' * B[i]
-            E4[:, :] += conj(A[i, :, i, :]) * conj(B[i])
-        end
-        @test D1 ≈ E1
-        @test D2 ≈ E2
-        @test D3 ≈ E3
-        @test D4 ≈ E4
-
-        F = randn(T, (10, 10))
-        @tensor G[a, c, b, d] := F[a, b] * Diagonal(B)[c, d]
-        @test reshape(G, (100, 100)) ≈ kron(Diagonal(B), F)
     end
 
     @testset "Issue 133" begin

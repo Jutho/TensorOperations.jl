@@ -7,6 +7,7 @@ using LinearAlgebra
 using LinearAlgebra: mul!, BlasFloat
 using Strided
 using StridedViews: isstrided
+using PtrArrays
 using LRUCache
 
 using Base.Meta: isexpr
@@ -15,7 +16,7 @@ using Base.Meta: isexpr
 #---------
 # export macro API
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
-export @cutensor
+export @cutensor, @butensor
 
 # export function based API
 export ncon

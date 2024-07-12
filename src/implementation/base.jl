@@ -36,7 +36,7 @@ function tensoradd!(C::AbstractArray,
 
     # can we assume that C is mutable?
     # is there more functionality in base that we can use?
-    Atemp = tensoralloc_add(eltype(A), A, pA, conjA, true, allocator)
+    Atemp = tensoralloc_add(eltype(A), A, pA, conjA, Val(true), allocator)
     Ã = permutedims!(Atemp, A, linearize(pA))
     if conjA
         if iszero(β)
@@ -51,6 +51,7 @@ function tensoradd!(C::AbstractArray,
             C .= β .* C .+ α .* Ã
         end
     end
+    tensorfree!(Atemp, allocator)
     return C
 end
 
@@ -100,9 +101,8 @@ function tensortrace!(C::AbstractArray,
     so = TupleTools.getindices(szA, linearize(p))
     st = prod(TupleTools.getindices(szA, q[1]))
     perm = (linearize(p)..., linearize(q)...)
-    Atemp = tensoralloc_add(eltype(A), A, (perm, ()), conjA, true, allocator)
+    Atemp = tensoralloc_add(eltype(A), A, (perm, ()), conjA, Val(true), allocator)
     Ã = reshape(permutedims!(Atemp, A, perm), (prod(so), st, st))
-
     if conjA
         if iszero(β)
             C .= α .* conj.(reshape(view(Ã, :, 1, 1), so))
@@ -122,6 +122,7 @@ function tensortrace!(C::AbstractArray,
             C .+= α .* reshape(view(Ã, :, i, i), so)
         end
     end
+    tensorfree!(Atemp, allocator)
     return C
 end
 
@@ -183,37 +184,37 @@ function tensorcontract!(C::AbstractArray,
     sc1 = prod(sc)
 
     AB = tensoralloc_contract(eltype(C), A, pA, conjA, B, pB, conjB,
-                              trivialpermutation(pAB), true, allocator)
+                              trivialpermutation(pAB), Val(true), allocator)
     ÃB̃ = reshape(AB, (soA1, soB1))
     if conjA && conjB
-        Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, true, allocator)
-        Btemp = tensoralloc_add(eltype(C), B, reverse(pB), conjB, true, allocator)
-        Ã = reshape(permutedims!(Atemp, A, linearize(reverse(pA))), (sc1, soA1))
-        B̃ = reshape(permutedims!(Btemp, B, linearize(reverse(pB))), (soB1, sc1))
-        mul!(ÃB̃, adjoint(Ã), adjoint(B̃))
+        Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, reverse(pB), conjB, Val(true), allocator)
+        Ã = adjoint(reshape(permutedims!(Atemp, A, linearize(reverse(pA))), (sc1, soA1)))
+        B̃ = adjoint(reshape(permutedims!(Btemp, B, linearize(reverse(pB))), (soB1, sc1)))
     elseif conjA
-        Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, true, allocator)
-        Btemp = tensoralloc_add(eltype(C), B, pB, conjB, true, allocator)
-        Ã = reshape(permutedims!(Atemp, A, linearize(reverse(pA))), (sc1, soA1))
+        Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, pB, conjB, Val(true), allocator)
+        Ã = adjoint(reshape(permutedims!(Atemp, A, linearize(reverse(pA))), (sc1, soA1)))
         B̃ = reshape(permutedims!(Btemp, B, linearize(pB)), (sc1, soB1))
-        mul!(ÃB̃, adjoint(Ã), B̃)
     elseif conjB
-        Atemp = tensoralloc_add(eltype(C), A, pA, conjA, true, allocator)
-        Btemp = tensoralloc_add(eltype(C), B, reverse(pB), conjB, true, allocator)
+        Atemp = tensoralloc_add(eltype(C), A, pA, conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, reverse(pB), conjB, Val(true), allocator)
         Ã = reshape(permutedims!(Atemp, A, linearize(pA)), (soA1, sc1))
-        B̃ = reshape(permutedims!(Btemp, B, linearize(reverse(pB))), (soB1, sc1))
-        mul!(ÃB̃, Ã, adjoint(B̃))
+        B̃ = adjoint(reshape(permutedims!(Btemp, B, linearize(reverse(pB))), (soB1, sc1)))
     else
-        Atemp = tensoralloc_add(eltype(C), A, pA, conjA, true, allocator)
-        Btemp = tensoralloc_add(eltype(C), B, pB, conjB, true, allocator)
+        Atemp = tensoralloc_add(eltype(C), A, pA, conjA, Val(true), allocator)
+        Btemp = tensoralloc_add(eltype(C), B, pB, conjB, Val(true), allocator)
         Ã = reshape(permutedims!(Atemp, A, linearize(pA)), (soA1, sc1))
         B̃ = reshape(permutedims!(Btemp, B, linearize(pB)), (sc1, soB1))
-        mul!(ÃB̃, Ã, B̃)
     end
+    mul!(ÃB̃, Ã, B̃)
+    tensorfree!(Btemp, allocator)
+    tensorfree!(Atemp, allocator)
+
     if istrivialpermutation(linearize(pAB))
         pAB = AB
     else
-        pABtemp = tensoralloc_add(eltype(C), AB, pAB, false, true, allocator)
+        pABtemp = tensoralloc_add(eltype(C), AB, pAB, false, Val(true), allocator)
         pAB = permutedims!(pABtemp, AB, linearize(pAB))
     end
     if iszero(β)
@@ -221,5 +222,7 @@ function tensorcontract!(C::AbstractArray,
     else
         C .= β .* C .+ α .* pAB
     end
+    pAB === AB || tensorfree!(pABtemp, allocator)
+    tensorfree!(AB, allocator)
     return C
 end

@@ -113,7 +113,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
     end
     if alloc ∈ (NewTensor, TemporaryTensor)
         TC = gensym("T_" * string(dst))
-        istemporary = (alloc === TemporaryTensor)
+        istemporary = Val(alloc === TemporaryTensor)
         if scaltype === nothing
             TCval = α === One() ? instantiate_scalartype(src) :
                     instantiate_scalartype(Expr(:call, :*, α, src))
@@ -260,7 +260,7 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
         else
             TCval = scaltype
         end
-        istemporary = alloc === TemporaryTensor
+        istemporary = Val(alloc === TemporaryTensor)
         initC = Expr(:block, Expr(:(=), TCsym, TCval),
                      :($dst = tensoralloc_contract($TCsym, $A, $pA, $conjA, $B, $pB,
                                                    $conjB, $pAB, $istemporary)))

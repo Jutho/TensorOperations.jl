@@ -29,8 +29,26 @@ using CUDA.Adapt: adapt
 using Strided
 using TupleTools: TupleTools as TT
 
-StridedViewsCUDAExt = Base.get_extension(Strided.StridedViews, :StridedViewsCUDAExt)
+const StridedViewsCUDAExt = @static if isdefined(Base, :get_extension)
+    Base.get_extension(Strided.StridedViews, :StridedViewsCUDAExt)
+else
+    Strided.StridedViews.StridedViewsCUDAExt
+end
 isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
+
+#-------------------------------------------------------------------------------------------
+# @cutensor macro
+#-------------------------------------------------------------------------------------------
+function TensorOperations._cutensor(src, ex...)
+    # TODO: there is no check for doubled tensor kwargs
+    return Expr(:macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
+                src,
+                Expr(:(=), :backend,
+                     Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))),
+                Expr(:(=), :allocator,
+                     Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
+                ex...)
+end
 
 #-------------------------------------------------------------------------------------------
 # Backend selection and passing
@@ -63,7 +81,7 @@ function TO.tensoradd!(C::AbstractArray,
     C_cuda, isview = _custrided(C, allocator)
     A_cuda, = _custrided(A, allocator)
     tensoradd!(C_cuda, A_cuda, pA, conjA, α, β, backend, allocator)
-    isview || copy!(C, C_cuda)
+    isview || copy!(C, C_cuda.parent)
     return C
 end
 function TO.tensorcontract!(C::AbstractArray,
@@ -77,7 +95,7 @@ function TO.tensorcontract!(C::AbstractArray,
     B_cuda, = _custrided(B, allocator)
     tensorcontract!(C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend,
                     allocator)
-    isview || copy!(C, C_cuda)
+    isview || copy!(C, C_cuda.parent)
     return C
 end
 function TO.tensortrace!(C::AbstractArray,
@@ -87,7 +105,7 @@ function TO.tensortrace!(C::AbstractArray,
     C_cuda, isview = _custrided(C, allocator)
     A_cuda, = _custrided(A, allocator)
     tensortrace!(C_cuda, A_cuda, p, q, conjA, α, β, backend, allocator)
-    isview || copy!(C, C_cuda)
+    isview || copy!(C, C_cuda.parent)
     return C
 end
 
@@ -125,7 +143,7 @@ function CUDAAllocator()
 end
 
 function TO.tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                            istemp::Bool,
+                            istemp::Val,
                             allocator::CUDAAllocator)
     ttype = CuArray{TC,TO.numind(pA)}
     structure = TO.tensoradd_structure(A, pA, conjA)
@@ -136,7 +154,7 @@ function TO.tensoralloc_contract(TC,
                                  A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                                  B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                                  pAB::Index2Tuple,
-                                 istemp::Bool,
+                                 istemp::Val,
                                  allocator::CUDAAllocator)
     ttype = CuArray{TC,TO.numind(pAB)}
     structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
@@ -150,8 +168,9 @@ end
 
 # NOTE: the general implementation in the `DefaultAllocator` case works just fine, without
 # selecting an explicit memory model
-function TO.tensoralloc(::Type{CuArray{T,N}}, structure, istemp::Bool,
-                        allocator::CUDAAllocator{Mout,Min,Mtemp}) where {T,N,Mout,Min,Mtemp}
+function TO.tensoralloc(::Type{CuArray{T,N}}, structure, ::Val{istemp},
+                        allocator::CUDAAllocator{Mout,Min,Mtemp}) where {T,N,istemp,Mout,
+                                                                         Min,Mtemp}
     M = istemp ? Mtemp : Mout
     return CuArray{T,N,M}(undef, structure)
 end

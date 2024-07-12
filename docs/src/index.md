@@ -5,7 +5,7 @@
 ## Table of contents
 
 ```@contents
-Pages = ["index.md", "man/indexnotation.md", "man/functions.md", "man/autodiff.md", "man/interface.md", "man/implementation.md"]
+Pages = ["index.md", "man/indexnotation.md", "man/functions.md", "man/interface.md", "man/backends.md", "man/autodiff.md", "man/implementation.md"]
 Depth = 4
 ```
 
@@ -82,7 +82,5 @@ complicated tensor expression is deconstructed.
 
 ## To do list
 
-  - Add more backends, e.g. using pure Julia Base functionality, or using
-    [LoopVectorization.jl](https://github.com/JuliaSIMD/LoopVectorization.jl)
   - Make it easier to modify the contraction order algorithm or its cost function (e.g. to
     optimize based on memory footprint) or to splice in runtime information.
