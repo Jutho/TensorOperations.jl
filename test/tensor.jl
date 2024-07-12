@@ -283,6 +283,10 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
               @tensor tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
                                    H[t, t', s, s'] * conj(A1[a', t, b']) *
                                    conj(A2[b', t', c']))
+        @test E ≈ @ncon([rhoL, A1, A2, rhoR, H, conj(A1), conj(A2)],
+                        [[5, 1], [1, 2, 3], [3, 4, 9], [9, 10], [6, 8, 2, 4], [5, 6, 7],
+                         [7, 8, 10]])
+        # this implicitly tests that `ncon` returns a scalar if no open indices
     end
 end
 @testset "tensoropt" begin

@@ -48,7 +48,7 @@ function ncon(tensors, network,
     allocator = haskey(kwargs, :allocator) ? kwargs[:allocator] : DefaultAllocator()
     tree[1] isa Int || tensorfree!(A, allocator)
     tree[2] isa Int || tensorfree!(B, allocator)
-    return C
+    return length(IC) == 0 ? tensorscalar(C) : C
 end
 
 function contracttree(tensors, network, conjlist, tree; kwargs...)
