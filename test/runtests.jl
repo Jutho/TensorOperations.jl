@@ -29,8 +29,14 @@ end
 
 # note: cuTENSOR should not be loaded before this point
 # as there is a test which requires it to be loaded after
-@testset "cuTENSOR" verbose = true begin
+@testset "cuTENSOR extension" verbose = true begin
     include("cutensor.jl")
+end
+
+# note: Bumper should not be loaded before this point
+# as there is a test which requires it to be loaded after
+@testset "Bumper extension" verbose = true begin
+    include("butensor.jl")
 end
 
 @testset "Polynomials" begin
