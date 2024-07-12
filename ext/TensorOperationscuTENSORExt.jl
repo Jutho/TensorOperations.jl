@@ -143,7 +143,7 @@ function CUDAAllocator()
 end
 
 function TO.tensoralloc_add(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                            istemp::Bool,
+                            istemp::Val,
                             allocator::CUDAAllocator)
     ttype = CuArray{TC,TO.numind(pA)}
     structure = TO.tensoradd_structure(A, pA, conjA)
@@ -154,7 +154,7 @@ function TO.tensoralloc_contract(TC,
                                  A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                                  B::AbstractArray, pB::Index2Tuple, conjB::Bool,
                                  pAB::Index2Tuple,
-                                 istemp::Bool,
+                                 istemp::Val,
                                  allocator::CUDAAllocator)
     ttype = CuArray{TC,TO.numind(pAB)}
     structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
@@ -168,8 +168,9 @@ end
 
 # NOTE: the general implementation in the `DefaultAllocator` case works just fine, without
 # selecting an explicit memory model
-function TO.tensoralloc(::Type{CuArray{T,N}}, structure, istemp::Bool,
-                        allocator::CUDAAllocator{Mout,Min,Mtemp}) where {T,N,Mout,Min,Mtemp}
+function TO.tensoralloc(::Type{CuArray{T,N}}, structure, ::Val{istemp},
+                        allocator::CUDAAllocator{Mout,Min,Mtemp}) where {T,N,istemp,Mout,
+                                                                         Min,Mtemp}
     M = istemp ? Mtemp : Mout
     return CuArray{T,N,M}(undef, structure)
 end

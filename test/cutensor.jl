@@ -136,13 +136,31 @@ if cuTENSOR.has_cutensor()
             @test HRAA2 isa CuArray{T}
             @test collect(HRAA2) ≈ HRAA1
 
-            @tensor backend = cuTENSORBackend() allocator = CUDAAllocator() begin
-                HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                                       ρᵣ[c', c] *
-                                       H[s1, s2, t1, t2]
+            cumemtypes = (CUDA.DeviceMemory, CUDA.UnifiedMemory, CUDA.HostMemory)
+            for Mout in cumemtypes
+                Min = CUDA.DeviceMemory
+                Mtemp = CUDA.DeviceMemory
+                allocator = CUDAAllocator{Mout,Min,Mtemp}()
+                @tensor backend = cuTENSORBackend() allocator = allocator begin
+                    HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
+                                           ρᵣ[c', c] *
+                                           H[s1, s2, t1, t2]
+                end
+                @test HRAA3 isa CuArray{T,4,Mout}
+                @test collect(HRAA3) ≈ HRAA1
             end
-            @test HRAA3 isa CuArray{T}
-            @test collect(HRAA3) ≈ HRAA1
+            for Min in cumemtypes
+                Mout = CUDA.UnifiedMemory
+                Mtemp = CUDA.UnifiedMemory
+                allocator = CUDAAllocator{Mout,Min,Mtemp}()
+                @tensor backend = cuTENSORBackend() allocator = allocator begin
+                    HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
+                                           ρᵣ[c', c] *
+                                           H[s1, s2, t1, t2]
+                end
+                @test HRAA3 isa CuArray{T,4,Mout}
+                @test collect(HRAA3) ≈ HRAA1
+            end
 
             @tensor begin
                 E1 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
@@ -151,7 +169,11 @@ if cuTENSOR.has_cutensor()
                      CuArray(ρᵣ)[c, c'] * CuArray(H)[t, t', s, s'] *
                      conj(CuArray(A1)[a', t, b']) * conj(CuArray(A2)[b', t', c'])
             end
-            @test E2 ≈ E1
+            @tensor backend = cuTENSORBackend() allocator = CUDAAllocator() begin
+                E3 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
+                     conj(A1[a', t, b']) * conj(A2[b', t', c'])
+            end
+            @test E1 ≈ E2 ≈ E3
         end
     end
 
@@ -161,10 +183,10 @@ if cuTENSOR.has_cutensor()
             @tensor C1[4, 1, 3, 2] := A[1, 2, 3, 4]
             @cutensor C2[4, 1, 3, 2] := A[1, 2, 3, 4]
             @test C1 ≈ collect(C2)
-            @test_throws TensorOperations.IndexError begin
+            @test_throws IndexError begin
                 @cutensor C[1, 2, 3, 4] := A[1, 2, 3]
             end
-            @test_throws TensorOperations.IndexError begin
+            @test_throws IndexError begin
                 @cutensor C[1, 2, 3, 4] := A[1, 2, 2, 4]
             end
 
