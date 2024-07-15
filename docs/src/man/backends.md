@@ -152,7 +152,7 @@ For convenience, the construction above is also provided in a specialized macro 
 @butensor
 ```
 
-When using the `CuTENSORBackend()` and no allocator is specified, it will automatically select the
+When using the `cuTENSORBackend()` and no allocator is specified, it will automatically select the
 allocator `CUDAAllocator()`, which will create new temporaries as `CuArray` objects. However,
 `CUDAAllocator` has three type parameters which can be used to customize the behavior of the allocator
 with respect to temporaries, as well as input and output tensors.
@@ -165,4 +165,4 @@ TensorOperations.CUDAAllocator
 
 Users can also define their own allocators, to facilitate experimentation with new implementations.
 Here, no restriction is made on the type of the allocator, and any object can be passed as an allocator.
-The required implementated methods are [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
+The required implemented methods are [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
