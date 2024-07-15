@@ -97,12 +97,12 @@ function tensortrace!(C,
         # error for missing backend
         TC = typeof(C)
         TA = typeof(A)
-        throw(ArgumentError("No suitable backend found for tensoradd! and tensor types $TC and $TA"))
+        throw(ArgumentError("No suitable backend found for tensortrace! and tensor types $TC and $TA"))
     else
         # error for unknown backend
         TC = typeof(C)
         TA = typeof(A)
-        throw(ArgumentError("Unknown backend $backend for tensoradd! and tensor types $TC and $TA"))
+        throw(ArgumentError("Unknown backend $backend for tensortrace! and tensor types $TC and $TA"))
     end
 end
 
