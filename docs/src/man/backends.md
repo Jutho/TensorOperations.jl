@@ -2,7 +2,9 @@
 
 The `TensorOperations` package is designed to provide powerful tools for performing tensor computations efficiently.
 In advanced use cases, it can be desirable to squeeze the last drops of performance out of the library, by experimenting with either different micro-optimized implementations of the same operation, or by altering the memory management system.
-Here, we detail how to access these functionalities.
+Here, we detail how to access these functionalities. Note that all of the backend and allocator
+types documented below are not exported, so as not to pollute the name space and since they
+will typically only be manually configured in expert use cases.
 
 ## Backends
 
@@ -18,7 +20,7 @@ This can be achieved in a variety of ways:
 
 ```julia
 using TensorOperations
-mybackend = StridedNative()
+mybackend = TensorOperations.StridedNative()
 
 # inserting a backend into the @tensor macro
 @tensor backend = mybackend A[i,j] := B[i,k] * C[k,j]
@@ -36,12 +38,12 @@ tensoradd(A, pA, conjA, B, pB, conjB, α, β, mybackend)
 In particular, the following backends are available:
 
 ```@docs
-DefaultBackend
-BaseCopy
-BaseView
-StridedNative
-StridedBLAS
-cuTENSORBackend
+TensorOperations.DefaultBackend
+TensorOperations.BaseCopy
+TensorOperations.BaseView
+TensorOperations.StridedNative
+TensorOperations.StridedBLAS
+TensorOperations.cuTENSORBackend
 ```
 
 Here, arrays that are strided are typically handled most efficiently by the `Strided.jl`-based backends.
@@ -78,7 +80,7 @@ The allocator system can only be accessed *locally*, by passing an allocator to 
 
 ```julia
 using TensorOperations
-myallocator = ManualAllocator()
+myallocator = TensorOperations.ManualAllocator()
 
 # inserting a backend into the @tensor macro
 @tensor allocator = myallocator A[i,j] := B[i,k] * C[k,j]
@@ -98,8 +100,8 @@ In particular, this means that the backend will be selected **first**, while onl
 `TensorOperations` also provides some options for allocators out-of-the box.
 
 ```@docs
-DefaultAllocator
-ManualAllocator
+TensorOperations.DefaultAllocator
+TensorOperations.ManualAllocator
 ```
 
 By default, the `DefaultAllocator` is used, which uses Julia's built-in memory management system.
@@ -113,7 +115,7 @@ Here, the `allocator` object is just the provided buffers, which are then used t
 ```julia
 using TensorOperations, Bumper
 buf = Bumper.default_buffer()
-@no_escape buf
+@no_escape buf begin
     @tensor allocator = buf A[i,j] := B[i,k] * C[k,j]
 end
 ```
@@ -121,6 +123,15 @@ For convenience, the construction above is also provided in a specialized macro 
 
 ```@docs
 @butensor
+```
+
+When using the `CuTENSORBackend()` and no allocator is specified, it will automatically select the
+allocator `CUDAAllocator()`, which will create new temporaries as `CuArray` objects. However,
+`CUDAAllocator` has three type parameters which can be used to customize the behavior of the allocator
+with respect to temporaries, as well as input and output tensors.
+
+```@docs
+TensorOperations.CUDAAllocator
 ```
 
 ### Custom Allocators

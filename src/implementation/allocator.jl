@@ -14,7 +14,7 @@ struct DefaultAllocator end
     CUDAAllocator{Mout,Min,Mtemp}()
 
 Allocator that uses the CUDA memory manager and will thus allocate `CuArray` instances. The
-parameters `Min`, `Mout`, `Mtemp`` can be any of the CUDA.jl memory types, i.e. 
+parameters `Min`, `Mout`, `Mtemp` can be any of the CUDA.jl memory types, i.e. 
 `CUDA.DeviceMemory`, `CUDA.UnifiedMemory` or `CUDA.HostMemory`.
 * `Mout` is used to determine how to deal with output tensors; with `Mout=CUDA.HostMemory`
   or `Mout=CUDA.UnifiedMemory` the CUDA runtime will ensure that the data is also available
