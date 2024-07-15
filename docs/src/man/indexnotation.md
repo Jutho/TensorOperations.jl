@@ -368,16 +368,28 @@ two sides of the equation, or contracted indices, need to be compatible. For `Ab
 objects, this means they must have the same size. Other tensor types might have more complicated 
 structure associated with their indices, and requires matching between those. The function
 [`checkcontractible`](@ref) is part of the interface that can be used to control when
-tensors can be contracted with each other along specific indices, but also the helper methods
-[`TensorOperations.]
+tensors can be contracted with each other along specific indices.
 
-If indices do not match, the resulting error will originate deep within the implementation, 
-at which point the error message will provide little information as to which specific tensors 
-and which indices are producing the mismatch. When debugging, it might be useful to add the 
-keyword argument `contractcheck = true` to the `@tensor` macro. Explicit checks using 
-`checkcontractible` are then enabled that are run before any tensor operation is performed. 
-When a mismatch is detected, these checks still have access to the label information and 
-spawn a more informative error message.
+For example, for `AbstractArray` objects, the following helper methods are defined that 
+capture the recurring checks across different implementations of the tensor operations:
+
+```@docs
+TensorOperations.argcheck_index2tuple
+TensorOperations.argcheck_tensoradd
+TensorOperations.argcheck_tensortrace
+TensorOperations.argcheck_tensorcontract
+TensorOperations.dimcheck_tensoradd
+TensorOperations.dimcheck_tensortrace
+TensorOperations.dimcheck_tensorcontract
+```
+
+Whenever an incompatible index structures is detected at runtime, the resulting error will
+originate deep within the implementation,  at which point the error message will provide 
+little information as to which specific tensors  and which indices are producing the mismatch. 
+When debugging, it might be useful to add the  keyword argument `contractcheck = true` to 
+the `@tensor` macro. Explicit checks using  `checkcontractible` are then enabled that are run 
+before any tensor operation is performed.  When a mismatch is detected, these checks still 
+have access to the label information and spawn a more informative error message.
 
 A different type of check is the `costcheck` keyword argument, which can be given the values
 `:warn` or `:cache`. With either of both values for this keyword argument, additional checks
