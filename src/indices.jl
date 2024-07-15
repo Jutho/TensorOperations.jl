@@ -7,11 +7,6 @@ struct IndexError{S<:AbstractString} <: Exception
     msg::S
 end
 
-"""
-    IndexTuple{N}
-
-A specification of `N` selected tensor indices, denoted by their position.
-"""
 const IndexTuple{N} = NTuple{N,Int}
 
 """

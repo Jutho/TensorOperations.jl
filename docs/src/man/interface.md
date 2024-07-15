@@ -65,6 +65,7 @@ all the information that is contained within the type, while the latter adds the
 runtime information (e.g. array sizes, ...).
 
 ```@docs
+TensorOperations.tensorstructure
 TensorOperations.tensoradd_type
 TensorOperations.tensoradd_structure
 TensorOperations.tensorcontract_type
@@ -101,4 +102,17 @@ following utility functions:
 ```@docs
 tensorcost
 checkcontractible
+```
+
+Furthermore, for the provided implementations for `AbstractArray` objects, the following
+methods have been defined to facilitate a number of recurring checks in various methods:
+
+```@docs
+TensorOperations.argcheck_index2tuple
+TensorOperations.argcheck_tensoradd
+TensorOperations.argcheck_tensortrace
+TensorOperations.argcheck_tensorcontract
+TensorOperations.dimcheck_tensoradd
+TensorOperations.dimcheck_tensortrace
+TensorOperations.dimcheck_tensorcontract
 ```

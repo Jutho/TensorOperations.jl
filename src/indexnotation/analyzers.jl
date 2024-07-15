@@ -29,12 +29,12 @@ gettensorobject(ex) = decomposetensor(ex)[1]
 getleftindices(ex) = decomposetensor(ex)[2]
 getrightindices(ex) = decomposetensor(ex)[3]
 
-"""
-    decomposegeneraltensor(ex) -> object, leftind, rightind, α, conj
+# """
+#     decomposegeneraltensor(ex) -> object, leftind, rightind, α, conj
 
-Decompose a generalized tensor expression `ex` by extracting information about the tensor
-object, the left and right indices, the scalar factor, and the conjugation flag.
-"""
+# Decompose a generalized tensor expression `ex` by extracting information about the tensor
+# object, the left and right indices, the scalar factor, and the conjugation flag.
+# """
 function decomposegeneraltensor(ex)
     if istensor(ex)
         object, leftind, rightind = decomposetensor(ex)

@@ -14,7 +14,7 @@ will typically only be manually configured in expert use cases.
 While special care is taken to ensure good defaults, we also provide the flexibility to select a backend manually.
 This can be achieved in a variety of ways:
 
-1. **Global setting**: The default backend can be set globally on a per-type basis, as well as a per-function basis. This is achieved by hooking into the implementation of the default backend selection procedure. In particular, this procedure ends up calling [`select_backend`](@ref)`, which can be overloaded to return a different backend.
+1. **Global setting**: The default backend can be set globally on a per-type basis, as well as a per-function basis. This is achieved by hooking into the implementation of the default backend selection procedure. In particular, this procedure ends up calling [`TensorOperations.select_backend`](@ref)`, which can be overloaded to return a different backend.
 
 2. **Local setting**: Alternatively, the backend can be set locally for a specific call to either [`@tensor`](@ref), [`ncon`](@ref) or the function-based interface. Both `@tensor` and `ncon` accept a keyword argument `backend`, which will locally override the default backend selection mechanism. The result is that the specified backend will be inserted as a final argument to all calls of the primitive tensor operations. This is also how this can be achieved in the function-based interface.
 
@@ -34,11 +34,32 @@ tensoradd(A, pA, conjA, B, pB, conjB, α, β, mybackend)
 
 ### Available Backends
 
-`TensorOperations` provides some options for backends out-of-the box.
-In particular, the following backends are available:
+All backends that are accepted in the three primitive tensor operations `tensoradd!`, 
+`tensortrace!` and `tensorcontract!` are subtypes of the abstract type `AbstractBackend`.
+
+```@docs
+TensorOperations.AbstractBackend
+```
+
+TensorOperations.jl provides some options for backends out-of-the box. Firstly, there is the
+`DefaultBackend`, which is selected if no backend is specified:
 
 ```@docs
 TensorOperations.DefaultBackend
+```
+
+The different tensor operations have a general catch-all method in combination with `DefaultBackend`, 
+which will then call `select_backend` to determine teh actual backend to be used, which can 
+depend on the specific tensor types involved and the operation (`tensoradd!`, `tensortrace!` 
+and `tensorcontract!`) to be performed.
+
+```@docs
+TensorOperations.select_backend
+```
+
+Within TensorOperations.jl, the following specific backends are available:
+
+```@docs
 TensorOperations.BaseCopy
 TensorOperations.BaseView
 TensorOperations.StridedNative
@@ -55,6 +76,12 @@ Nevertheless, they can be useful for debugging purposes or for working with cust
 
 Finally, we also provide a `cuTENSORBackend` for use with the `cuTENSOR.jl` library, which is a NVidia GPU-accelerated tensor contraction library.
 This backend is only available through a package extension for `cuTENSOR`.
+
+Finally, there is also the following self-explanatory backend:
+
+```@docs
+TensorOperations.NoBackend
+```
 
 ### Custom Backends
 
@@ -138,5 +165,4 @@ TensorOperations.CUDAAllocator
 
 Users can also define their own allocators, to facilitate experimentation with new implementations.
 Here, no restriction is made on the type of the allocator, and any object can be passed as an allocator.
-The required implementated methods are [`tensoralloc`](@ref) and [`tensorfree`](@ref).
-
+The required implementated methods are [`tensoralloc`](@ref) and [`tensorfree!`](@ref).

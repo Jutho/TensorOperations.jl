@@ -356,20 +356,28 @@ ncon
 
 ## Index compatibility and checks
 
-Indices with the same label, either open indices on the two sides of the equation, or
-contracted indices, need to be compatible. For `AbstractArray` objects, this means they must
-have the same size. Other tensor types might have more complicated structure associated with
-their indices, and requires matching between those. The function
-[`checkcontractible`](@ref) is part of the interface that can be used to control when
-tensors can be contracted with each other along specific indices.
+Errors in the index pattern are caught at compile time, and will spawn an error of type
+```@docs
+TensorOperations.IndexError
+```
 
-If indices do not match, the contraction will spawn an error. However, this can be an error
-deep within the implementation, at which point the error message will provide little
-information as to which specific tensors and which indices are producing the mismatch. When
-debugging, it might be useful to add the keyword argument `contractcheck = true` to the
-`@tensor` macro. Explicit checks using `checkcontractible` are then enabled that are run
-before any tensor operation is performed. When a mismatch is detected, these checks still
-have access to the label information and spawn a more informative error message.
+Once the expression is compiled, there can still be errors that will lead to runtime errors,
+the type of which depends ont he specific type of tensor (e.g. `DimensionMismatch` for
+`AbstractArray` objects). Indeed, indices with the same label, either open indices on the 
+two sides of the equation, or contracted indices, need to be compatible. For `AbstractArray` 
+objects, this means they must have the same size. Other tensor types might have more complicated 
+structure associated with their indices, and requires matching between those. The function
+[`checkcontractible`](@ref) is part of the interface that can be used to control when
+tensors can be contracted with each other along specific indices, but also the helper methods
+[`TensorOperations.]
+
+If indices do not match, the resulting error will originate deep within the implementation, 
+at which point the error message will provide little information as to which specific tensors 
+and which indices are producing the mismatch. When debugging, it might be useful to add the 
+keyword argument `contractcheck = true` to the `@tensor` macro. Explicit checks using 
+`checkcontractible` are then enabled that are run before any tensor operation is performed. 
+When a mismatch is detected, these checks still have access to the label information and 
+spawn a more informative error message.
 
 A different type of check is the `costcheck` keyword argument, which can be given the values
 `:warn` or `:cache`. With either of both values for this keyword argument, additional checks
@@ -390,7 +398,7 @@ order deviates from the optimal order in that largest case).
 
 Every index expression will be evaluated as a sequence of elementary tensor operations, i.e.
 permuted additions, partial traces and contractions, which are implemented for strided
-arrays as discussed in [Package features](@ref). In particular, these implementations rely
+arrays as discussed in [Package features](@ref). In particular, optimised implementations rely
 on [Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a
 full specification of which arrays are supported. As a rule of thumb, this primarily
 includes `Array`s from Julia base, as well as `view`s thereof if sliced with a combination
@@ -411,6 +419,10 @@ will typically be slower), and the use of BLAS can be controlled by explicitly s
 backend between `StridedBLAS` and `StridedNative` using the `backend` keyword to
 [`@tensor`](@ref). Similarly, different allocation strategies, when available, can be
 selected using the `allocator` keyword of [`@tensor`](@ref).
+
+Since TensorOperations v5, there are also fallback implementations for non-strided arrays
+that only use functionality from `Base`, as well as `LinearAlgebra.mul!`. The manual section
+[Backends and Allocators](@ref) provides a more elaborate discussion.
 
 The primitive tensor operations are also implemented for `CuArray` objects of the
 [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This implementation is essentially a

@@ -55,8 +55,7 @@ The TensorOperations.jl package is centered around the following features:
     [Strided.jl](https://github.com/Jutho/Strided.jl) for efficient (cache-friendly and
     multithreaded) tensor permutations (transpositions) and `gemm` from BLAS for
     contractions. There is also a fallback contraction strategy that is natively built using
-    Strided.jl, e.g. for scalar types which are not supported by BLAS. Additional backends
-    (e.g. pure Julia Base using loops and/or broadcasting) may be added in the future.
+    Strided.jl, e.g. for scalar types which are not supported by BLAS.
   - Support for `CuArray` objects if used together with
     [CUDA.jl and cuTENSOR.jl](https://github.com/JuliaGPU/CUDA.jl), by relying on (and thus
     providing a high level interface into) NVidia's

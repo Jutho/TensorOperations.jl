@@ -9,7 +9,13 @@ The basic exposed interface, as listed below, makes use of any iterable `IA`, `I
 to denote labels of indices, in a similar fashion as when used in the context of
 [`@tensor`](@ref). When making use of this functionality, in-place operations are no longer
 supported, as these are reserved for the *expert mode*. Note that the return type is only
-inferred when the labels are entered as tuples, and also `IC` is specified.
+inferred when the labels are entered as tuples, and also `IC` is specified. The type of labels
+that are allowed are encoded in the following type aliases
+
+```@docs
+TensorOperations.LabelType
+TensorOperations.Labels
+```
 
 The expert mode exposes both mutating and non-mutating versions of these functions. In this
 case, selected indices are determined through permutations, specified by `pA`, `pB` and

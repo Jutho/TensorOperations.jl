@@ -1,5 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 
 [compat]
-Documenter = "0.25 - 0.27"
+Documenter = "1"

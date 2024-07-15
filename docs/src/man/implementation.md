@@ -55,7 +55,6 @@ objects.
 ```@docs
 TensorOperations.normalizeindices
 TensorOperations.expandconj
-TensorOperations.groupscalarfactors
 TensorOperations.nconindexcompletion
 TensorOperations.extracttensorobjects
 TensorOperations.insertcontractionchecks
@@ -80,7 +79,9 @@ objects.
 TensorOperations._flatten
 TensorOperations.removelinenumbernode
 TensorOperations.addtensoroperations
+TensorOperations.insertargument
 TensorOperations.insertbackend
+TensorOperations.insertallocator
 ```
 
 ## Analysis of contraction graphs and optimizing contraction order

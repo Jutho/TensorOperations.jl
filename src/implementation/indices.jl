@@ -29,12 +29,12 @@ _findfirst(args...) = (i = findfirst(args...); i === nothing ? 0 : i)
 _findnext(args...) = (i = findnext(args...); i === nothing ? 0 : i)
 _findlast(args...) = (i = findlast(args...); i === nothing ? 0 : i)
 
-"""
-    unique2(itr)
+# """
+#     unique2(itr)
 
-Returns an array containing only those elements that appear exactly once in itr,
-and without any elements that appear more than once.
-"""
+# Returns an array containing only those elements that appear exactly once in itr,
+# and without any elements that appear more than once.
+# """
 function unique2(itr)
     out = reshape(collect(itr), length(itr))
     i = 1

@@ -44,7 +44,7 @@ function removelinenumbernode(ex)
     end
 end
 
-"list of functions that are used in expressions produced by `@tensor`"
+# list of functions that are used in expressions produced by `@tensor`
 const tensoroperationsfunctions = (:tensoralloc, :tensorfree!,
                                    :tensoradd!, :tensortrace!, :tensorcontract!,
                                    :tensorscalar, :tensorcost, :IndexError, :scalartype,
@@ -85,9 +85,21 @@ function insertargument(ex, arg, methods)
     end
 end
 
+"""
+    insertbackend(ex, backend)
+
+Insert the backend argument into the tensor operation methods `tensoradd!`, `tensortrace!`, and `tensorcontract!`.
+"""
 function insertbackend(ex, backend)
     return insertargument(ex, backend, (:tensoradd!, :tensortrace!, :tensorcontract!))
 end
+
+"""
+    insertallocator(ex, allocator)
+
+Insert the allocator argument into the tensor operation and allocation methods `tensoradd!`, 
+`tensortrace!`, `tensorcontract!`, `tensoralloc`, `tensoralloc_add`, and `tensoralloc_contract`.
+"""
 function insertallocator(ex, allocator)
     return insertargument(ex, allocator,
                           (:tensoradd!, :tensortrace!, :tensorcontract!, :tensoralloc,
