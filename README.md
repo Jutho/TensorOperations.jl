@@ -21,8 +21,8 @@ Fast tensor operations using a convenient Einstein index notation.
 [doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.3245496.svg
 [doi-url]: https://doi.org/10.5281/zenodo.3245496
 
-[downloads-img]: https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/TensorOperations
-[downloads-url]: https://pkgs.genieframework.com?packages=TensorOperations
+[downloads-img]: https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FTensorOperations&query=total_requests&label=Downloads
+[downloads-url]: http://juliapkgstats.com/pkg/TensorOperations
 
 [ci-img]: https://github.com/Jutho/TensorOperations.jl/workflows/CI/badge.svg
 [ci-url]:
@@ -38,6 +38,16 @@ Fast tensor operations using a convenient Einstein index notation.
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
 
+## What's new in v5
+
+- Support for cuTENSOR v2 and with that more recent versions of [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl).
+
+- Improved support for automatic differentiation using reverse-mode rules with [ChainRulesCore.jl](https://github.com/JuliaDiff/ChainRulesCore.jl).
+
+- Improved and extended support for backends and allocation strategies, with in particular support for allocating temporary objects using [Bumper.jl](https://github.com/MasonProtter/Bumper.jl).
+
+- Breaking changes to part of the interface to make it more sustainable for future improvements and extensions.
+  
 ## What's new in v4
 
 - The `@tensor` macro now accepts keyword arguments to facilitate a variety of options that help with debugging, contraction cost and backend selection.
