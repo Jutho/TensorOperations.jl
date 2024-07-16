@@ -86,6 +86,7 @@ function argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple
         throw(IndexError("invalid selection of length $(ndims(C)): $p"))
     2 * numin(q) == 2 * numout(q) == ndims(A) - ndims(C) ||
         throw(IndexError("invalid number of trace dimensions"))
+    argcheck_index2tuple(A, ((p[1]..., q[1]...), (p[2]..., q[2]...)))
     return nothing
 end
 
