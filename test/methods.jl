@@ -173,8 +173,8 @@ end
                                                     α, β, b)
         @test_throws IndexError tensortrace!(B, A, ((1, 4), ()), ((1, 1), (4,)), false, α,
                                              β, b)
-        @test_throws DimensionMismatch tensortrace!(B, A, ((1, 4), ()), ((1,), (3,)), false,
-                                                    α, β, b)
+        @test_throws IndexError tensortrace!(B, A, ((1, 4), ()), ((1,), (3,)), false,
+                                             α, β, b)
     end
 
     @testset "tensorcontract! with allocator = $allocator" for allocator in
