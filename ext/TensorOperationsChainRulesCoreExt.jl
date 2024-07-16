@@ -27,8 +27,8 @@ function ChainRulesCore.rrule(::typeof(TensorOperations.tensorfree!),
     return nothing, tensorfree!_pullback
 end
 function ChainRulesCore.rrule(::typeof(TensorOperations.tensoralloc), ttype, structure,
-                              istemp=false, allocator=DefaultAllocator())
-    output = TensorOperations.tensoralloc(ttype, structure, false, allocator)
+                              istemp, allocator=DefaultAllocator())
+    output = TensorOperations.tensoralloc(ttype, structure, Val(false), allocator)
     function tensoralloc_pullback(Δargs...)
         return (NoTangent(), NoTangent(), NoTangent(), NoTangent(), NoTangent())
     end
