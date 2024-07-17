@@ -53,6 +53,8 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C4 = ncon(Any[A], Any[[-2, 1, 2, -3, 1, -1, 2]]; backend=b)
         @test C1 ≈ C2
         @test C2 == C3 == C4
+        @test_throws IndexError tensortrace(randn(2, 2, 2, 2, 2, 2, 2), ((1,), (3, 2)),
+                                            ((1, 5), (2, 6)), false)
     end
 
     @testset "tensorcontract" begin
@@ -171,8 +173,8 @@ end
                                                     α, β, b)
         @test_throws IndexError tensortrace!(B, A, ((1, 4), ()), ((1, 1), (4,)), false, α,
                                              β, b)
-        @test_throws DimensionMismatch tensortrace!(B, A, ((1, 4), ()), ((1,), (3,)), false,
-                                                    α, β, b)
+        @test_throws IndexError tensortrace!(B, A, ((1, 4), ()), ((1,), (3,)), false,
+                                             α, β, b)
     end
 
     @testset "tensorcontract! with allocator = $allocator" for allocator in
