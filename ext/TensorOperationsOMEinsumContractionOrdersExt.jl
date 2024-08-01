@@ -72,6 +72,7 @@ function eincode2contractiontree(eincode::NestedEinsum)
     end
 end
 
+# TreeSA returns a SlicedEinsum, with nslice = 0, so directly using the eins
 function eincode2contractiontree(eincode::SlicedEinsum)
     return eincode2contractiontree(eincode.eins)
 end
