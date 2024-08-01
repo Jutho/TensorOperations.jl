@@ -1,10 +1,6 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
-authors = [
-    "Lukas Devos <lukas.devos@ugent.be>",
-    "Maarten Van Damme <maartenvd1994@gmail.com>",
-    "Jutho Haegeman <jutho.haegeman@ugent.be>",
-]
+authors = ["Lukas Devos <lukas.devos@ugent.be>", "Maarten Van Damme <maartenvd1994@gmail.com>", "Jutho Haegeman <jutho.haegeman@ugent.be>"]
 version = "5.0.0"
 
 [deps]
@@ -25,10 +21,12 @@ Bumper = "8ce10254-0962-460f-a3d8-1f77fea1446e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
+OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 
 [extensions]
 TensorOperationsBumperExt = "Bumper"
 TensorOperationsChainRulesCoreExt = "ChainRulesCore"
+TensorOperationsOMEinsumContractionOrdersExt = "OMEinsumContractionOrders"
 TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
@@ -41,6 +39,7 @@ DynamicPolynomials = "0.5"
 LRUCache = "1"
 LinearAlgebra = "1.6"
 Logging = "1.6"
+OMEinsumContractionOrders = "0.8.3"
 PackageExtensionCompat = "1"
 PtrArrays = "1.2"
 Random = "1"
@@ -64,14 +63,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
-test = [
-    "Test",
-    "Random",
-    "DynamicPolynomials",
-    "ChainRulesTestUtils",
-    "CUDA",
-    "cuTENSOR",
-    "Aqua",
-    "Logging",
-    "Bumper",
-]
+test = ["Test", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging", "Bumper"]

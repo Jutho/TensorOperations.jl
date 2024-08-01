@@ -24,6 +24,9 @@ export tensorcopy!, tensoradd!, tensortrace!, tensorcontract!, tensorproduct!, t
 export tensorcopy, tensoradd, tensortrace, tensorcontract, tensorproduct, scalartype
 export tensoralloc, tensorfree!
 
+# export optimizer API
+export DefaultOptimizer, OMEinsumOptimizer
+
 export IndexTuple, Index2Tuple, linearize
 
 # export debug functionality

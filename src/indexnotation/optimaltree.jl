@@ -1,4 +1,15 @@
-function optimaltree(network, optdata::Dict; verbose::Bool=false)
+struct TreeOptimizer{T} end # T is a Symbol for the algorithm
+
+function optimaltree(network, optdata::Dict; optimizer::TreeOptimizer = TreeOptimizer{:NCon}(), verbose::Bool=false)
+    @debug "Using optimizer $(typeof(optimizer))"
+    return optimaltree(network, optdata, optimizer, verbose)
+end
+
+function optimaltree(network, optdata::Dict, ::TreeOptimizer{T}, verbose::Bool) where{T}
+    throw(ArgumentError("Unknown optimizer: $T"))
+end
+
+function optimaltree(network, optdata::Dict, ::TreeOptimizer{:NCon}, verbose::Bool)
     numtensors = length(network)
     allindices = unique(vcat(network...))
     numindices = length(allindices)

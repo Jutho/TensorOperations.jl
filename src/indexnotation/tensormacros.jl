@@ -71,6 +71,7 @@ function tensorparser(tensorexpr, kwargs...)
         end
     end
     # now handle the remaining keyword arguments
+    optimizer = TreeOptimizer{:NCon}() # the default optimizer
     for (name, val) in kwargs
         if name == :order
             isexpr(val, :tuple) ||
@@ -85,6 +86,12 @@ function tensorparser(tensorexpr, kwargs...)
             val in (:warn, :cache) ||
                 throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
             parser.contractioncostcheck = val
+        elseif name == :opt_algorithm
+            if val isa Symbol
+                optimizer = TreeOptimizer{val}()
+            else
+                throw(ArgumentError("Invalid use of `opt_algorithm`, should be `opt_algorithm=NCon` or `opt_algorithm=NameOfAlgorithm`"))
+            end
         elseif name == :opt
             if val isa Bool && val
                 optdict = optdata(tensorexpr)
@@ -93,7 +100,7 @@ function tensorparser(tensorexpr, kwargs...)
             else
                 throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
             end
-            parser.contractiontreebuilder = network -> optimaltree(network, optdict)[1]
+            parser.contractiontreebuilder = network -> optimaltree(network, optdict, optimizer = optimizer)[1]
         elseif !(name == :backend || name == :allocator) # these two have been handled
             throw(ArgumentError("Unknown keyword argument `name`."))
         end
