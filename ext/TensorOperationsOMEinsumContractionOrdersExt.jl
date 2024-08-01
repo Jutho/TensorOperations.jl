@@ -30,7 +30,7 @@ end
 function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer, verbose::Bool) where{TDK, TDV}
 
     try
-        TDV <: Number
+        @assert TDV <: Number
     catch
         error("Dimensions of the tensors must be numbers")
     end
