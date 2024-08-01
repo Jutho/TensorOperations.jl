@@ -32,7 +32,7 @@ function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer
     try
         @assert TDV <: Number
     catch
-        error("Dimensions of the tensors must be numbers")
+        throw(ArgumentError("The values of the optdata dictionary must be of type Number"))
     end
 
     # transform the network as EinCode
