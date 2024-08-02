@@ -6,7 +6,7 @@ function optimaltree(network, optdata::Dict; optimizer::TreeOptimizer = TreeOpti
 end
 
 function optimaltree(network, optdata::Dict, ::TreeOptimizer{T}, verbose::Bool) where{T}
-    throw(ArgumentError("Unknown optimizer: $T"))
+    throw(ArgumentError("Unknown optimizer: $T. Hint: may need to load extensions, e.g. `using OMEinsumContractionOrders`"))
 end
 
 function optimaltree(network, optdata::Dict, ::TreeOptimizer{:NCon}, verbose::Bool)

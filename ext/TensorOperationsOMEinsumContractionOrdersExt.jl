@@ -40,16 +40,14 @@ function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer
     # optimize the contraction order using OMEinsumContractionOrders, which gives a NestedEinsum
     optcode = optimize_code(code, optdata, ome_optimizer)
 
-    if verbose
-        cc = OMEinsumContractionOrders.contraction_complexity(optcode, optdata)
-        println("Optimized contraction order: ", optcode)
-        println("Contraction complexity: ", cc)
-    end
-
     # transform the optimized contraction order back to the network
     optimaltree = eincode2contractiontree(optcode)
 
-    return (optimaltree,)
+    # calculate the size of maximum tensor during the contraction
+    cc = OMEinsumContractionOrders.contraction_complexity(optcode, optdata)
+    space_complexity = 2.0^cc.sc
+
+    return optimaltree, space_complexity
 end
 
 function network2eincode(network)
