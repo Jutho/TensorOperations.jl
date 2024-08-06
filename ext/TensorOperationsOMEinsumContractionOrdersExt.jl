@@ -27,6 +27,11 @@ function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:SABip
     return optimize(network, optdata, ome_optimizer, verbose)
 end
 
+function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:ExactTreeWidth}, verbose::Bool) where{TDK, TDV}
+    ome_optimizer = ExactTreeWidth()
+    return optimize(network, optdata, ome_optimizer, verbose)
+end
+
 function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer, verbose::Bool) where{TDK, TDV}
 
     try
