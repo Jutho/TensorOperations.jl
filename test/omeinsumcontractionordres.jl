@@ -35,7 +35,7 @@ using OMEinsumContractionOrders
         D5[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
 
-    @tensor opt = (a => 5, b => 5, c => 5, d => 5, e => 5, f => 5, g => 5) opt_algorithm = ExactTreeWidth begin
+    @tensor opt = (a => 5, b => 5, c => 5, d => 5, e => 5, f => 5, g => 5) opt_algorithm = ExactTreewidth begin
         D6[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
 
@@ -73,7 +73,7 @@ using OMEinsumContractionOrders
         s5[] := A[i, k] * B[i, j, l] * C[j, m] * D[k, n] * E[n, l, o] * F[o, m]
     end
 
-    @tensor opt = (i => 2, j => 2, k => 2, l => 2, m => 2, n => 2, o => 2) opt_algorithm = ExactTreeWidth() begin
+    @tensor opt = (i => 2, j => 2, k => 2, l => 2, m => 2, n => 2, o => 2) opt_algorithm = ExactTreewidth begin
         s6[] := A[i, k] * B[i, j, l] * C[j, m] * D[k, n] * E[n, l, o] * F[o, m]
     end
 
@@ -104,7 +104,7 @@ using OMEinsumContractionOrders
         D5[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
-    @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = ExactTreeWidth begin
+    @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = ExactTreewidth begin
         D6[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
