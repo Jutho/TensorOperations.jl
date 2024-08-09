@@ -39,6 +39,12 @@ end
     include("butensor.jl")
 end
 
+# note: OMEinsumContractionOrders should not be loaded before this point
+# as there is a test which requires it to be loaded after
+@testset "OMEinsumOptimizer extension" begin
+    include("omeinsumcontractionordres.jl")
+end
+
 @testset "Polynomials" begin
     include("polynomials.jl")
 end
