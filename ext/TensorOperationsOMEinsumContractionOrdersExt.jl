@@ -4,7 +4,7 @@ using TensorOperations
 using TensorOperations: TensorOperations as TO
 using TensorOperations: TreeOptimizer
 using OMEinsumContractionOrders
-using OMEinsumContractionOrders: EinCode, NestedEinsum, SlicedEinsum, isleaf
+using OMEinsumContractionOrders: EinCode, NestedEinsum, SlicedEinsum, isleaf, optimize_kahypar_auto
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:GreedyMethod}, verbose::Bool) where{TDK, TDV}
     ome_optimizer = GreedyMethod()
@@ -12,9 +12,8 @@ function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:Greed
 end
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:KaHyParBipartite}, verbose::Bool) where{TDK, TDV}
-    # sc_target and max_group_size are simply set as 10 for now
-    ome_optimizer = KaHyParBipartite(; sc_target=10, max_group_size=10)
-    return optimize(network, optdata, ome_optimizer, verbose)
+
+    return optimize_kahypar(network, optdata, verbose)
 end
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:TreeSA}, verbose::Bool) where{TDK, TDV}
@@ -49,6 +48,34 @@ function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer
 
     # calculate the complexity of the contraction
     cc = OMEinsumContractionOrders.contraction_complexity(optcode, size_dict)
+    if verbose
+        println("Optimal contraction tree: ", optimaltree)
+        println(cc)
+    end
+    return optimaltree, 2.0^(cc.tc)
+end
+
+function optimize_kahypar(network, optdata::Dict{TDK, TDV}, verbose::Bool) where{TDK, TDV}
+    try
+        @assert TDV <: Number
+    catch
+        throw(ArgumentError("The values of the optdata dictionary must be of type Number"))
+    end
+
+    # transform the network as EinCode
+    code, size_dict = network2eincode(network, optdata)
+    # optimize the contraction order using OMEinsumContractionOrders, which gives a NestedEinsum
+    optcode = optimize_kahypar_auto(code, size_dict)
+
+    # transform the optimized contraction order back to the network
+    optimaltree = eincode2contractiontree(optcode)
+
+    # calculate the complexity of the contraction
+    cc = OMEinsumContractionOrders.contraction_complexity(optcode, size_dict)
+    if verbose
+        println("Optimal contraction tree: ", optimaltree)
+        println(cc)
+    end
     return optimaltree, 2.0^(cc.tc)
 end
 
