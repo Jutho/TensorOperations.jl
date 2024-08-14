@@ -109,7 +109,7 @@ function tensorparser(tensorexpr, kwargs...)
             throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
         end
         parser.contractiontreebuilder = network -> optimaltree(network, optdict;
-                                                            optimizer=optimizer)[1]
+                                                               optimizer=optimizer)[1]
     end
     return parser
 end

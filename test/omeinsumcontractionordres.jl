@@ -3,7 +3,12 @@
     B = rand(2, 2)
     C = rand(2, 2)
     @test_throws ArgumentError begin
-        ex = :(@tensor opt = (i => 2, j => 2, k => 2) opt_algorithm = GreedyMethod S[] := A[i,j] * B[j,k] * C[i, k])
+        ex = :(@tensor opt = (i => 2, j => 2, k => 2) opt_algorithm = GreedyMethod S[] := A[i,
+                                                                                            j] *
+                                                                                          B[j,
+                                                                                            k] *
+                                                                                          C[i,
+                                                                                            k])
         macroexpand(Main, ex)
     end
 end
@@ -47,7 +52,8 @@ ENV["JULIA_DEBUG"] = "TensorOperationsOMEinsumContractionOrdersExt"
     end
 
     # check the case that opt_algorithm is before the opt
-    @tensor opt_algorithm = GreedyMethod opt = (a => 5, b => 5, c => 5, d => 5, e => 5, f => 5, g => 5) begin
+    @tensor opt_algorithm = GreedyMethod opt = (a => 5, b => 5, c => 5, d => 5, e => 5,
+                                                f => 5, g => 5) begin
         D8[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
 

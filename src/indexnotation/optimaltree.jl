@@ -1,7 +1,8 @@
 struct TreeOptimizer{T} end # T is a Symbol for the algorithm
 
 function optimaltree(network, optdata::Dict;
-                     optimizer::TreeOptimizer{T}=TreeOptimizer{:ExhaustiveSearch}(), verbose::Bool=false) where{T}
+                     optimizer::TreeOptimizer{T}=TreeOptimizer{:ExhaustiveSearch}(),
+                     verbose::Bool=false) where {T}
     return optimaltree(network, optdata, optimizer, verbose)
 end
 
@@ -9,7 +10,8 @@ function optimaltree(network, optdata::Dict, ::TreeOptimizer{T}, verbose::Bool) 
     throw(ArgumentError("Unknown optimizer: $T. Hint: may need to load extensions, e.g. `using OMEinsumContractionOrders`"))
 end
 
-function optimaltree(network, optdata::Dict, ::TreeOptimizer{:ExhaustiveSearch}, verbose::Bool)
+function optimaltree(network, optdata::Dict, ::TreeOptimizer{:ExhaustiveSearch},
+                     verbose::Bool)
     @debug "Using optimizer ExhaustiveSearch"
     numtensors = length(network)
     allindices = unique(vcat(network...))

@@ -21,8 +21,10 @@ over are labelled by increasing integers, i.e. first the contraction correspondi
 (negative, so increasing in absolute value) index labels. The keyword arguments `order` and
 `output` allow to change these defaults.
 
-Another way to get the contraction order is to use the TreeOptimizer, by passing the `optimizer` (which a Symbol) instead of the `order` keyword argument. The `optimizer` can be `:ExhaustiveSearch`.
-With the extension `OMEinsumContractionOrders`, the `optimizer` can be one of the following: `:GreedyMethod`, `:TreeSA`, `:KaHyParBipartite`, `:SABipartite`, `:ExactTreewidth`.
+Another way to get the contraction order is to use the TreeOptimizer, by passing the `optimizer` 
+(which a Symbol) instead of the `order` keyword argument. The `optimizer` can be `:ExhaustiveSearch`.
+With the extension `OMEinsumContractionOrders`, the `optimizer` can be one of the following: 
+`:GreedyMethod`, `:TreeSA`, `:KaHyParBipartite`, `:SABipartite`, `:ExactTreewidth`.
 
 See also the macro version [`@ncon`](@ref).
 """
@@ -46,7 +48,8 @@ function ncon(tensors, network,
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
     return ncon(tensors, network, conjlist, tree, output′; kwargs...)
 end
-function ncon(tensors, network, optimizer::T, conjlist=fill(false, length(tensors)); output=nothing, kwargs...) where{T <: Symbol}
+function ncon(tensors, network, optimizer::T, conjlist=fill(false, length(tensors));
+              output=nothing, kwargs...) where {T<:Symbol}
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
@@ -62,7 +65,7 @@ function ncon(tensors, network, optimizer::T, conjlist=fill(false, length(tensor
 
     (tensors, network) = resolve_traces(tensors, network)
 
-    optdata = Dict{Any, Number}()
+    optdata = Dict{Any,Number}()
     for (i, ids) in enumerate(network)
         for (j, id) in enumerate(ids)
             optdata[id] = size(tensors[i], j)
