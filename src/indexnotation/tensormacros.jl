@@ -71,7 +71,8 @@ function tensorparser(tensorexpr, kwargs...)
         end
     end
     # now handle the remaining keyword arguments
-    optimizer = TreeOptimizer{:NCon}() # the default optimizer
+    optimizer = TreeOptimizer{:ExhaustiveSearch}() # the default optimizer implemented in TensorOperations.jl
+    optval = nothing
     for (name, val) in kwargs
         if name == :order
             isexpr(val, :tuple) ||
@@ -86,24 +87,29 @@ function tensorparser(tensorexpr, kwargs...)
             val in (:warn, :cache) ||
                 throw(ArgumentError("Invalid use of `costcheck`, should be `costcheck=warn` or `costcheck=cache`"))
             parser.contractioncostcheck = val
+        elseif name == :opt
+            optval = val
         elseif name == :opt_algorithm
             if val isa Symbol
                 optimizer = TreeOptimizer{val}()
             else
-                throw(ArgumentError("Invalid use of `opt_algorithm`, should be `opt_algorithm=NCon` or `opt_algorithm=NameOfAlgorithm`"))
+                throw(ArgumentError("Invalid use of `opt_algorithm`, should be `opt_algorithm=ExhaustiveSearch` or `opt_algorithm=NameOfAlgorithm`"))
             end
-        elseif name == :opt
-            if val isa Bool && val
-                optdict = optdata(tensorexpr)
-            elseif val isa Expr
-                optdict = optdata(val, tensorexpr)
-            else
-                throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
-            end
-            parser.contractiontreebuilder = network -> optimaltree(network, optdict, optimizer = optimizer)[1]
         elseif !(name == :backend || name == :allocator) # these two have been handled
             throw(ArgumentError("Unknown keyword argument `name`."))
         end
+    end
+    # construct the contraction tree builder after all keyword arguments have been processed
+    if !isnothing(optval)
+        if optval isa Bool && optval
+            optdict = optdata(tensorexpr)
+        elseif optval isa Expr
+            optdict = optdata(optval, tensorexpr)
+        else
+            throw(ArgumentError("Invalid use of `opt`, should be `opt=true` or `opt=OptExpr`"))
+        end
+        parser.contractiontreebuilder = network -> optimaltree(network, optdict;
+                                                            optimizer=optimizer)[1]
     end
     return parser
 end

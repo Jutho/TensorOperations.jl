@@ -1,14 +1,17 @@
 @testset "@tensor dependency check" begin
+    A = rand(2, 2)
+    B = rand(2, 2)
+    C = rand(2, 2)
     @test_throws ArgumentError begin
-        A = rand(2, 2)
-        B = rand(2, 2)
-        C = rand(2, 2)
-        ex = :(@tensor opt=(i=>2, j=>2, k=>2) opt_algorithm=GreedyMethod S[] := A[i, j] * B[j, k] * C[i, k])
+        ex = :(@tensor opt = (i => 2, j => 2, k => 2) opt_algorithm = GreedyMethod S[] := A[i,j] * B[j,k] * C[i, k])
         macroexpand(Main, ex)
     end
 end
 
 using OMEinsumContractionOrders
+
+# open the debug mode to check the optimization algorithms used
+ENV["JULIA_DEBUG"] = "TensorOperationsOMEinsumContractionOrdersExt"
 
 @testset "OMEinsumContractionOrders optimization algorithms" begin
     A = randn(5, 5, 5, 5)
@@ -43,8 +46,12 @@ using OMEinsumContractionOrders
         D7[1, 2, 3, 4] := A[1, 5, 3, 6] * B[7, 4, 5] * C[7, 6, 2]
     end
 
-    @test D1 ≈ D2 ≈ D3 ≈ D4 ≈ D5 ≈ D6 ≈ D7
+    # check the case that opt_algorithm is before the opt
+    @tensor opt_algorithm = GreedyMethod opt = (a => 5, b => 5, c => 5, d => 5, e => 5, f => 5, g => 5) begin
+        D8[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
 
+    @test D1 ≈ D2 ≈ D3 ≈ D4 ≈ D5 ≈ D6 ≈ D7 ≈ D8
 
     A = rand(2, 2)
     B = rand(2, 2, 2)
@@ -52,7 +59,7 @@ using OMEinsumContractionOrders
     D = rand(2, 2)
     E = rand(2, 2, 2)
     F = rand(2, 2)
-    
+
     @tensor opt = true begin
         s1[] := A[i, k] * B[i, j, l] * C[j, m] * D[k, n] * E[n, l, o] * F[o, m]
     end
@@ -85,28 +92,54 @@ using OMEinsumContractionOrders
     α = randn()
 
     @tensor opt = true begin
-        D1[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
+        D1[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] +
+                 α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
     @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = GreedyMethod begin
-        D2[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
+        D2[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] +
+                 α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
     @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = TreeSA begin
-        D3[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
+        D3[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] +
+                 α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
     @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = KaHyParBipartite begin
-        D4[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
+        D4[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] +
+                 α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
     @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = SABipartite begin
-        D5[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
+        D5[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] +
+                 α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
     @tensor opt = (i => 5, j => 5, k => 5, l => 5, m => 5) opt_algorithm = ExactTreewidth begin
-        D6[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] + α * A[i, j, k] * B[j, k, l] * C[i, l, m]
+        D6[m] := A[i, j, k] * B[j, k, l] * C[i, l, m] +
+                 α * A[i, j, k] * B[j, k, l] * C[i, l, m]
     end
 
     @test D1 ≈ D2 ≈ D3 ≈ D4 ≈ D5 ≈ D6
+end
+
+@testset "ncon with OMEinsumContractionOrders" begin
+    A = randn(5, 5, 5, 5)
+    B = randn(5, 5, 5)
+    C = randn(5, 5, 5)
+
+    @tensor begin
+        D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+
+    D2 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]])
+    D3 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], :ExhaustiveSearch)
+    D4 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], :GreedyMethod)
+    D5 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], :KaHyParBipartite)
+    D6 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], :TreeSA)
+    D7 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], :SABipartite)
+    D8 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], :ExactTreewidth)
+
+    @test D1 ≈ D2 ≈ D3 ≈ D4 ≈ D5 ≈ D6 ≈ D7 ≈ D8
 end

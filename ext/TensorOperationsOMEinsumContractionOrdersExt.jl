@@ -7,36 +7,36 @@ using OMEinsumContractionOrders
 using OMEinsumContractionOrders: EinCode, NestedEinsum, SlicedEinsum, isleaf, optimize_kahypar_auto
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:GreedyMethod}, verbose::Bool) where{TDK, TDV}
+    @debug "Using optimizer GreedyMethod from OMEinsumContractionOrders"
     ome_optimizer = GreedyMethod()
     return optimize(network, optdata, ome_optimizer, verbose)
 end
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:KaHyParBipartite}, verbose::Bool) where{TDK, TDV}
-
+    @debug "Using optimizer KaHyParBipartite from OMEinsumContractionOrders"
     return optimize_kahypar(network, optdata, verbose)
 end
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:TreeSA}, verbose::Bool) where{TDK, TDV}
+    @debug "Using optimizer TreeSA from OMEinsumContractionOrders"
     ome_optimizer = TreeSA()
     return optimize(network, optdata, ome_optimizer, verbose)
 end
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:SABipartite}, verbose::Bool) where{TDK, TDV}
+    @debug "Using optimizer SABipartite from OMEinsumContractionOrders"
     ome_optimizer = SABipartite()
     return optimize(network, optdata, ome_optimizer, verbose)
 end
 
 function TO.optimaltree(network, optdata::Dict{TDK, TDV}, ::TreeOptimizer{:ExactTreewidth}, verbose::Bool) where{TDK, TDV}
+    @debug "Using optimizer ExactTreewidth from OMEinsumContractionOrders"
     ome_optimizer = ExactTreewidth()
     return optimize(network, optdata, ome_optimizer, verbose)
 end
 
 function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer, verbose::Bool) where{TDK, TDV}
-    try
-        @assert TDV <: Number
-    catch
-        throw(ArgumentError("The values of the optdata dictionary must be of type Number"))
-    end
+    @assert TDV <: Number "The values of `optdata` dictionary must be of `<:Number`"
 
     # transform the network as EinCode
     code, size_dict = network2eincode(network, optdata)
@@ -56,11 +56,7 @@ function optimize(network, optdata::Dict{TDK, TDV}, ome_optimizer::CodeOptimizer
 end
 
 function optimize_kahypar(network, optdata::Dict{TDK, TDV}, verbose::Bool) where{TDK, TDV}
-    try
-        @assert TDV <: Number
-    catch
-        throw(ArgumentError("The values of the optdata dictionary must be of type Number"))
-    end
+    @assert TDV <: Number "The values of `optdata` dictionary must be of `<:Number`"
 
     # transform the network as EinCode
     code, size_dict = network2eincode(network, optdata)

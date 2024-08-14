@@ -116,7 +116,7 @@ end
         D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
 
-    @tensor opt = true opt_algorithm = NCon begin
+    @tensor opt = true opt_algorithm = ExhaustiveSearch begin
         D2[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
 
