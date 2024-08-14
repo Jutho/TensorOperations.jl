@@ -31,7 +31,7 @@ TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
 Aqua = "0.6, 0.7, 0.8"
-Bumper = "0.6"
+Bumper = "0.6, 0.7"
 CUDA = "5.4.0"
 ChainRulesCore = "1"
 ChainRulesTestUtils = "1"
@@ -65,3 +65,4 @@ cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
 test = ["Test", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging", "Bumper", "OMEinsumContractionOrders"]
+test = ["Test", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging", "Bumper"]
