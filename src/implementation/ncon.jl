@@ -48,7 +48,7 @@ function ncon(tensors, network,
     if isnothing(order)
         if isnothing(optimizer)
             # not specifing order and optimizer, tree via ncontree
-            tree=ncontree(network)
+            tree = ncontree(network)
         else
             # order via optimizer
             optdata = Dict{Any,Number}()
@@ -57,7 +57,7 @@ function ncon(tensors, network,
                     optdata[id] = tensorstructure(tensors[i], j, conjlist[i])
                 end
             end
-            tree=optimaltree(network, optdata, optimizer, false)[1]
+            tree = optimaltree(network, optdata, optimizer, false)[1]
         end
     else
         if !isnothing(optimizer)
