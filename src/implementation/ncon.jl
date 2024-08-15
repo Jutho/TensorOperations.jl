@@ -1,6 +1,5 @@
 """
-    ncon(tensorlist, indexlist, [conjlist, sym]; order = ..., output = ..., backend = ..., allocator = ...)
-    ncon(tensorlist, indexlist, optimizer, conjlist; output=..., kwargs...)
+    ncon(tensorlist, indexlist, [conjlist, sym]; order = ..., output = ..., optimizer = ..., backend = ..., allocator = ...)
 
 Contract the tensors in `tensorlist` (of type `Vector` or `Tuple`) according to the network
 as specified by `indexlist`. Here, `indexlist` is a list (i.e. a `Vector` or `Tuple`) with
@@ -22,7 +21,7 @@ over are labelled by increasing integers, i.e. first the contraction correspondi
 `output` allow to change these defaults.
 
 Another way to get the contraction order is to use the TreeOptimizer, by passing the `optimizer` 
-(which a Symbol) instead of the `order` keyword argument. The `optimizer` can be `:ExhaustiveSearch`.
+instead of the `order` keyword argument. The `optimizer` can be `:ExhaustiveSearch`.
 With the extension `OMEinsumContractionOrders`, the `optimizer` can be one of the following: 
 `:GreedyMethod`, `:TreeSA`, `:KaHyParBipartite`, `:SABipartite`, `:ExactTreewidth`.
 
@@ -30,26 +29,7 @@ See also the macro version [`@ncon`](@ref).
 """
 function ncon(tensors, network,
               conjlist=fill(false, length(tensors));
-              order=nothing, output=nothing, kwargs...)
-    length(tensors) == length(network) == length(conjlist) ||
-        throw(ArgumentError("number of tensors and of index lists should be the same"))
-    isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
-    output′ = nconoutput(network, output)
-
-    if length(tensors) == 1
-        if length(output′) == length(network[1])
-            return tensorcopy(output′, tensors[1], network[1], conjlist[1]; kwargs...)
-        else
-            return tensortrace(output′, tensors[1], network[1], conjlist[1]; kwargs...)
-        end
-    end
-
-    (tensors, network) = resolve_traces(tensors, network)
-    tree = order === nothing ? ncontree(network) : indexordertree(network, order)
-    return ncon(tensors, network, conjlist, tree, output′; kwargs...)
-end
-function ncon(tensors, network, optimizer::T, conjlist=fill(false, length(tensors));
-              output=nothing, kwargs...) where {T<:Symbol}
+              order=nothing, output=nothing, optimizer=nothing, kwargs...)
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
@@ -65,14 +45,29 @@ function ncon(tensors, network, optimizer::T, conjlist=fill(false, length(tensor
 
     (tensors, network) = resolve_traces(tensors, network)
 
-    optdata = Dict{Any,Number}()
-    for (i, ids) in enumerate(network)
-        for (j, id) in enumerate(ids)
-            optdata[id] = size(tensors[i], j)
+    if isnothing(order)
+        if isnothing(optimizer)
+            # not specifing order and optimizer, tree via ncontree
+            tree=ncontree(network)
+        else
+            # order via optimizer
+            optdata = Dict{Any,Number}()
+            for (i, ids) in enumerate(network)
+                for (j, id) in enumerate(ids)
+                    optdata[id] = tensorstructure(tensors[i], j, conjlist[i])
+                end
+            end
+            tree=optimaltree(network, optdata, optimizer, false)[1]
+        end
+    else
+        if !isnothing(optimizer)
+            throw(ArgumentError("cannot specify both `order` and `optimizer`"))
+        else
+            # with given order, tree via indexordertree
+            tree = indexordertree(network, order)
         end
     end
 
-    tree = optimaltree(network, optdata, TreeOptimizer{optimizer}(), false)[1]
     return ncon(tensors, network, conjlist, tree, output′; kwargs...)
 end
 

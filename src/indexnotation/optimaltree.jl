@@ -1,4 +1,10 @@
 struct TreeOptimizer{T} end # T is a Symbol for the algorithm
+ExhaustiveSearchOptimizer() = TreeOptimizer{:ExhaustiveSearch}()
+GreedyMethodOptimizer() = TreeOptimizer{:GreedyMethod}()
+KaHyParBipartiteOptimizer() = TreeOptimizer{:KaHyParBipartite}()
+TreeSAOptimizer() = TreeOptimizer{:TreeSA}()
+SABipartiteOptimizer() = TreeOptimizer{:SABipartite}()
+ExactTreewidthOptimizer() = TreeOptimizer{:ExactTreewidth}()
 
 function optimaltree(network, optdata::Dict;
                      optimizer::TreeOptimizer{T}=TreeOptimizer{:ExhaustiveSearch}(),
