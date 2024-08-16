@@ -42,8 +42,8 @@ end
 
 # note: OMEinsumContractionOrders should not be loaded before this point
 # as there is a test which requires it to be loaded after
-# it only support julia version >= 1.9
-if VERSION >= v"1.9"
+# the tests only work when extension is supported (julia version >= 1.9)
+if isdefined(Base, :get_extension)
     @testset "OMEinsumOptimizer extension" begin
         include("omeinsum.jl")
     end
