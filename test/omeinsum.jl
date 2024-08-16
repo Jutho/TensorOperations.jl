@@ -15,7 +15,6 @@ end
 
 using OMEinsumContractionOrders
 
-
 @testset "OMEinsumContractionOrders optimization algorithms" begin
     A = randn(5, 5, 5, 5)
     B = randn(5, 5, 5)
@@ -138,28 +137,53 @@ end
     end
 
     D2 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]])
-    D3 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = ExhaustiveSearchOptimizer())
-    D4 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = GreedyMethodOptimizer())
-    D5 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = KaHyParBipartiteOptimizer())
-    D6 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = TreeSAOptimizer())
-    D7 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = SABipartiteOptimizer())
-    D8 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = ExactTreewidthOptimizer())
+    D3 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+              optimizer=ExhaustiveSearchOptimizer())
+    D4 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+              optimizer=GreedyMethodOptimizer())
+    D5 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+              optimizer=KaHyParBipartiteOptimizer())
+    D6 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+              optimizer=TreeSAOptimizer())
+    D7 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+              optimizer=SABipartiteOptimizer())
+    D8 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+              optimizer=ExactTreewidthOptimizer())
 
     @test D1 ≈ D2 ≈ D3 ≈ D4 ≈ D5 ≈ D6 ≈ D7 ≈ D8
 
     @test_throws ArgumentError begin
-        D9 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], order = [5, 6, 7], optimizer = GreedyMethod())
+        D9 = ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]]; order=[5, 6, 7],
+                  optimizer=GreedyMethod())
     end
 
-    @test_logs (:debug, "Using optimizer ExhaustiveSearch") min_level=Logging.Debug match_mode=:any ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = ExhaustiveSearchOptimizer())
+    @test_logs (:debug, "Using optimizer ExhaustiveSearch") min_level = Logging.Debug match_mode = :any begin
+        ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+             optimizer=ExhaustiveSearchOptimizer())
+    end
 
-    @test_logs (:debug, "Using optimizer GreedyMethod from OMEinsumContractionOrders") min_level=Logging.Debug match_mode=:any ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = GreedyMethodOptimizer())
+    @test_logs (:debug, "Using optimizer GreedyMethod from OMEinsumContractionOrders") min_level = Logging.Debug match_mode = :any begin
+        ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+             optimizer=GreedyMethodOptimizer())
+    end
 
-    @test_logs (:debug, "Using optimizer KaHyParBipartite from OMEinsumContractionOrders") min_level=Logging.Debug match_mode=:any ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = KaHyParBipartiteOptimizer())
+    @test_logs (:debug, "Using optimizer KaHyParBipartite from OMEinsumContractionOrders") min_level = Logging.Debug match_mode = :any begin
+        ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+             optimizer=KaHyParBipartiteOptimizer())
+    end
 
-    @test_logs (:debug, "Using optimizer TreeSA from OMEinsumContractionOrders") min_level=Logging.Debug match_mode=:any ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = TreeSAOptimizer())
+    @test_logs (:debug, "Using optimizer TreeSA from OMEinsumContractionOrders") min_level = Logging.Debug match_mode = :any begin
+        ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+             optimizer=TreeSAOptimizer())
+    end
 
-    @test_logs (:debug, "Using optimizer SABipartite from OMEinsumContractionOrders") min_level=Logging.Debug match_mode=:any ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = SABipartiteOptimizer())
-    
-    @test_logs (:debug, "Using optimizer ExactTreewidth from OMEinsumContractionOrders") min_level=Logging.Debug match_mode=:any ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]], optimizer = ExactTreewidthOptimizer())
+    @test_logs (:debug, "Using optimizer SABipartite from OMEinsumContractionOrders") min_level = Logging.Debug match_mode = :any begin
+        ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+             optimizer=SABipartiteOptimizer())
+    end
+
+    @test_logs (:debug, "Using optimizer ExactTreewidth from OMEinsumContractionOrders") min_level = Logging.Debug match_mode = :any begin
+        ncon([A, B, C], [[-1, 5, -3, 6], [7, -4, 5], [7, 6, -2]];
+             optimizer=ExactTreewidthOptimizer())
+    end
 end
