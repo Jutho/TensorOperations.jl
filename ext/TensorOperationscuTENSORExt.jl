@@ -278,19 +278,19 @@ function plan_trace(@nospecialize(A::AbstractArray), Ainds::ModeType,
     # TODO: check if this can be avoided, available in caller
     # TODO: cuTENSOR will allocate sizes and strides anyways, could use that here
     p, q = TO.trace_indices(tuple(Ainds...), tuple(Cinds...))
-
+    qsorted = TT.sort(q[2])
     # add strides of cindA2 to strides of cindA1 -> selects diagonal
     stA = strides(A)
     for (i, j) in zip(q...)
         stA = Base.setindex(stA, stA[i] + stA[j], i)
     end
-    szA = TT.deleteat(size(A), q[2])
-    stA′ = TT.deleteat(stA, q[2])
+    szA = TT.deleteat(size(A), qsorted)
+    stA′ = TT.deleteat(stA, qsorted)
 
     descA = CuTensorDescriptor(A; size=szA, strides=stA′)
     descC = CuTensorDescriptor(C)
 
-    modeA = collect(Cint, deleteat!(Ainds, q[2]))
+    modeA = collect(Cint, deleteat!(Ainds, qsorted))
     modeC = collect(Cint, Cinds)
 
     actual_compute_type = if compute_type === nothing
