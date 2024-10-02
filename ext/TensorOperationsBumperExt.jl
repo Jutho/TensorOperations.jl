@@ -7,7 +7,7 @@ function TensorOperations.tensoralloc(::Type{A}, structure, ::Val{istemp},
                                       buf::Union{SlabBuffer,AllocBuffer}) where {A<:AbstractArray,
                                                                                  istemp}
     # TODO: remove the `ndims` check if this is fixed in Bumper / StrideArraysCore
-    if istemp & ndims(A) > 0
+    if istemp && ndims(A) > 0
         return Bumper.alloc!(buf, eltype(A), structure...)
     else
         return TensorOperations.tensoralloc(A, structure, Val(istemp))
