@@ -121,7 +121,7 @@ function stridedtensortrace!(C::StridedView,
     newstrides = (strideA.(linearize(p))..., (strideA.(q[1]) .+ strideA.(q[2]))...)
     newsize = (size(C)..., tracesize...)
 
-    A′ = StridedView(A.parent, newsize, newstrides, A.offset, A.op)
+    A′ = SV(A.parent, newsize, newstrides, A.offset, A.op)
     op1 = Base.Fix2(scale, α)
     op2 = Base.Fix2(scale, β)
     Strided._mapreducedim!(op1, +, op2, newsize, (C, A′))
@@ -222,10 +222,10 @@ function blas_contract!(C, A, pA, B, pB, pAB, α, β, allocator)
         C_ = C
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, ipAB, α, β)
     else
-        C_ = StridedView(tensoralloc_add(TC, C, ipAB, false, Val(true), allocator))
+        C_ = SV(tensoralloc_add(TC, C, ipAB, false, Val(true), allocator))
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
                                one(TC), zero(TC))
-        tensoradd!(C, C_, pAB, false, α, β)
+        stridedtensoradd!(C, C_, pAB, α, β, StridedNative(), allocator)
         tensorfree!(C_.parent, allocator)
     end
     flagA || tensorfree!(A_.parent, allocator)
@@ -255,11 +255,15 @@ end
 @inline function makeblascontractable(A, pA, TC, allocator)
     flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
-        A_ = StridedView(tensoralloc_add(TC, A, pA, false, Val(true), allocator))
-        A = tensoradd!(A_, A, pA, false, One(), Zero())
-        pA = trivialpermutation(pA)
+        A_ = tensoralloc_add(TC, A, pA, false, Val(true), allocator)
+        Anew = SV(A_, size(A_), strides(A_), 0, A.op)
+        Anew = stridedtensoradd!(Anew, A, pA, One(), Zero(), StridedNative(), allocator)
+        pAnew = trivialpermutation(pA)
+    else
+        Anew = A
+        pAnew = pA
     end
-    return A, pA, flagA
+    return Anew, pAnew, flagA
 end
 
 function isblascontractable(A::StridedView, p::Index2Tuple)
