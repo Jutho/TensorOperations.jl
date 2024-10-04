@@ -43,6 +43,7 @@ function tensoradd!(C::AbstractArray,
                     A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number,
                     backend::StridedBackend, allocator=DefaultAllocator())
+    # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA
         stridedtensoradd!(SV(C), conj(SV(A)), pA, α, β, backend, allocator)
     else
@@ -55,6 +56,7 @@ function tensortrace!(C::AbstractArray,
                       A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
                       α::Number, β::Number,
                       backend::StridedBackend, allocator=DefaultAllocator())
+    # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA
         stridedtensortrace!(SV(C), conj(SV(A)), p, q, α, β, backend, allocator)
     else
@@ -69,6 +71,7 @@ function tensorcontract!(C::AbstractArray,
                          pAB::Index2Tuple,
                          α::Number, β::Number,
                          backend::StridedBackend, allocator=DefaultAllocator())
+    # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA && conjB
         stridedtensorcontract!(SV(C), conj(SV(A)), pA, conj(SV(B)), pB, pAB, α, β,
                                backend, allocator)

@@ -5,7 +5,7 @@ authors = [
     "Maarten Van Damme <maartenvd1994@gmail.com>",
     "Jutho Haegeman <jutho.haegeman@ugent.be>",
 ]
-version = "5.0.0"
+version = "5.0.2"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
