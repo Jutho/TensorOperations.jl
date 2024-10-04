@@ -38,8 +38,8 @@ function tensoradd!(C,
                     α::Number, β::Number,
                     backend, allocator)
     if backend isa DefaultBackend
-        backend = select_backend(tensoradd!, C, A)
-        return tensoradd!(C, A, pA, conjA, α, β, backend, allocator)
+        newbackend = select_backend(tensoradd!, C, A)
+        return tensoradd!(C, A, pA, conjA, α, β, newbackend, allocator)
     elseif backend isa NoBackend
         # error for missing backend
         TC = typeof(C)
@@ -91,8 +91,8 @@ function tensortrace!(C,
                       α::Number, β::Number,
                       backend, allocator)
     if backend isa DefaultBackend
-        backend = select_backend(tensortrace!, C, A)
-        return tensortrace!(C, A, p, q, conjA, α, β, backend, allocator)
+        newbackend = select_backend(tensortrace!, C, A)
+        return tensortrace!(C, A, p, q, conjA, α, β, newbackend, allocator)
     elseif backend isa NoBackend
         # error for missing backend
         TC = typeof(C)
@@ -155,8 +155,9 @@ function tensorcontract!(C,
                          α::Number, β::Number,
                          backend, allocator)
     if backend isa DefaultBackend
-        backend = select_backend(tensorcontract!, C, A, B)
-        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
+        newbackend = select_backend(tensorcontract!, C, A, B)
+        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, newbackend,
+                               allocator)
     elseif backend isa NoBackend
         # error for missing backend
         TC = typeof(C)

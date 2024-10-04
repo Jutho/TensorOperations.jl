@@ -160,8 +160,3 @@ function dimcheck_tensorcontract(C::AbstractArray,
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
     return nothing
 end
-
-#-------------------------------------------------------------------------------------------
-# Utility functions
-#-------------------------------------------------------------------------------------------
-flag2op(flag::Bool) = flag ? conj : identity
