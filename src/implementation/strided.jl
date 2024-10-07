@@ -136,7 +136,7 @@ function stridedtensorcontract!(C::StridedView,
                                 B::StridedView, pB::Index2Tuple,
                                 pAB::Index2Tuple,
                                 α::Number, β::Number,
-                                ::StridedBLAS, allocator=DefaultAllocator())
+                                backend::StridedBLAS, allocator=DefaultAllocator())
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -152,9 +152,9 @@ function stridedtensorcontract!(C::StridedView,
     rpAB = (TupleTools.getindices(indCinoBA, tpAB[1]),
             TupleTools.getindices(indCinoBA, tpAB[2]))
     if contract_memcost(C, A, pA, B, pB, pAB) <= contract_memcost(C, B, rpB, A, rpA, rpAB)
-        return blas_contract!(C, A, pA, B, pB, pAB, α, β, allocator)
+        return blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
     else
-        return blas_contract!(C, B, rpB, A, rpA, rpAB, α, β, allocator)
+        return blas_contract!(C, B, rpB, A, rpA, rpAB, α, β, backend, allocator)
     end
     return C
 end
@@ -163,8 +163,9 @@ end
 function stridedtensorcontract!(C::StridedView{T,2},
                                 A::StridedView{T,2}, pA::Index2Tuple{1,1},
                                 B::StridedView{T,2}, pB::Index2Tuple{1,1},
-                                pAB::Index2Tuple{1,1}, α::Number, β::Number,
-                                ::StridedBLAS) where {T}
+                                pAB::Index2Tuple{1,1},
+                                α::Number, β::Number,
+                                ::StridedBLAS, allocator=DefaultAllocator()) where {T}
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -213,11 +214,13 @@ end
 #-------------------------------------------------------------------------------------------
 # StridedViewBLAS contraction implementation
 #-------------------------------------------------------------------------------------------
-function blas_contract!(C, A, pA, B, pB, pAB, α, β, allocator)
+# by passing backend, this can be reused by other backend implementations that only change
+# the tensoradd functionality
+function blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
     TC = eltype(C)
 
-    A_, pA, flagA = makeblascontractable(A, pA, TC, allocator)
-    B_, pB, flagB = makeblascontractable(B, pB, TC, allocator)
+    A_, pA, flagA = makeblascontractable(A, pA, TC, backend, allocator)
+    B_, pB, flagB = makeblascontractable(B, pB, TC, backend, allocator)
 
     ipAB = oindABinC(pAB, pA, pB)
     flagC = isblasdestination(C, ipAB)
@@ -228,7 +231,7 @@ function blas_contract!(C, A, pA, B, pB, pAB, α, β, allocator)
         C_ = SV(tensoralloc_add(TC, C, ipAB, false, Val(true), allocator))
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
                                one(TC), zero(TC))
-        stridedtensoradd!(C, C_, pAB, α, β, StridedNative(), allocator)
+        stridedtensoradd!(C, C_, pAB, α, β, backend, allocator)
         tensorfree!(C_.parent, allocator)
     end
     flagA || tensorfree!(A_.parent, allocator)
@@ -255,12 +258,12 @@ function _unsafe_blas_contract!(C::StridedView{T},
     return C
 end
 
-@inline function makeblascontractable(A, pA, TC, allocator)
+@inline function makeblascontractable(A, pA, TC, backend, allocator)
     flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
         A_ = tensoralloc_add(TC, A, pA, false, Val(true), allocator)
         Anew = SV(A_, size(A_), strides(A_), 0, A.op)
-        Anew = stridedtensoradd!(Anew, A, pA, One(), Zero(), StridedNative(), allocator)
+        Anew = stridedtensoradd!(Anew, A, pA, One(), Zero(), backend, allocator)
         pAnew = trivialpermutation(pA)
     else
         Anew = A
