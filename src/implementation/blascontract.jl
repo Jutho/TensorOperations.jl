@@ -52,7 +52,7 @@ function _blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
         C_ = SV(tensoralloc_add(TC, C, ipAB, false, Val(true), allocator))
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
                                one(TC), zero(TC))
-        tensoradd!(C, C_, pAB, α, β, backend, allocator)
+        tensoradd!(C, C_, pAB, false, α, β, backend, allocator)
         tensorfree!(C_.parent, allocator)
     end
     flagA || tensorfree!(A_.parent, allocator)
@@ -86,7 +86,7 @@ end
     if !flagA
         A_ = tensoralloc_add(TC, A, pA, false, Val(true), allocator)
         Anew = SV(A_, size(A_), strides(A_), 0, A.op)
-        Anew = tensoradd!(Anew, A, pA, One(), Zero(), backend, allocator)
+        Anew = tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
         pAnew = trivialpermutation(pA)
     else
         Anew = A
