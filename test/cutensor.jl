@@ -336,4 +336,14 @@ if cuTENSOR.has_cutensor()
             @test copy(C) ≈ Ccopy
         end
     end
+
+    @testset "Issues" verbose = true begin
+        @testset "Issue PR #186" begin
+            # https://github.com/Jutho/TensorOperations.jl/pull/186
+            A = randn(Float32, (5, 5, 5, 5))
+            Atr = @tensor A[a, b, b, a]
+            Atr2 = @cutensor A[a, b, b, a]
+            @test Atr ≈ Atr2
+        end
+    end
 end
