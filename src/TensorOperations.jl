@@ -29,6 +29,11 @@ export IndexTuple, Index2Tuple, linearize
 # export debug functionality
 export checkcontractible, tensorcost
 
+# export optimizer
+export TreeOptimizer, ExhaustiveSearchOptimizer, GreedyMethodOptimizer,
+       KaHyParBipartiteOptimizer, TreeSAOptimizer, SABipartiteOptimizer,
+       ExactTreewidthOptimizer
+
 # Interface and index types
 #---------------------------
 include("indices.jl")
