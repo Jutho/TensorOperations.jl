@@ -91,6 +91,14 @@ end
 #-------------------------------------------------------------------------------------------
 # StridedView implementation
 #-------------------------------------------------------------------------------------------
+struct Adder end
+(::Adder)(x, y) = VectorInterface.add(x, y)
+struct Scaler{T}
+    α::T
+end
+(s::Scaler)(x) = scale(x, s.α)
+(s::Scaler)(x, y) = scale(x * y, s.α)
+
 function stridedtensoradd!(C::StridedView,
                            A::StridedView, pA::Index2Tuple,
                            α::Number, β::Number,
@@ -102,9 +110,7 @@ function stridedtensoradd!(C::StridedView,
     end
 
     A′ = permutedims(A, linearize(pA))
-    op1 = Base.Fix2(scale, α)
-    op2 = Base.Fix2(scale, β)
-    Strided._mapreducedim!(op1, +, op2, size(C), (C, A′))
+    Strided._mapreducedim!(Scaler(α), Adder(), Scaler(β), size(C), (C, A′))
     return C
 end
 
@@ -125,9 +131,7 @@ function stridedtensortrace!(C::StridedView,
     newsize = (size(C)..., tracesize...)
 
     A′ = SV(A.parent, newsize, newstrides, A.offset, A.op)
-    op1 = Base.Fix2(scale, α)
-    op2 = Base.Fix2(scale, β)
-    Strided._mapreducedim!(op1, +, op2, newsize, (C, A′))
+    Strided._mapreducedim!(Scaler(α), Adder(), Scaler(β), newsize, (C, A′))
     return C
 end
 
@@ -170,8 +174,6 @@ function stridedtensorcontract!(C::StridedView,
                   (osizeA..., osizeB..., one.(csizeA)...))
     tsize = (osizeA..., osizeB..., csizeA...)
 
-    op1 = Base.Fix2(scale, α) ∘ *
-    op2 = Base.Fix2(scale, β)
-    Strided._mapreducedim!(op1, +, op2, tsize, (CS, AS, BS))
+    Strided._mapreducedim!(Scaler(α), Adder(), Scaler(β), tsize, (CS, AS, BS))
     return C
 end
