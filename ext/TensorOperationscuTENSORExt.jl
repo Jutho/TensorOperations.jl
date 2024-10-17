@@ -29,12 +29,16 @@ using CUDA.Adapt: adapt
 using Strided
 using TupleTools: TupleTools as TT
 
-const StridedViewsCUDAExt = @static if isdefined(Base, :get_extension)
-    Base.get_extension(Strided.StridedViews, :StridedViewsCUDAExt)
-else
-    Strided.StridedViews.StridedViewsCUDAExt
-end
-isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
+# Disallowed paradigm from Julia 1.11.1 onwards:
+# const StridedViewsCUDAExt = @static if isdefined(Base, :get_extension)
+#     Base.get_extension(Strided.StridedViews, :StridedViewsCUDAExt)
+# else
+#     Strided.StridedViews.StridedViewsCUDAExt
+# end
+# isnothing(StridedViewsCUDAExt) && error("StridedViewsCUDAExt not found")
+
+# Literal copy of the StridedViewsCUDAExt module
+const CuStridedView{T,N,A<:CuArray{T}} = StridedView{T,N,A}
 
 #-------------------------------------------------------------------------------------------
 # @cutensor macro
@@ -53,8 +57,6 @@ end
 #-------------------------------------------------------------------------------------------
 # Backend selection and passing
 #-------------------------------------------------------------------------------------------
-const CuStridedView = StridedViewsCUDAExt.CuStridedView
-
 # A Base wrapper over `CuArray` will first pass via the `select_backend` methods for 
 # `AbstractArray` and be converted into a `StridedView` if it satisfies `isstrided`. Hence,
 # we only need to capture `CuStridedView` here.
