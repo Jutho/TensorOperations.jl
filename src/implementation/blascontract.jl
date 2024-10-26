@@ -134,7 +134,7 @@ end
 
 _canfuse(::Dims{0}, ::Dims{0}) = true, 1, 1
 _canfuse(dims::Dims{1}, strides::Dims{1}) = true, dims[1], strides[1]
-@inline function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
+function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
     if dims[1] == 0
         return true, 0, 1
     elseif dims[1] == 1
