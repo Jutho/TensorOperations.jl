@@ -1,7 +1,7 @@
 name = "TensorOperations"
 uuid = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 authors = ["Lukas Devos <lukas.devos@ugent.be>", "Maarten Van Damme <maartenvd1994@gmail.com>", "Jutho Haegeman <jutho.haegeman@ugent.be>"]
-version = "5.1.0"
+version = "5.1.1"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -40,10 +40,10 @@ Logging = "1.6"
 PackageExtensionCompat = "1"
 PtrArrays = "1.2"
 Random = "1"
-Strided = "2.0.4"
+Strided = "2.2"
 StridedViews = "0.3"
 Test = "1"
-TupleTools = "1.1"
+TupleTools = "1.6"
 VectorInterface = "0.4.1"
 cuTENSOR = "2.1.1"
 julia = "1.8"
