@@ -98,10 +98,11 @@ end
     insertallocator(ex, allocator)
 
 Insert the allocator argument into the tensor operation and allocation methods `tensoradd!`, 
-`tensortrace!`, `tensorcontract!`, `tensoralloc`, `tensoralloc_add`, and `tensoralloc_contract`.
+`tensortrace!`, `tensorcontract!`, `tensoralloc`, `tensoralloc_add`, `tensoralloc_contract`
+and `tensorfree!`.
 """
 function insertallocator(ex, allocator)
     return insertargument(ex, allocator,
                           (:tensoradd!, :tensortrace!, :tensorcontract!, :tensoralloc,
-                           :tensoralloc_add, :tensoralloc_contract))
+                           :tensoralloc_add, :tensoralloc_contract, :tensorfree!))
 end
