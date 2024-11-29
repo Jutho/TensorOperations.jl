@@ -77,4 +77,6 @@ function __init__()
     @require_extensions
 end
 
+include("precompile.jl")
+
 end # module
