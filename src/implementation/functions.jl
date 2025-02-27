@@ -79,7 +79,7 @@ See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
 """
 function tensorcopy!(C, A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
                      backend=DefaultBackend(), allocator=DefaultAllocator())
-    return tensoradd!(C, A, pA, conjA, α, false, backend, allocator)
+    return tensoradd!(C, A, pA, conjA, α, Zero(), backend, allocator)
 end
 
 # ------------------------------------------------------------------------------------------
