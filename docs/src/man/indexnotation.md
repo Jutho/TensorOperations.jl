@@ -38,6 +38,18 @@ tensor expression in the right hand side in an existing tensor `D`, whereas the 
 operator `:=` results in a new tensor `E` with the correct properties to be created.
 Nonetheless, the contents of `D` and `E` will be equal.
 
+!!! warning "Aliasing"
+
+    Special care has to be taken when using the in-place `=`, combined with tensors that might
+    alias or have overlapping memory regions. As `@tensor` assumes it is allowed to change the
+    order of the operations within its scope, this may lead to unexpected or wrong results.
+    For example, the result of the following expressions might be different and making use of
+    this should be considered as undefined behavior:
+    ```julia
+    @tensor B[:] := L[-1, 1] * A[1, -2, 2] * R[2, -3] + α * A[-1, -2, -3]
+    @tensor A[:] = L[-1, 1] * A[1, -2, 2] * R[2, -3] + α * A[-1, -2, -3]
+    ```
+
 Following Einstein's summation convention, that contents is computed in a number of steps
 involving the three primitive tensor operators. In this particular example, the first step
 involves tracing/contracting the 3rd and 5th index of array `A`, the result of which is
