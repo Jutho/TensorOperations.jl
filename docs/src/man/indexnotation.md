@@ -11,7 +11,7 @@ detail on this page.
 
 ## The `@tensor` macro
 
-The prefered way to specify (a sequence of) tensor operations is by using the `@tensor`
+The preferred way to specify (a sequence of) tensor operations is by using the `@tensor`
 macro, which accepts an
 [index notation](https://en.wikipedia.org/wiki/Abstract_index_notation) format, a.k.a.
 [Einstein notation](https://en.wikipedia.org/wiki/Einstein_notation) (and in particular,
