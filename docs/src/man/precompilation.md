@@ -1,6 +1,6 @@
 # Precompilation
 
-Since version `v5.1.5`, TensorOperations.jl has some support for precompiling commonly called functions.
+TensorOperations.jl has some support for precompiling commonly called functions.
 The guiding philosophy is that often, tensor contractions are (part of) the bottlenecks of typical workflows,
 and as such we want to maximize performance. As a result, we are choosing to specialize many functions which
 may lead to a rather large time-to-first-execution (TTFX). In order to mitigate this, some of that work can
@@ -10,6 +10,10 @@ Nevertheless, TensorOperations is designed to work with a large variety of input
 all of these tends to lead to prohibitively large precompilation times, as well as large system images.
 Therefore, there is some customization possible to tweak the desired level of precompilation, trading in
 faster precompile times for fast TTFX for a wider range of inputs.
+
+!!! compat "TensorOperations v5.2.0"
+
+    Precompilation support requires at least TensorOperations v5.2.0.
 
 ## Defaults
 
