@@ -29,8 +29,8 @@ function validate_trace_ndims(trace_ndims)
 end
 
 function validate_contract_ndims(contract_ndims)
-    contract_ndims isa Vector{Int} && length(contract_ndims) == 3 ||
-        throw(ArgumentError("`precompile_contract_ndims` should be a `Vector{Int}` of length 3, got `$contract_ndims`"))
+    contract_ndims isa Vector{Int} && length(contract_ndims) == 2 ||
+        throw(ArgumentError("`precompile_contract_ndims` should be a `Vector{Int}` of length 2, got `$contract_ndims`"))
     all(≥(0), contract_ndims) ||
         error("Invalid precompile_contract_ndims: `$contract_ndims`")
     return contract_ndims
@@ -45,7 +45,7 @@ const PRECOMPILE_ADD_NDIMS = validate_add_ndims(@load_preference("precompile_add
 const PRECOMPILE_TRACE_NDIMS = validate_trace_ndims(@load_preference("precompile_trace_ndims",
                                                                      [4, 2]))
 const PRECOMPILE_CONTRACT_NDIMS = validate_contract_ndims(@load_preference("precompile_contract_ndims",
-                                                                           [3, 2, 3]))
+                                                                           [4, 2]))
 
 # Using explicit precompile statements here instead of @compile_workload:
 # Actually running the precompilation through PrecompileTools leads to longer compile times
@@ -90,7 +90,7 @@ if PrecompileTools.workload_enabled(@__MODULE__)
     # ---------------
     for T in PRECOMPILE_ELTYPES
         for N1 in 0:PRECOMPILE_CONTRACT_NDIMS[1], N2 in 0:PRECOMPILE_CONTRACT_NDIMS[2],
-            N3 in 0:PRECOMPILE_CONTRACT_NDIMS[3]
+            N3 in 0:PRECOMPILE_CONTRACT_NDIMS[1]
 
             NA = N1 + N2
             NB = N2 + N3
