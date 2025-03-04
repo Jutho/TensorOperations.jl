@@ -86,7 +86,7 @@ function _unsafe_blas_contract!(C::StridedView{T},
     return C
 end
 
-@inline function makeblascontractable(A, pA, TC, backend, allocator)
+function makeblascontractable(A, pA, TC, backend, allocator)
     flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
         A_ = tensoralloc_add(TC, A, pA, false, Val(true), allocator)
