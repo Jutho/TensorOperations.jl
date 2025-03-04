@@ -60,8 +60,8 @@ function _blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
         tensoradd!(C, C_, pAB, false, α, β, backend, allocator)
         tensorfree!(C_, allocator)
     end
-    flagA || tensorfree!(A_.parent, allocator)
-    flagB || tensorfree!(B_.parent, allocator)
+    flagA || tensorfree!(A_, allocator)
+    flagB || tensorfree!(B_, allocator)
     return C
 end
 
