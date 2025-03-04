@@ -50,9 +50,7 @@ Additionally, we normalize the parent types to avoid having to have too many spe
 This is allowed because we never return `parent(SV)`, so we can safely wrap anything
 that represents the same data.
 """
-wrap_stridedview(A::AbstractArray) = StridedView(reshape(A, length(A)),
-                                                 size(A), strides(A), 0, identity)
-wrap_stridedview(A::StridedView) = A
+wrap_stridedview(A::AbstractArray) = StridedView(A)
 @static if isdefined(Core, :Memory)
     # For Arrays: we simply use the memory directly
     # TODO: can we also do this for views?
