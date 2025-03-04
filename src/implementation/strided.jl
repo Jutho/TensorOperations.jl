@@ -38,16 +38,38 @@ end
 #-------------------------------------------------------------------------------------------
 # Force strided implementation on AbstractArray instances with Strided backend
 #-------------------------------------------------------------------------------------------
-const SV = StridedView
+
+# we normalize the parent types here to avoid too many specializations
+# this is allowed because we never return `parent(SV)`, so we can safely wrap anything
+# that represents the same data
+"""
+    wrap_stridedview(A::AbstractArray)
+    
+Wrap any compatible array into a `StridedView` for the implementation.
+Additionally, we normalize the parent types to avoid having to have too many specializations.
+This is allowed because we never return `parent(SV)`, so we can safely wrap anything
+that represents the same data.
+"""
+wrap_stridedview(A::AbstractArray) = StridedView(reshape(A, length(A)),
+                                                 size(A), strides(A), 0, identity)
+wrap_stridedview(A::StridedView) = A
+@static if isdefined(Core, :Memory)
+    # For Arrays: we simply use the memory directly
+    # TODO: can we also do this for views?
+    wrap_stridedview(A::Array) = StridedView(A.ref.mem, size(A), strides(A), 0, identity)
+end
+
 function tensoradd!(C::AbstractArray,
                     A::AbstractArray, pA::Index2Tuple, conjA::Bool,
                     α::Number, β::Number,
                     backend::StridedBackend, allocator=DefaultAllocator())
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA
-        stridedtensoradd!(SV(C), conj(SV(A)), pA, α, β, backend, allocator)
+        stridedtensoradd!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA, α, β, backend,
+                          allocator)
     else
-        stridedtensoradd!(SV(C), SV(A), pA, α, β, backend, allocator)
+        stridedtensoradd!(wrap_stridedview(C), wrap_stridedview(A), pA, α, β, backend,
+                          allocator)
     end
     return C
 end
@@ -58,9 +80,11 @@ function tensortrace!(C::AbstractArray,
                       backend::StridedBackend, allocator=DefaultAllocator())
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA
-        stridedtensortrace!(SV(C), conj(SV(A)), p, q, α, β, backend, allocator)
+        stridedtensortrace!(wrap_stridedview(C), conj(wrap_stridedview(A)), p, q, α, β,
+                            backend, allocator)
     else
-        stridedtensortrace!(SV(C), SV(A), p, q, α, β, backend, allocator)
+        stridedtensortrace!(wrap_stridedview(C), wrap_stridedview(A), p, q, α, β, backend,
+                            allocator)
     end
     return C
 end
@@ -73,16 +97,20 @@ function tensorcontract!(C::AbstractArray,
                          backend::StridedBackend, allocator=DefaultAllocator())
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA && conjB
-        stridedtensorcontract!(SV(C), conj(SV(A)), pA, conj(SV(B)), pB, pAB, α, β,
+        stridedtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA,
+                               conj(wrap_stridedview(B)), pB, pAB, α, β,
                                backend, allocator)
     elseif conjA
-        stridedtensorcontract!(SV(C), conj(SV(A)), pA, SV(B), pB, pAB, α, β,
+        stridedtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA,
+                               wrap_stridedview(B), pB, pAB, α, β,
                                backend, allocator)
     elseif conjB
-        stridedtensorcontract!(SV(C), SV(A), pA, conj(SV(B)), pB, pAB, α, β,
+        stridedtensorcontract!(wrap_stridedview(C), wrap_stridedview(A), pA,
+                               conj(wrap_stridedview(B)), pB, pAB, α, β,
                                backend, allocator)
     else
-        stridedtensorcontract!(SV(C), SV(A), pA, SV(B), pB, pAB, α, β,
+        stridedtensorcontract!(wrap_stridedview(C), wrap_stridedview(A), pA,
+                               wrap_stridedview(B), pB, pAB, α, β,
                                backend, allocator)
     end
     return C
@@ -130,7 +158,7 @@ function stridedtensortrace!(C::StridedView,
     newstrides = (strideA.(linearize(p))..., (strideA.(q[1]) .+ strideA.(q[2]))...)
     newsize = (size(C)..., tracesize...)
 
-    A′ = SV(A.parent, newsize, newstrides, A.offset, A.op)
+    A′ = StridedView(A.parent, newsize, newstrides, A.offset, A.op)
     Strided._mapreducedim!(Scaler(α), Adder(), Scaler(β), newsize, (C, A′))
     return C
 end
