@@ -39,17 +39,10 @@ end
 # Force strided implementation on AbstractArray instances with Strided backend
 #-------------------------------------------------------------------------------------------
 
-# we normalize the parent types here to avoid too many specializations
-# this is allowed because we never return `parent(SV)`, so we can safely wrap anything
-# that represents the same data
-"""
-    wrap_stridedview(A::AbstractArray)
-    
-Wrap any compatible array into a `StridedView` for the implementation.
-Additionally, we normalize the parent types to avoid having to have too many specializations.
-This is allowed because we never return `parent(SV)`, so we can safely wrap anything
-that represents the same data.
-"""
+# Wrap any compatible array into a `StridedView` for the implementation.
+# Additionally, we normalize the parent types to avoid having to have too many specializations.
+# This is allowed because we never return `parent(SV)`, so we can safely wrap anything
+# that represents the same data.
 wrap_stridedview(A::AbstractArray) = StridedView(A)
 @static if isdefined(Core, :Memory)
     # For Arrays: we simply use the memory directly
