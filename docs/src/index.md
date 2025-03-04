@@ -5,7 +5,7 @@
 ## Table of contents
 
 ```@contents
-Pages = ["index.md", "man/indexnotation.md", "man/functions.md", "man/interface.md", "man/backends.md", "man/autodiff.md", "man/implementation.md"]
+Pages = ["index.md", "man/indexnotation.md", "man/functions.md", "man/interface.md", "man/backends.md", "man/autodiff.md", "man/implementation.md", "man/precompilation.md"]
 Depth = 4
 ```
 
