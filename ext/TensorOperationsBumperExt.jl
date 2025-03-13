@@ -5,6 +5,7 @@ using TensorOperations: tensoralloc_add, tensoralloc_contract
 using VectorInterface: One, Zero
 using PrecompileTools
 using Bumper
+using Bumper: UnsafeArray
 
 # Hack to normalize StridedView type to avoid too many specializations
 # This is allowed because bumper ensures that the pointer won't be GC'd
@@ -63,8 +64,7 @@ if PrecompileTools.workload_enabled(@__MODULE__)
         for N in 0:(TensorOperations.PRECOMPILE_ADD_NDIMS)
             TA = Array{T,N}
             pA = Index2Tuple{N,0}
-            TA_buf = Core.Compiler.return_type(tensoralloc_add,
-                                               Tuple{T,TA,pA,Bool,Val{true},buf})
+            TA_buf = UnsafeArray{T,N}
             for (C, A) in Iterators.product((TA, TA_buf), (TA, TA_buf))
                 C == A == TA && continue
                 precompile(tensoradd!, (C, A, pA, Bool, One, Zero))
@@ -72,8 +72,9 @@ if PrecompileTools.workload_enabled(@__MODULE__)
                 precompile(tensoradd!, (C, A, pA, Bool, T, T))
             end
 
-            precompile(tensoralloc_add, (T, TA_buf, pA, Bool, Val{true}, buf))
-            precompile(tensoralloc_add, (T, TA_buf, pA, Bool, Val{false}, buf))
+            for (A, istemp) in Iterators.product((TA, TA_buf), (Val{true}, Val{false}))
+                precompile(tensoralloc_add, (T, A, pA, Bool, istemp, buf))
+            end
         end
     end
 
@@ -89,10 +90,8 @@ if PrecompileTools.workload_enabled(@__MODULE__)
             q = Index2Tuple{N2,N2}
             r = Index2Tuple{N1 + 2N2,0}
 
-            TA_buf = Core.Compiler.return_type(tensoralloc_add,
-                                               Tuple{T,TA,r,Bool,Val{true},buf})
-            TC_buf = Core.Compiler.return_type(tensoralloc_add,
-                                               Tuple{T,TA,p,Bool,Val{true},buf})
+            TA_buf = UnsafeArray{T,N1 + 2N2}
+            TC_buf = UnsafeArray{T,N1}
 
             for (C, A) in Iterators.product((TC, TC_buf), (TA, TA_buf))
                 C == TC && A == TA && continue
@@ -120,27 +119,24 @@ if PrecompileTools.workload_enabled(@__MODULE__)
             pB = Index2Tuple{N2,N3}
             pAB = Index2Tuple{NC,0}
 
-            TC_buf = Core.Compiler.return_type(tensoralloc_contract,
-                                               Tuple{T,TA,pA,Bool,TB,pB,Bool,pAB,Val{true},
-                                                     buf})
-            TA_buf = Core.Compiler.return_type(tensoralloc_add,
-                                               Tuple{T,TA,pA,Bool,Val{true},buf})
-            TB_buf = Core.Compiler.return_type(tensoralloc_add,
-                                               Tuple{T,TB,pB,Bool,Val{true},buf})
+            TC_buf = UnsafeArray{T,NC}
+            TA_buf = UnsafeArray{T,NA}
+            TB_buf = UnsafeArray{T,NB}
             for (C, A, B) in Iterators.product((TC, TC_buf), (TA, TA_buf), (TB, TB_buf))
                 precompile(tensorcontract!,
-                           (C, A, pA, Bool, B, pB, Bool, pAB, One, Zero, backend, buf))
+                           (C, A, pA, Bool, B, pB, Bool, pAB, One, Zero, backend,
+                            buf))
                 precompile(tensorcontract!,
-                           (C, A, pA, Bool, B, pB, Bool, pAB, T, Zero, backend, buf))
+                           (C, A, pA, Bool, B, pB, Bool, pAB, T, Zero, backend,
+                            buf))
                 precompile(tensorcontract!,
                            (C, A, pA, Bool, B, pB, Bool, pAB, T, T, backend, buf))
             end
 
-            for (A, B) in Iterators.product((TA, TA_buf), (TB, TB_buf))
+            for (A, B, istemp) in
+                Iterators.product((TA, TA_buf), (TB, TB_buf), (Val{true}, Val{false}))
                 precompile(tensoralloc_contract,
-                           (T, A, pA, Bool, B, pB, Bool, pAB, Val{true}, buf))
-                precompile(tensoralloc_contract,
-                           (T, A, pA, Bool, B, pB, Bool, pAB, Val{false}, buf))
+                           (T, A, pA, Bool, B, pB, Bool, pAB, istemp, buf))
             end
         end
     end
