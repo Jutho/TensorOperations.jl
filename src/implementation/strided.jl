@@ -50,11 +50,10 @@ wrap_stridedview(A::AbstractArray) = StridedView(A)
     wrap_stridedview(A::Array) = StridedView(A.ref.mem, size(A), strides(A), 0, identity)
 end
 
-Base.@constprop :none function tensoradd!(C::AbstractArray,
-                                          A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                                          α::Number, β::Number,
-                                          backend::StridedBackend,
-                                          allocator=DefaultAllocator())
+function tensoradd!(C::AbstractArray,
+                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                    α::Number, β::Number,
+                    backend::StridedBackend, allocator=DefaultAllocator())
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA
         stridedtensoradd!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA, α, β, backend,
@@ -66,12 +65,10 @@ Base.@constprop :none function tensoradd!(C::AbstractArray,
     return C
 end
 
-Base.@constprop :none function tensortrace!(C::AbstractArray,
-                                            A::AbstractArray, p::Index2Tuple,
-                                            q::Index2Tuple, conjA::Bool,
-                                            α::Number, β::Number,
-                                            backend::StridedBackend,
-                                            allocator=DefaultAllocator())
+function tensortrace!(C::AbstractArray,
+                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+                      α::Number, β::Number,
+                      backend::StridedBackend, allocator=DefaultAllocator())
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA
         stridedtensortrace!(wrap_stridedview(C), conj(wrap_stridedview(A)), p, q, α, β,
@@ -83,15 +80,12 @@ Base.@constprop :none function tensortrace!(C::AbstractArray,
     return C
 end
 
-Base.@constprop :none function tensorcontract!(C::AbstractArray,
-                                               A::AbstractArray, pA::Index2Tuple,
-                                               conjA::Bool,
-                                               B::AbstractArray, pB::Index2Tuple,
-                                               conjB::Bool,
-                                               pAB::Index2Tuple,
-                                               α::Number, β::Number,
-                                               backend::StridedBackend,
-                                               allocator=DefaultAllocator())
+function tensorcontract!(C::AbstractArray,
+                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+                         pAB::Index2Tuple,
+                         α::Number, β::Number,
+                         backend::StridedBackend, allocator=DefaultAllocator())
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA && conjB
         stridedtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA,
