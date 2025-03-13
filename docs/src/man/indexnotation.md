@@ -11,7 +11,7 @@ detail on this page.
 
 ## The `@tensor` macro
 
-The prefered way to specify (a sequence of) tensor operations is by using the `@tensor`
+The preferred way to specify (a sequence of) tensor operations is by using the `@tensor`
 macro, which accepts an
 [index notation](https://en.wikipedia.org/wiki/Abstract_index_notation) format, a.k.a.
 [Einstein notation](https://en.wikipedia.org/wiki/Einstein_notation) (and in particular,
@@ -37,6 +37,18 @@ body of the `@tensor` call. The regular assignment operator `=` stores the resul
 tensor expression in the right hand side in an existing tensor `D`, whereas the 'definition'
 operator `:=` results in a new tensor `E` with the correct properties to be created.
 Nonetheless, the contents of `D` and `E` will be equal.
+
+!!! warning "Aliasing"
+
+    Special care has to be taken when using the in-place `=`, combined with tensors that might
+    alias or have overlapping memory regions. As `@tensor` assumes it is allowed to change the
+    order of the operations within its scope, this may lead to unexpected or wrong results.
+    For example, the result of the following expressions might be different and making use of
+    this should be considered as undefined behavior:
+    ```julia
+    @tensor B[:] := L[-1, 1] * A[1, -2, 2] * R[2, -3] + α * A[-1, -2, -3]
+    @tensor A[:] = L[-1, 1] * A[1, -2, 2] * R[2, -3] + α * A[-1, -2, -3]
+    ```
 
 Following Einstein's summation convention, that contents is computed in a number of steps
 involving the three primitive tensor operators. In this particular example, the first step
