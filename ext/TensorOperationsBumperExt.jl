@@ -54,89 +54,91 @@ function TensorOperations._butensor(src, ex...)
     return return Base.remove_linenums!(newex)
 end
 
-if PrecompileTools.workload_enabled(@__MODULE__)
-    buf = typeof(Bumper.default_buffer())
-    backend = TensorOperations.DefaultBackend
+@static if VERSION >= v"1.11"
+    if PrecompileTools.workload_enabled(@__MODULE__)
+        buf = typeof(Bumper.default_buffer())
+        backend = TensorOperations.DefaultBackend
 
-    # tensoradd!
-    # ----------
-    for T in TensorOperations.PRECOMPILE_ELTYPES
-        for N in 0:(TensorOperations.PRECOMPILE_ADD_NDIMS)
-            TA = Array{T,N}
-            pA = Index2Tuple{N,0}
-            TA_buf = UnsafeArray{T,N}
-            for (C, A) in Iterators.product((TA, TA_buf), (TA, TA_buf))
-                C == A == TA && continue
-                precompile(tensoradd!, (C, A, pA, Bool, One, Zero))
-                precompile(tensoradd!, (C, A, pA, Bool, T, Zero))
-                precompile(tensoradd!, (C, A, pA, Bool, T, T))
-            end
+        # tensoradd!
+        # ----------
+        for T in TensorOperations.PRECOMPILE_ELTYPES
+            for N in 0:(TensorOperations.PRECOMPILE_ADD_NDIMS)
+                TA = Array{T,N}
+                pA = Index2Tuple{N,0}
+                TA_buf = UnsafeArray{T,N}
+                for (C, A) in Iterators.product((TA, TA_buf), (TA, TA_buf))
+                    C == A == TA && continue
+                    precompile(tensoradd!, (C, A, pA, Bool, One, Zero))
+                    precompile(tensoradd!, (C, A, pA, Bool, T, Zero))
+                    precompile(tensoradd!, (C, A, pA, Bool, T, T))
+                end
 
-            for (A, istemp) in Iterators.product((TA, TA_buf), (Val{true}, Val{false}))
-                precompile(tensoralloc_add, (T, A, pA, Bool, istemp, buf))
+                for (A, istemp) in Iterators.product((TA, TA_buf), (Val{true}, Val{false}))
+                    precompile(tensoralloc_add, (T, A, pA, Bool, istemp, buf))
+                end
             end
         end
-    end
 
-    # tensortrace!
-    # ------------
-    for T in TensorOperations.PRECOMPILE_ELTYPES
-        for N1 in 0:TensorOperations.PRECOMPILE_TRACE_NDIMS[1],
-            N2 in 0:TensorOperations.PRECOMPILE_TRACE_NDIMS[2]
+        # tensortrace!
+        # ------------
+        for T in TensorOperations.PRECOMPILE_ELTYPES
+            for N1 in 0:TensorOperations.PRECOMPILE_TRACE_NDIMS[1],
+                N2 in 0:TensorOperations.PRECOMPILE_TRACE_NDIMS[2]
 
-            TC = Array{T,N1}
-            TA = Array{T,N1 + 2N2}
-            p = Index2Tuple{N1,0}
-            q = Index2Tuple{N2,N2}
-            r = Index2Tuple{N1 + 2N2,0}
+                TC = Array{T,N1}
+                TA = Array{T,N1 + 2N2}
+                p = Index2Tuple{N1,0}
+                q = Index2Tuple{N2,N2}
+                r = Index2Tuple{N1 + 2N2,0}
 
-            TA_buf = UnsafeArray{T,N1 + 2N2}
-            TC_buf = UnsafeArray{T,N1}
+                TA_buf = UnsafeArray{T,N1 + 2N2}
+                TC_buf = UnsafeArray{T,N1}
 
-            for (C, A) in Iterators.product((TC, TC_buf), (TA, TA_buf))
-                C == TC && A == TA && continue
-                precompile(tensortrace!, (C, A, p, q, Bool, One, Zero))
-                precompile(tensortrace!, (C, A, p, q, Bool, T, Zero))
-                precompile(tensortrace!, (C, A, p, q, Bool, T, T))
+                for (C, A) in Iterators.product((TC, TC_buf), (TA, TA_buf))
+                    C == TC && A == TA && continue
+                    precompile(tensortrace!, (C, A, p, q, Bool, One, Zero))
+                    precompile(tensortrace!, (C, A, p, q, Bool, T, Zero))
+                    precompile(tensortrace!, (C, A, p, q, Bool, T, T))
+                end
+
+                # allocation re-uses tensoralloc_add
             end
-
-            # allocation re-uses tensoralloc_add
         end
-    end
 
-    # tensorcontract!
-    # ---------------
-    for T in TensorOperations.PRECOMPILE_ELTYPES
-        for N1 in 0:TensorOperations.PRECOMPILE_CONTRACT_NDIMS[1],
-            N2 in 0:TensorOperations.PRECOMPILE_CONTRACT_NDIMS[2],
-            N3 in 0:TensorOperations.PRECOMPILE_CONTRACT_NDIMS[1]
+        # tensorcontract!
+        # ---------------
+        for T in TensorOperations.PRECOMPILE_ELTYPES
+            for N1 in 0:TensorOperations.PRECOMPILE_CONTRACT_NDIMS[1],
+                N2 in 0:TensorOperations.PRECOMPILE_CONTRACT_NDIMS[2],
+                N3 in 0:TensorOperations.PRECOMPILE_CONTRACT_NDIMS[1]
 
-            NA = N1 + N2
-            NB = N2 + N3
-            NC = N1 + N3
-            TC, TA, TB = Array{T,NC}, Array{T,NA}, Array{T,NB}
-            pA = Index2Tuple{N1,N2}
-            pB = Index2Tuple{N2,N3}
-            pAB = Index2Tuple{NC,0}
+                NA = N1 + N2
+                NB = N2 + N3
+                NC = N1 + N3
+                TC, TA, TB = Array{T,NC}, Array{T,NA}, Array{T,NB}
+                pA = Index2Tuple{N1,N2}
+                pB = Index2Tuple{N2,N3}
+                pAB = Index2Tuple{NC,0}
 
-            TC_buf = UnsafeArray{T,NC}
-            TA_buf = UnsafeArray{T,NA}
-            TB_buf = UnsafeArray{T,NB}
-            for (C, A, B) in Iterators.product((TC, TC_buf), (TA, TA_buf), (TB, TB_buf))
-                precompile(tensorcontract!,
-                           (C, A, pA, Bool, B, pB, Bool, pAB, One, Zero, backend,
-                            buf))
-                precompile(tensorcontract!,
-                           (C, A, pA, Bool, B, pB, Bool, pAB, T, Zero, backend,
-                            buf))
-                precompile(tensorcontract!,
-                           (C, A, pA, Bool, B, pB, Bool, pAB, T, T, backend, buf))
-            end
+                TC_buf = UnsafeArray{T,NC}
+                TA_buf = UnsafeArray{T,NA}
+                TB_buf = UnsafeArray{T,NB}
+                for (C, A, B) in Iterators.product((TC, TC_buf), (TA, TA_buf), (TB, TB_buf))
+                    precompile(tensorcontract!,
+                               (C, A, pA, Bool, B, pB, Bool, pAB, One, Zero, backend,
+                                buf))
+                    precompile(tensorcontract!,
+                               (C, A, pA, Bool, B, pB, Bool, pAB, T, Zero, backend,
+                                buf))
+                    precompile(tensorcontract!,
+                               (C, A, pA, Bool, B, pB, Bool, pAB, T, T, backend, buf))
+                end
 
-            for (A, B, istemp) in
-                Iterators.product((TA, TA_buf), (TB, TB_buf), (Val{true}, Val{false}))
-                precompile(tensoralloc_contract,
-                           (T, A, pA, Bool, B, pB, Bool, pAB, istemp, buf))
+                for (A, B, istemp) in
+                    Iterators.product((TA, TA_buf), (TB, TB_buf), (Val{true}, Val{false}))
+                    precompile(tensoralloc_contract,
+                               (T, A, pA, Bool, B, pB, Bool, pAB, istemp, buf))
+                end
             end
         end
     end
