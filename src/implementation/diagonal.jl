@@ -11,22 +11,13 @@ function tensorcontract!(C::AbstractArray,
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
     if conjA && conjB
-        _diagtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA,
-                             conj(wrap_stridedview(B.diag)), pB,
-                             pAB, α, β)
+        _diagtensorcontract!(SV(C), conj(SV(A)), pA, conj(SV(B.diag)), pB, pAB, α, β)
     elseif conjA
-        _diagtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(A)), pA,
-                             wrap_stridedview(B.diag),
-                             pB, pAB, α,
-                             β)
+        _diagtensorcontract!(SV(C), conj(SV(A)), pA, SV(B.diag), pB, pAB, α, β)
     elseif conjB
-        _diagtensorcontract!(wrap_stridedview(C), wrap_stridedview(A), pA,
-                             conj(wrap_stridedview(B.diag)),
-                             pB, pAB, α,
-                             β)
+        _diagtensorcontract!(SV(C), SV(A), pA, conj(SV(B.diag)), pB, pAB, α, β)
     else
-        _diagtensorcontract!(wrap_stridedview(C), wrap_stridedview(A), pA,
-                             wrap_stridedview(B.diag), pB, pAB, α, β)
+        _diagtensorcontract!(SV(C), SV(A), pA, SV(B.diag), pB, pAB, α, β)
     end
     return C
 end
@@ -50,17 +41,13 @@ function tensorcontract!(C::AbstractArray,
             TupleTools.getindices(indCinoBA, tpAB[2]))
 
     if conjA && conjB
-        _diagtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(B)), rpB,
-                             conj(wrap_stridedview(A.diag)), rpA, rpAB, α, β)
+        _diagtensorcontract!(SV(C), conj(SV(B)), rpB, conj(SV(A.diag)), rpA, rpAB, α, β)
     elseif conjA
-        _diagtensorcontract!(wrap_stridedview(C), wrap_stridedview(B), rpB,
-                             conj(wrap_stridedview(A.diag)), rpA, rpAB, α, β)
+        _diagtensorcontract!(SV(C), SV(B), rpB, conj(SV(A.diag)), rpA, rpAB, α, β)
     elseif conjB
-        _diagtensorcontract!(wrap_stridedview(C), conj(wrap_stridedview(B)), rpB,
-                             wrap_stridedview(A.diag), rpA, rpAB, α, β)
+        _diagtensorcontract!(SV(C), conj(SV(B)), rpB, SV(A.diag), rpA, rpAB, α, β)
     else
-        _diagtensorcontract!(wrap_stridedview(C), wrap_stridedview(B), rpB,
-                             wrap_stridedview(A.diag), rpA, rpAB, α, β)
+        _diagtensorcontract!(SV(C), SV(B), rpB, SV(A.diag), rpA, rpAB, α, β)
     end
     return C
 end
@@ -75,17 +62,13 @@ function tensorcontract!(C::AbstractArray,
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
     if conjA && conjB
-        _diagdiagcontract!(wrap_stridedview(C), conj(wrap_stridedview(A.diag)), pA,
-                           conj(wrap_stridedview(B.diag)), pB, pAB, α, β)
+        _diagdiagcontract!(SV(C), conj(SV(A.diag)), pA, conj(SV(B.diag)), pB, pAB, α, β)
     elseif conjA
-        _diagdiagcontract!(wrap_stridedview(C), conj(wrap_stridedview(A.diag)), pA,
-                           wrap_stridedview(B.diag), pB, pAB, α, β)
+        _diagdiagcontract!(SV(C), conj(SV(A.diag)), pA, SV(B.diag), pB, pAB, α, β)
     elseif conjB
-        _diagdiagcontract!(wrap_stridedview(C), wrap_stridedview(A.diag), pA,
-                           conj(wrap_stridedview(B.diag)), pB, pAB, α, β)
+        _diagdiagcontract!(SV(C), SV(A.diag), pA, conj(SV(B.diag)), pB, pAB, α, β)
     else
-        _diagdiagcontract!(wrap_stridedview(C), wrap_stridedview(A.diag), pA,
-                           wrap_stridedview(B.diag), pB, pAB, α, β)
+        _diagdiagcontract!(SV(C), SV(A.diag), pA, SV(B.diag), pB, pAB, α, β)
     end
     return C
 end

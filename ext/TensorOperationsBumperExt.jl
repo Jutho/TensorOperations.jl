@@ -7,16 +7,6 @@ using PrecompileTools
 using Bumper
 using Bumper: UnsafeArray
 
-# Hack to normalize StridedView type to avoid too many specializations
-# This is allowed because bumper ensures that the pointer won't be GC'd
-# and we never return `parent(SV)` anyways.
-@static if isdefined(Core, :Memory)
-    function TensorOperations.wrap_stridedview(A::Bumper.UnsafeArray)
-        mem_A = Base.unsafe_wrap(Memory{eltype(A)}, pointer(A), length(A))
-        return TensorOperations.StridedView(mem_A, size(A), strides(A), 0, identity)
-    end
-end
-
 function TensorOperations.tensoralloc(::Type{A}, structure, ::Val{istemp},
                                       buf::Union{SlabBuffer,AllocBuffer}) where {A<:AbstractArray,
                                                                                  istemp}
