@@ -55,3 +55,11 @@
                                          1,
                                          0, 0, 0, 3, 0, 3, 2, 0, 2, 4])
 end
+
+@testset "Issue #206" begin
+    # https://github.com/Jutho/TensorOperations.jl/issues/206
+    network = [[:a, :b], [:a], [:b]]
+    opt_data = Dict(:a => 1, :b => 1)
+    tree, cost = TensorOperations.optimaltree(network, opt_data)
+    @test cost == 2
+end
