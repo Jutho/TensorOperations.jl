@@ -90,8 +90,8 @@ function computecost(allcosts, ind1::BitSet, ind2::BitSet)
 end
 
 function computemaxcost(allcosts, indexsets)
-    if length(indexsets) == 1
-        maxcost = one(etltype(allcosts))
+    if length(indexsets) ≤ 1
+        maxcost = one(eltype(allcosts))
     else
         maxcost = zero(eltype(allcosts))
         s1 = indexsets[1]
