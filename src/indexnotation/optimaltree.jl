@@ -4,10 +4,11 @@ function optimaltree(network, optdata::Dict; verbose::Bool=false)
     numindices = length(allindices)
     costtype = valtype(optdata)
     allcosts = costtype[get(optdata, i, one(costtype)) for i in allindices]
-    maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)),
-                              maximum(allcosts)), one(costtype))
-    # add one for type stability: Power -> Poly
-    # and for dealing with cases where all sizes are 1 -> maxcost = 2
+    maxcost = max(mulcost(reduce(mulcost, allcosts; init=one(costtype)),
+                          maximum(allcosts)), costtype(length(network) - 1))
+    # add zero for type stability: Power -> Poly
+    maxcost = addcost(maxcost, zero(costtype))
+
     tensorcosts = Vector{costtype}(undef, numtensors)
     for k in 1:numtensors
         tensorcosts[k] = mapreduce(i -> get(optdata, i, one(costtype)), mulcost, network[k];

@@ -58,8 +58,13 @@ end
 
 @testset "Issue #206" begin
     # https://github.com/Jutho/TensorOperations.jl/issues/206
-    network = [[:a, :b], [:a], [:b]]
-    opt_data = Dict(:a => 1, :b => 1)
+    network = [[Symbol(1), Symbol(2)], [Symbol(1)], [Symbol(2)]]
+    opt_data = Dict(Symbol(1) => 1, Symbol(2) => 1)
     tree, cost = TensorOperations.optimaltree(network, opt_data)
     @test cost == 2
+
+    network = network = [[:a, :b, :c], [:a], [:b], [:c]]
+    opt_data = Dict(:a => 1, :b => 1, :c => 1)
+    tree, cost = TensorOperations.optimaltree(network, opt_data)
+    @test cost == 3
 end
