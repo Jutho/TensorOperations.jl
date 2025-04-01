@@ -4,29 +4,23 @@ function optimaltree(network, optdata::Dict; verbose::Bool=false)
     numindices = length(allindices)
     costtype = valtype(optdata)
     allcosts = costtype[get(optdata, i, one(costtype)) for i in allindices]
-    maxcost = addcost(mulcost(reduce(mulcost, allcosts; init=one(costtype)),
-                              maximum(allcosts)), zero(costtype)) # add zero for type stability: Power -> Poly
+
     tensorcosts = Vector{costtype}(undef, numtensors)
     for k in 1:numtensors
         tensorcosts[k] = mapreduce(i -> get(optdata, i, one(costtype)), mulcost, network[k];
                                    init=one(costtype))
     end
-    initialcost = min(maxcost,
-                      addcost(mulcost(maximum(tensorcosts), minimum(tensorcosts)),
-                              zero(costtype))) # just some arbitrary guess
+    initialcost = addcost(mulcost(maximum(tensorcosts), minimum(tensorcosts)),
+                          zero(costtype)) # just some arbitrary guess
 
     if numindices <= 32
-        return _optimaltree(UInt32, network, allindices, allcosts, initialcost, maxcost;
-                            verbose=verbose)
+        return _optimaltree(UInt32, network, allindices, allcosts, initialcost; verbose)
     elseif numindices <= 64
-        return _optimaltree(UInt64, network, allindices, allcosts, initialcost, maxcost;
-                            verbose=verbose)
+        return _optimaltree(UInt64, network, allindices, allcosts, initialcost; verbose)
     elseif numindices <= 128 && !(@static Int == Int32 && Sys.iswindows() ? true : false)
-        return _optimaltree(UInt128, network, allindices, allcosts, initialcost, maxcost;
-                            verbose=verbose)
+        return _optimaltree(UInt128, network, allindices, allcosts, initialcost; verbose)
     else
-        return _optimaltree(BitVector, network, allindices, allcosts, initialcost, maxcost;
-                            verbose=verbose)
+        return _optimaltree(BitVector, network, allindices, allcosts, initialcost; verbose)
     end
 end
 
@@ -95,8 +89,23 @@ function computecost(allcosts, ind1::BitSet, ind2::BitSet)
     return cost
 end
 
-function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C,
-                      maxcost::C; verbose::Bool=false) where {T,S,C}
+function computemaxcost(allcosts, indexsets)
+    if length(indexsets) ≤ 1
+        maxcost = one(eltype(allcosts))
+    else
+        maxcost = zero(eltype(allcosts))
+        s1 = indexsets[1]
+        for n in 2:length(indexsets)
+            s2 = indexsets[n]
+            maxcost = addcost(maxcost, computecost(allcosts, s1, s2))
+            s1 = _setdiff(_union(s1, s2), _intersect(s1, s2))
+        end
+    end
+    return addcost(maxcost, zero(maxcost)) # add zero for type stability: Power -> Poly
+end
+
+function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C;
+                      verbose::Bool=false) where {T,S,C}
     numindices = length(allindices)
     numtensors = length(network)
     indexsets = Array{T}(undef, numtensors)
@@ -156,7 +165,8 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
         end
 
         # run over currentcost
-        currentcost = initialcost
+        maxcost = computemaxcost(allcosts, @view(indexsets[component]))
+        currentcost = min(initialcost, maxcost)
         previouscost = zero(initialcost)
         while currentcost <= maxcost
             nextcost = maxcost
