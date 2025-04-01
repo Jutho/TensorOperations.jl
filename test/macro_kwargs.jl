@@ -106,3 +106,19 @@ end
     end
     @test D1 ≈ D2 ≈ D3 ≈ D4 ≈ D5
 end
+
+@testset "opt_algorithm" begin
+    A = randn(5, 5, 5, 5)
+    B = randn(5, 5, 5)
+    C = randn(5, 5, 5)
+
+    @tensor opt = true begin
+        D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+
+    @tensor opt = true opt_algorithm = ExhaustiveSearch begin
+        D2[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
+    end
+
+    @test D1 ≈ D2
+end

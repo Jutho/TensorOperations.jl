@@ -1,6 +1,7 @@
 using TensorOperations
 using LinearAlgebra
 using Test
+using Logging
 using Random
 Random.seed!(1234567)
 
@@ -37,6 +38,15 @@ end
 # as there is a test which requires it to be loaded after
 @testset "Bumper extension" verbose = true begin
     include("butensor.jl")
+end
+
+# note: OMEinsumContractionOrders should not be loaded before this point
+# as there is a test which requires it to be loaded after
+# the tests only work when extension is supported (julia version >= 1.9)
+if isdefined(Base, :get_extension)
+    @testset "OMEinsumOptimizer extension" begin
+        include("omeinsum.jl")
+    end
 end
 
 @testset "Polynomials" begin

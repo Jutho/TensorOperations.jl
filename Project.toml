@@ -20,11 +20,13 @@ cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 Bumper = "8ce10254-0962-460f-a3d8-1f77fea1446e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [extensions]
 TensorOperationsBumperExt = "Bumper"
 TensorOperationsChainRulesCoreExt = "ChainRulesCore"
+TensorOperationsOMEinsumContractionOrdersExt = "OMEinsumContractionOrders"
 TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
@@ -37,6 +39,7 @@ DynamicPolynomials = "0.5"
 LRUCache = "1"
 LinearAlgebra = "1.6"
 Logging = "1.6"
+OMEinsumContractionOrders = "0.9.2"
 PackageExtensionCompat = "1"
 PtrArrays = "1.2"
 Random = "1"
@@ -55,9 +58,10 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesTestUtils = "cdddcdb0-9152-4a09-a978-84456f9df70a"
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 cuTENSOR = "011b41b2-24ef-40a8-b3eb-fa098493e9e1"
 
 [targets]
-test = ["Test", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging", "Bumper"]
+test = ["Test", "Random", "DynamicPolynomials", "ChainRulesTestUtils", "CUDA", "cuTENSOR", "Aqua", "Logging", "Bumper", "OMEinsumContractionOrders"]
