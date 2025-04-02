@@ -1,11 +1,7 @@
 module TensorOperationsBumperExt
 
 using TensorOperations
-using TensorOperations: tensoralloc_add, tensoralloc_contract
-using VectorInterface: One, Zero
-using PrecompileTools
 using Bumper
-using Bumper: UnsafeArray
 
 function TensorOperations.tensoralloc(::Type{A}, structure, ::Val{istemp},
                                       buf::Union{SlabBuffer,AllocBuffer}) where {A<:AbstractArray,

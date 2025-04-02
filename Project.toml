@@ -31,7 +31,7 @@ TensorOperationscuTENSORExt = ["cuTENSOR", "CUDA"]
 
 [compat]
 Aqua = "0.6, 0.7, 0.8"
-Bumper = "0.7"
+Bumper = "0.6, 0.7"
 CUDA = "5.4.0"
 ChainRulesCore = "1"
 ChainRulesTestUtils = "1"
