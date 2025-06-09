@@ -84,8 +84,9 @@ end
 function makeblascontractable(A, pA, TC, backend, allocator)
     flagA = isblascontractable(A, pA) && eltype(A) == TC
     if !flagA
-        A_ = tensoralloc_add(TC, A, pA, false, Val(true), allocator)
-        Anew = SV(A_, size(A_), strides(A_), 0, A.op)
+        conjA = A.op === conj
+        A_ = tensoralloc_add(TC, A, pA, conjA, Val(true), allocator)
+        Anew = SV(A_)
         Anew = tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
         pAnew = trivialpermutation(pA)
     else
