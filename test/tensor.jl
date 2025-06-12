@@ -528,4 +528,43 @@ end
         C3 = ncon([A], [[-1, -3, -4, -2]], [true])
         @test C3 ≈ conj(C)
     end
+
+    @testset "methods for StridedBLAS" begin
+        using TensorOperations: isblascontractable, isblasdestination, makeblascontractable,
+                                StridedBLAS, DefaultAllocator
+        backend = StridedBLAS()
+        allocator = DefaultAllocator()
+
+        A = StridedView(rand(ComplexF64, 4, 4, 4, 4))
+
+        p = ((1, 2), (3, 4))
+        @test isblascontractable(A, p)
+        Anew, pnew, flag = makeblascontractable(A, p, ComplexF64, backend, allocator)
+        @test isblascontractable(Anew, pnew)
+        @test Anew === A
+
+        @test !isblascontractable(conj(A), p)
+        Anew, pnew, flag = makeblascontractable(A, p, ComplexF64, backend, allocator)
+        @test isblascontractable(Anew, pnew)
+
+        for p in (((2, 1), (3, 4)), ((1,), (3, 2, 4)), ((2, 1, 4), (3,))),
+            op in (identity, conj)
+
+            @test !isblascontractable(op(A), p)
+            Anew, pnew, flag = makeblascontractable(op(A), p, ComplexF64, backend,
+                                                    allocator)
+            @test isblascontractable(Anew, pnew)
+        end
+
+        vA = view(A, 1:2, 1:2, 1:2, 1:2)
+        @test !isblascontractable(vA, p)
+        Anew, pnew, flag = makeblascontractable(vA, p, ComplexF64, backend, allocator)
+        @test !flag
+        @test isblascontractable(Anew, pnew)
+
+        pA = permutedims(A, (3, 4, 1, 2))
+        p = ((1, 2), (3, 4))
+        @test isblascontractable(pA, p)
+        @test isblascontractable(conj(pA), p)
+    end
 end
