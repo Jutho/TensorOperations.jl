@@ -532,6 +532,7 @@ end
     @testset "methods for StridedBLAS" begin
         using TensorOperations: isblascontractable, isblasdestination, makeblascontractable,
                                 StridedBLAS, DefaultAllocator
+        using Strided
         backend = StridedBLAS()
         allocator = DefaultAllocator()
 
