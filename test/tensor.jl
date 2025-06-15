@@ -558,6 +558,7 @@ end
         end
 
         vA = view(A, 1:2, 1:2, 1:2, 1:2)
+        p = ((1, 2), (3, 4))
         @test !isblascontractable(vA, p)
         Anew, pnew, flag = makeblascontractable(vA, p, ComplexF64, backend, allocator)
         @test !flag
