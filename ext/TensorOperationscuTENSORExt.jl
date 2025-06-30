@@ -312,7 +312,10 @@ function plan_trace(@nospecialize(A::AbstractArray), Ainds::ModeType,
     plan_pref = Ref{cutensorPlanPreference_t}()
     cutensorCreatePlanPreference(handle(), plan_pref, algo, jit)
 
-    return CuTensorPlan(desc[], plan_pref[]; workspacePref=workspace)
+    plan = CuTensorPlan(desc[], plan_pref[]; workspacePref=workspace)
+    cuTENSOR.cutensorDestroyOperationDescriptor(desc[])
+    cuTENSOR.cutensorDestroyPlanPreference(plan_pref[])
+    return plan
 end
 
 end
