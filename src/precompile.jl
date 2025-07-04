@@ -1,5 +1,5 @@
 using PrecompileTools: PrecompileTools
-using Preferences: @load_preference
+using Preferences: @load_preference, load_preference
 
 # Validate preferences input
 # --------------------------
@@ -48,9 +48,9 @@ const PRECOMPILE_CONTRACT_NDIMS = validate_contract_ndims(@load_preference("prec
                                                                            [4, 2]))
 
 # Copy from PrecompileTools.workload_enabled but default to false
-function workload_enabled(mod::Module)
+function workload_enabled(mod::Module=@__MODULE__)
     try
-        if load_preference(PrecompileTools, "precompile_workloads", false)
+        if load_preference(PrecompileTools, "precompile_workloads", true)
             return load_preference(mod, "precompile_workload", false)
         else
             return false
@@ -64,7 +64,7 @@ end
 # Actually running the precompilation through PrecompileTools leads to longer compile times
 # Keeping the workload_enabled functionality to have the option of disabling precompilation
 # in a compatible manner with the rest of the ecosystem
-if workload_enabled(@__MODULE__)
+if workload_enabled()
     # tensoradd!
     # ----------
     for T in PRECOMPILE_ELTYPES
