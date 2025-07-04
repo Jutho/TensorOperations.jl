@@ -17,27 +17,31 @@ faster precompile times for fast TTFX for a wider range of inputs.
 
 ## Defaults
 
-By default, precompilation is enabled for "tensors" of type `Array{T,N}`, where `T` and `N` range over the following values:
+By default, precompilation is disabled, but can be enabled for "tensors" of type `Array{T,N}`, where `T` and `N` range over the following values:
 
 * `T` is either `Float64` or `ComplexF64`
 * `tensoradd!` is precompiled up to `N = 5`
 * `tensortrace!` is precompiled up to `4` free output indices and `2` pairs of traced indices
 * `tensorcontract!` is precompiled up to `3` free output indices on both inputs, and `2` contracted indices
 
-## Custom settings
-
-The default precompilation settings can be tweaked to allow for more or less expansive coverage. This is achieved
-through a combination of `PrecompileTools`- and `Preferences`-based functionality.
-
-To disable precompilation altogether, for example during development or when you prefer to have small binaries,
-you can *locally* change the `"precompile_workload"` key in the preferences.
+To enable precompilation with these default settings, you can *locally* change the `"precompile_workload"` key in the preferences.
 
 ```julia
 using TensorOperations, Preferences
-set_preferences!(TensorOperations, "precompile_workload" => false; force=true)
+set_preferences!(TensorOperations, "precompile_workload" => true; force=true)
 ```
 
-Alternatively, you can keep precompilation enabled, change the settings above through the same machinery, via:
+## Custom settings
+
+The default precompilation settings can be tweaked to allow for more or less expansive coverage.
+This is achieved through a combination of `PrecompileTools`- and `Preferences`-based functionality.
+
+```julia
+using TensorOperations, Preferences
+set_preferences!(TensorOperations, "setting" => value; force=true)
+```
+
+Here **setting** and **value** can take on the following:
 
 * `"precomple_eltypes"`: a `Vector{String}` that evaluate to the desired values of `T<:Number`
 * `"precompile_add_ndims"`: an `Int` to specify the maximum `N` for `tensoradd!`
