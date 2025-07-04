@@ -47,11 +47,24 @@ const PRECOMPILE_TRACE_NDIMS = validate_trace_ndims(@load_preference("precompile
 const PRECOMPILE_CONTRACT_NDIMS = validate_contract_ndims(@load_preference("precompile_contract_ndims",
                                                                            [4, 2]))
 
+# Copy from PrecompileTools.workload_enabled but default to false
+function workload_enabled(mod::Module)
+    try
+        if load_preference(PrecompileTools, "precompile_workloads", false)
+            return load_preference(mod, "precompile_workload", false)
+        else
+            return false
+        end
+    catch
+        false
+    end
+end
+
 # Using explicit precompile statements here instead of @compile_workload:
 # Actually running the precompilation through PrecompileTools leads to longer compile times
 # Keeping the workload_enabled functionality to have the option of disabling precompilation
 # in a compatible manner with the rest of the ecosystem
-if PrecompileTools.workload_enabled(@__MODULE__)
+if workload_enabled(@__MODULE__)
     # tensoradd!
     # ----------
     for T in PRECOMPILE_ELTYPES
