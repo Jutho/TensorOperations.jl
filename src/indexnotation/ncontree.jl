@@ -74,7 +74,7 @@ function nconindexcompletion(ex)
 
             if lhs.head == :ref && length(lhs.args) == 2 && lhs.args[2] == :(:)
                 if all(isa(i, Integer) && i < 0 for i in indices)
-                    lhs = Expr(:ref, lhs.args[1], sort(indices; rev=true)...)
+                    lhs = Expr(:ref, lhs.args[1], sort(indices; rev = true)...)
                 else
                     error("cannot automatically infer index order of left hand side")
                 end

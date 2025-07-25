@@ -10,12 +10,16 @@ function replaceindices((@nospecialize f), ex)
                 return ex
             elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
                 arg2 = ex.args[2]
-                return Expr(ex.head, ex.args[1],
-                            Expr(arg2.head, map(f, arg2.args)...),
-                            (f(ex.args[i]) for i in 3:length(ex.args))...)
+                return Expr(
+                    ex.head, ex.args[1],
+                    Expr(arg2.head, map(f, arg2.args)...),
+                    (f(ex.args[i]) for i in 3:length(ex.args))...
+                )
             else
-                return Expr(ex.head, ex.args[1],
-                            (f(ex.args[i]) for i in 2:length(ex.args))...)
+                return Expr(
+                    ex.head, ex.args[1],
+                    (f(ex.args[i]) for i in 2:length(ex.args))...
+                )
             end
             return ex
         else #if ex.head == :typed_vcat
@@ -101,7 +105,7 @@ function conjexpr(ex)
     return error("cannot conjugate expression: $ex")
 end
 
-# extracttensorobjects: replace tensor objects which are not simple symbols with newly 
+# extracttensorobjects: replace tensor objects which are not simple symbols with newly
 # generated symbols, and assign them before the expression and after the expression as necessary
 """
     extracttensorobjects(ex)
@@ -116,16 +120,24 @@ function extracttensorobjects(ex)
     newtensors = filter!(obj -> !isa(obj, Symbol), getnewtensorobjects(ex))
     existingtensors = unique!(vcat(inputtensors, outputtensors))
     alltensors = unique!(vcat(existingtensors, newtensors))
-    tensordict = Dict{Any,Any}(a => gensym(string(a)) for a in alltensors)
+    tensordict = Dict{Any, Any}(a => gensym(string(a)) for a in alltensors)
     pre = Expr(:block, [Expr(:(=), tensordict[a], a) for a in existingtensors]...)
     ex = replacetensorobjects((obj, leftind, rightind) -> get(tensordict, obj, obj), ex)
-    post = Expr(:block,
-                [Expr(:(=), a, tensordict[a])
-                 for a in unique!(vcat(newtensors, outputtensors))]...)
-    pre2 = Expr(:macrocall, Symbol("@notensor"),
-                LineNumberNode(@__LINE__, Symbol(@__FILE__)), pre)
-    post2 = Expr(:macrocall, Symbol("@notensor"),
-                 LineNumberNode(@__LINE__, Symbol(@__FILE__)), post)
+    post = Expr(
+        :block,
+        [
+            Expr(:(=), a, tensordict[a])
+                for a in unique!(vcat(newtensors, outputtensors))
+        ]...
+    )
+    pre2 = Expr(
+        :macrocall, Symbol("@notensor"),
+        LineNumberNode(@__LINE__, Symbol(@__FILE__)), pre
+    )
+    post2 = Expr(
+        :macrocall, Symbol("@notensor"),
+        LineNumberNode(@__LINE__, Symbol(@__FILE__)), post
+    )
     return Expr(:block, pre2, ex, post2)
 end
 
@@ -142,7 +154,7 @@ function insertcontractionchecks(ex)
         return ex
     elseif isassignment(ex) || isdefinition(ex) || istensorexpr(ex) || isscalarexpr(ex)
         rhs = (isassignment(ex) || isdefinition(ex)) ? getrhs(ex) : ex
-        indexmap = Dict{Any,Any}()
+        indexmap = Dict{Any, Any}()
         if isassignment(ex)
             (object, indl, indr) = decomposegeneraltensor(getlhs(ex))
             inds = vcat(indl, indr)
@@ -157,10 +169,16 @@ function insertcontractionchecks(ex)
             obj1, pos1, conj1 = v[1]
             for k in 2:length(v)
                 obj2, pos2, conj2 = v[k]
-                push!(out.args,
-                      :(@notensor checkcontractible($obj1, $pos1, $conj1,
-                                                    $obj2, $pos2,
-                                                    $conj2, $l)))
+                push!(
+                    out.args,
+                    :(
+                        @notensor checkcontractible(
+                            $obj1, $pos1, $conj1,
+                            $obj2, $pos2,
+                            $conj2, $l
+                        )
+                    )
+                )
             end
         end
         return Expr(:block, out, ex)

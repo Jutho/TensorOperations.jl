@@ -38,18 +38,32 @@ end
 
 # Static preferences
 # ------------------
-const PRECOMPILE_ELTYPES = validate_precompile_eltypes(@load_preference("precompile_eltypes",
-                                                                        ["Float64",
-                                                                         "ComplexF64"]))
+const PRECOMPILE_ELTYPES = validate_precompile_eltypes(
+    @load_preference(
+        "precompile_eltypes",
+        [
+            "Float64",
+            "ComplexF64",
+        ]
+    )
+)
 const PRECOMPILE_ADD_NDIMS = validate_add_ndims(@load_preference("precompile_add_ndims", 5))
-const PRECOMPILE_TRACE_NDIMS = validate_trace_ndims(@load_preference("precompile_trace_ndims",
-                                                                     [4, 2]))
-const PRECOMPILE_CONTRACT_NDIMS = validate_contract_ndims(@load_preference("precompile_contract_ndims",
-                                                                           [4, 2]))
+const PRECOMPILE_TRACE_NDIMS = validate_trace_ndims(
+    @load_preference(
+        "precompile_trace_ndims",
+        [4, 2]
+    )
+)
+const PRECOMPILE_CONTRACT_NDIMS = validate_contract_ndims(
+    @load_preference(
+        "precompile_contract_ndims",
+        [4, 2]
+    )
+)
 
 # Copy from PrecompileTools.workload_enabled but default to false
-function workload_enabled(mod::Module=@__MODULE__)
-    try
+function workload_enabled(mod::Module = @__MODULE__)
+    return try
         if load_preference(PrecompileTools, "precompile_workloads", true)
             return load_preference(mod, "precompile_workload", false)
         else
@@ -69,9 +83,9 @@ if workload_enabled()
     # ----------
     for T in PRECOMPILE_ELTYPES
         for N in 0:PRECOMPILE_ADD_NDIMS
-            C = Array{T,N}
-            A = Array{T,N}
-            pA = Index2Tuple{N,0}
+            C = Array{T, N}
+            A = Array{T, N}
+            pA = Index2Tuple{N, 0}
 
             precompile(tensoradd!, (C, A, pA, Bool, One, Zero))
             precompile(tensoradd!, (C, A, pA, Bool, T, Zero))
@@ -86,10 +100,10 @@ if workload_enabled()
     # ------------
     for T in PRECOMPILE_ELTYPES
         for N1 in 0:PRECOMPILE_TRACE_NDIMS[1], N2 in 0:PRECOMPILE_TRACE_NDIMS[2]
-            C = Array{T,N1}
-            A = Array{T,N1 + 2N2}
-            p = Index2Tuple{N1,0}
-            q = Index2Tuple{N2,N2}
+            C = Array{T, N1}
+            A = Array{T, N1 + 2N2}
+            p = Index2Tuple{N1, 0}
+            q = Index2Tuple{N2, N2}
 
             precompile(tensortrace!, (C, A, p, q, Bool, One, Zero))
             precompile(tensortrace!, (C, A, p, q, Bool, T, Zero))
@@ -103,15 +117,15 @@ if workload_enabled()
     # ---------------
     for T in PRECOMPILE_ELTYPES
         for N1 in 0:PRECOMPILE_CONTRACT_NDIMS[1], N2 in 0:PRECOMPILE_CONTRACT_NDIMS[2],
-            N3 in 0:PRECOMPILE_CONTRACT_NDIMS[1]
+                N3 in 0:PRECOMPILE_CONTRACT_NDIMS[1]
 
             NA = N1 + N2
             NB = N2 + N3
             NC = N1 + N3
-            C, A, B = Array{T,NC}, Array{T,NA}, Array{T,NB}
-            pA = Index2Tuple{N1,N2}
-            pB = Index2Tuple{N2,N3}
-            pAB = Index2Tuple{NC,0}
+            C, A, B = Array{T, NC}, Array{T, NA}, Array{T, NB}
+            pA = Index2Tuple{N1, N2}
+            pB = Index2Tuple{N2, N3}
+            pAB = Index2Tuple{NC, 0}
 
             precompile(tensorcontract!, (C, A, pA, Bool, B, pB, Bool, pAB, One, Zero))
             precompile(tensorcontract!, (C, A, pA, Bool, B, pB, Bool, pAB, T, Zero))

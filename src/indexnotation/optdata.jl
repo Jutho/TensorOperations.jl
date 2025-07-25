@@ -1,7 +1,7 @@
 function optdata(ex::Expr)
     allindices = getallindices(ex)
     cost = Power{:χ}(1, 1)
-    return Dict{Any,typeof(cost)}(i => cost for i in allindices)
+    return Dict{Any, typeof(cost)}(i => cost for i in allindices)
 end
 
 function optdata(optex::Expr, ex::Expr)
@@ -18,15 +18,15 @@ function optdata(optex::Expr, ex::Expr)
             costs = convert(Vector{costtype}, costs)
         else
             indices = map(normalizeindex, args)
-            costtype = Power{:χ,Int}
-            costs = fill(Power{:χ,Int}(1, 1), length(args))
+            costtype = Power{:χ, Int}
+            costs = fill(Power{:χ, Int}(1, 1), length(args))
         end
-        return Dict{Any,costtype}(k => v for (k, v) in zip(indices, costs))
+        return Dict{Any, costtype}(k => v for (k, v) in zip(indices, costs))
     elseif optex.head == :call && optex.args[1] == :!
         allindices = unique(getallindices(ex))
         excludeind = map(normalizeindex, optex.args[2:end])
         cost = Power{:χ}(1, 1)
-        d = Dict{Any,typeof(cost)}(i => cost for i in allindices)
+        d = Dict{Any, typeof(cost)}(i => cost for i in allindices)
         for i in excludeind
             d[i] = 1
         end

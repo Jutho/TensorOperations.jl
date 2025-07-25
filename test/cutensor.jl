@@ -34,7 +34,7 @@ if cuTENSOR.has_cutensor()
             β = randn(ComplexF32)
             @tensor E1[a, b, c, d] := C[a, b, c, d] + β * conj(D[a, c, d, b])
             @tensor E2[a, b, c, d] := CuArray(C)[a, b, c, d] +
-                                      β * conj(CuArray(D)[a, c, d, b])
+                β * conj(CuArray(D)[a, c, d, b])
             @test collect(E2) ≈ E1
         end
 
@@ -81,10 +81,10 @@ if cuTENSOR.has_cutensor()
         C = rand(ComplexF64, (Dd, Dh, Df))
 
         @tensor D1[d, f, h] := A[c, a, f, a, e, b, b, g] * B[c, h, g, e, d] +
-                               0.5 * C[d, h, f]
+            0.5 * C[d, h, f]
         @tensor D2[d, f, h] := CuArray(A)[c, a, f, a, e, b, b, g] *
-                               CuArray(B)[c, h, g, e, d] +
-                               0.5 * CuArray(C)[d, h, f]
+            CuArray(B)[c, h, g, e, d] +
+            0.5 * CuArray(C)[d, h, f]
         @test collect(D2) ≈ D1
 
         @test norm(vec(D1)) ≈ sqrt(abs(@tensor D1[d, f, h] * conj(D1[d, f, h])))
@@ -103,17 +103,19 @@ if cuTENSOR.has_cutensor()
             end
             @tensor begin
                 D2[a, b, c] = CuArray(A)[a, e, f, c, f, g] * CuArray(B)[g, b, e] +
-                              α * CuArray(C)[c, a, b]
+                    α * CuArray(C)[c, a, b]
                 E2[a, b, c] := CuArray(A)[a, e, f, c, f, g] * CuArray(B)[g, b, e] +
-                               α * CuArray(C)[c, a, b]
+                    α * CuArray(C)[c, a, b]
             end
             @test collect(D2) ≈ D
             @test collect(E2) ≈ E
         end
 
         @testset "tensor network examples ($T)" for T in
-                                                    (Float32, Float64, ComplexF32,
-                                                     ComplexF64)
+            (
+                Float32, Float64, ComplexF32,
+                ComplexF64,
+            )
             D1, D2, D3 = 30, 40, 20
             d1, d2 = 2, 3
 
@@ -125,13 +127,13 @@ if cuTENSOR.has_cutensor()
 
             @tensor begin
                 HRAA1[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                                       ρᵣ[c', c] *
-                                       H[s1, s2, t1, t2]
+                    ρᵣ[c', c] *
+                    H[s1, s2, t1, t2]
             end
             @tensor begin
                 HRAA2[a, s1, s2, c] := CuArray(ρₗ)[a, a'] * CuArray(A1)[a', t1, b] *
-                                       CuArray(A2)[b, t2, c'] * CuArray(ρᵣ)[c', c] *
-                                       CuArray(H)[s1, s2, t1, t2]
+                    CuArray(A2)[b, t2, c'] * CuArray(ρᵣ)[c', c] *
+                    CuArray(H)[s1, s2, t1, t2]
             end
             @test HRAA2 isa CuArray{T}
             @test collect(HRAA2) ≈ HRAA1
@@ -140,38 +142,38 @@ if cuTENSOR.has_cutensor()
             for Mout in cumemtypes
                 Min = CUDA.DeviceMemory
                 Mtemp = CUDA.DeviceMemory
-                allocator = CUDAAllocator{Mout,Min,Mtemp}()
+                allocator = CUDAAllocator{Mout, Min, Mtemp}()
                 @tensor backend = cuTENSORBackend() allocator = allocator begin
                     HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                                           ρᵣ[c', c] *
-                                           H[s1, s2, t1, t2]
+                        ρᵣ[c', c] *
+                        H[s1, s2, t1, t2]
                 end
-                @test HRAA3 isa CuArray{T,4,Mout}
+                @test HRAA3 isa CuArray{T, 4, Mout}
                 @test collect(HRAA3) ≈ HRAA1
             end
             for Min in cumemtypes
                 Mout = CUDA.UnifiedMemory
                 Mtemp = CUDA.UnifiedMemory
-                allocator = CUDAAllocator{Mout,Min,Mtemp}()
+                allocator = CUDAAllocator{Mout, Min, Mtemp}()
                 @tensor backend = cuTENSORBackend() allocator = allocator begin
                     HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                                           ρᵣ[c', c] *
-                                           H[s1, s2, t1, t2]
+                        ρᵣ[c', c] *
+                        H[s1, s2, t1, t2]
                 end
-                @test HRAA3 isa CuArray{T,4,Mout}
+                @test HRAA3 isa CuArray{T, 4, Mout}
                 @test collect(HRAA3) ≈ HRAA1
             end
 
             @tensor begin
                 E1 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
-                     conj(A1[a', t, b']) * conj(A2[b', t', c'])
+                    conj(A1[a', t, b']) * conj(A2[b', t', c'])
                 E2 = CuArray(ρₗ)[a', a] * CuArray(A1)[a, s, b] * CuArray(A2)[b, s', c] *
-                     CuArray(ρᵣ)[c, c'] * CuArray(H)[t, t', s, s'] *
-                     conj(CuArray(A1)[a', t, b']) * conj(CuArray(A2)[b', t', c'])
+                    CuArray(ρᵣ)[c, c'] * CuArray(H)[t, t', s, s'] *
+                    conj(CuArray(A1)[a', t, b']) * conj(CuArray(A2)[b', t', c'])
             end
             @tensor backend = cuTENSORBackend() allocator = CUDAAllocator() begin
                 E3 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
-                     conj(A1[a', t, b']) * conj(A2[b', t', c'])
+                    conj(A1[a', t, b']) * conj(A2[b', t', c'])
             end
             @test E1 ≈ E2 ≈ E3
         end
@@ -236,9 +238,9 @@ if cuTENSOR.has_cutensor()
             B = rand(ComplexF64, (Dc, Dh, Dg, De, Dd))
             C = rand(ComplexF64, (Dd, Dh, Df))
             @tensor D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
-                                   0.5 * C[d, h, f]
+                0.5 * C[d, h, f]
             @cutensor D2[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
-                                     0.5 * C[d, h, f]
+                0.5 * C[d, h, f]
             @test D1 ≈ collect(D2)
             E1 = sqrt(abs((@tensor tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
             E2 = sqrt(abs((@cutensor tensorscalar(D2[d, f, h] * conj(D2[d, f, h])))))
@@ -248,8 +250,10 @@ if cuTENSOR.has_cutensor()
         @testset "views" begin
             p = [3, 1, 4, 2]
             Abig = CUDA.randn(Float32, (30, 30, 30, 30))
-            A = view(Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
-                     4 .+ 3 .* (0:8))
+            A = view(
+                Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
+                4 .+ 3 .* (0:8)
+            )
             Cbig = CUDA.zeros(Float32, (50, 50, 50, 50))
             C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
             Acopy = copy(A)
@@ -271,8 +275,10 @@ if cuTENSOR.has_cutensor()
         @testset "views 2" begin
             p = [3, 1, 4, 2]
             Abig = CUDA.randn(ComplexF32, (30, 30, 30, 30))
-            A = view(Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
-                     4 .+ 3 .* (0:8))
+            A = view(
+                Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
+                4 .+ 3 .* (0:8)
+            )
             Cbig = CUDA.zeros(ComplexF32, (50, 50, 50, 50))
             C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
             Acopy = permutedims(copy(A), p)
@@ -295,8 +301,10 @@ if cuTENSOR.has_cutensor()
 
         @testset "views 3" begin
             Abig = CUDA.rand(ComplexF64, (30, 30, 30, 30))
-            A = view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6),
-                     7 .+ 2 .* (0:8))
+            A = view(
+                Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6),
+                7 .+ 2 .* (0:8)
+            )
             Bbig = CUDA.rand(ComplexF64, (50, 50))
             B = view(Bbig, 13 .+ (0:14), 3 .+ 5 .* (0:6))
             Acopy = copy(A)
@@ -321,8 +329,10 @@ if cuTENSOR.has_cutensor()
 
         @testset "views 4" begin
             Abig = CUDA.rand(ComplexF32, (30, 30, 30, 30))
-            A = view(Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6),
-                     7 .+ 2 .* (0:8))
+            A = view(
+                Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6),
+                7 .+ 2 .* (0:8)
+            )
             Bbig = CUDA.rand(ComplexF32, (50, 50, 50))
             B = view(Bbig, 3 .+ 5 .* (0:6), 7 .+ 2 .* (0:7), 13 .+ (0:14))
             Cbig = CUDA.rand(ComplexF32, (40, 40, 40))

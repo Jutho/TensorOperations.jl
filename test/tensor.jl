@@ -61,8 +61,10 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         A = randn(Float64, (5, 5, 5, 5))
         B = rand(ComplexF64, (5, 5, 5, 5))
         @tensor backend = b C1[1, 2, 5, 6, 3, 4, 7, 8] := A[1, 2, 3, 4] * B[5, 6, 7, 8]
-        C2 = reshape(kron(reshape(B, (25, 25)), reshape(A, (25, 25))),
-                     (5, 5, 5, 5, 5, 5, 5, 5))
+        C2 = reshape(
+            kron(reshape(B, (25, 25)), reshape(A, (25, 25))),
+            (5, 5, 5, 5, 5, 5, 5, 5)
+        )
         @test C1 ≈ C2
         @test_throws IndexError begin
             @tensor backend = b C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
@@ -75,7 +77,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         B = rand(ComplexF64, (Dc, Dh, Dg, De, Dd))
         C = rand(ComplexF64, (Dd, Dh, Df))
         @tensor backend = b D1[d, f, h] := A[a, c, f, a, e, b, b, g] * B[c, h, g, e, d] +
-                                           0.5 * C[d, h, f]
+            0.5 * C[d, h, f]
         D2 = zeros(ComplexF64, (Dd, Df, Dh))
         for d in 1:Dd, f in 1:Df, h in 1:Dh
             D2[d, f, h] += 0.5 * C[d, h, f]
@@ -85,7 +87,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         end
         @test D1 ≈ D2
         @test norm(vec(D1)) ≈
-              sqrt(abs((@tensor backend = b tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
+            sqrt(abs((@tensor backend = b tensorscalar(D1[d, f, h] * conj(D1[d, f, h])))))
     end
 
     @testset "views" begin
@@ -251,41 +253,61 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         rhoR = rand(T, D3, D3) .- 1 // 2
         H = rand(T, d1, d2, d1, d2) .- 1 // 2
         A12 = reshape(reshape(A1, D1 * d1, D2) * reshape(A2, D2, d2 * D3), (D1, d1, d2, D3))
-        rA12 = reshape(reshape(rhoL * reshape(A12, (D1, d1 * d2 * D3)),
-                               (D1 * d1 * d2, D3)) * rhoR, (D1, d1, d2, D3))
-        HrA12 = permutedims(reshape(reshape(H, (d1 * d2, d1 * d2)) *
-                                    reshape(permutedims(rA12, (2, 3, 1, 4)),
-                                            (d1 * d2, D1 * D3)), (d1, d2, D1, D3)),
-                            (3, 1, 2, 4))
+        rA12 = reshape(
+            reshape(
+                rhoL * reshape(A12, (D1, d1 * d2 * D3)),
+                (D1 * d1 * d2, D3)
+            ) * rhoR, (D1, d1, d2, D3)
+        )
+        HrA12 = permutedims(
+            reshape(
+                reshape(H, (d1 * d2, d1 * d2)) *
+                    reshape(
+                    permutedims(rA12, (2, 3, 1, 4)),
+                    (d1 * d2, D1 * D3)
+                ), (d1, d2, D1, D3)
+            ),
+            (3, 1, 2, 4)
+        )
         E = dot(A12, HrA12)
         @tensor backend = b HrA12′[a, s1, s2, c] := rhoL[a, a'] * A1[a', t1, b] *
-                                                    A2[b, t2, c'] *
-                                                    rhoR[c', c] * H[s1, s2, t1, t2]
+            A2[b, t2, c'] *
+            rhoR[c', c] * H[s1, s2, t1, t2]
         @tensor backend = b HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] *
-                                          rhoR[3, -4] *
-                                          A1[1, 4, 2] # should be contracted in exactly same order
+            rhoR[3, -4] *
+            A1[1, 4, 2] # should be contracted in exactly same order
         @tensor backend = b order = (a', b, c', t1, t2) begin
             HrA12′′′[a, s1, s2, c] := rhoL[a, a'] * H[s1, s2, t1, t2] * A2[b, t2, c'] *
-                                      rhoR[c', c] * A1[a', t1, b] # should be contracted in exactly same order
+                rhoR[c', c] * A1[a', t1, b] # should be contracted in exactly same order
         end
         @tensoropt HrA12′′′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] *
-                                   rhoR[3, -4] * A1[1, 4, 2]
+            rhoR[3, -4] * A1[1, 4, 2]
 
         @test HrA12′ == HrA12′′ == HrA12′′′ # should be exactly equal
         @test HrA12 ≈ HrA12′
         @test HrA12 ≈ HrA12′′′′
-        @test HrA12′′ ≈ ncon([rhoL, H, A2, rhoR, A1],
-                             [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]])
-        @test HrA12′′ == @ncon([rhoL, H, A2, rhoR, A1],
-                               [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]];
-                               order=[1, 2, 3, 4, 5], output=[-1, -2, -3, -4], backend=b)
+        @test HrA12′′ ≈ ncon(
+            [rhoL, H, A2, rhoR, A1],
+            [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]]
+        )
+        @test HrA12′′ == @ncon(
+            [rhoL, H, A2, rhoR, A1],
+            [[-1, 1], [-2, -3, 4, 5], [2, 5, 3], [3, -4], [1, 4, 2]];
+            order = [1, 2, 3, 4, 5], output = [-1, -2, -3, -4], backend = b
+        )
         @test E ≈
-              @tensor tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
-                                   H[t, t', s, s'] * conj(A1[a', t, b']) *
-                                   conj(A2[b', t', c']))
-        @test E ≈ @ncon([rhoL, A1, A2, rhoR, H, conj(A1), conj(A2)],
-                        [[5, 1], [1, 2, 3], [3, 4, 9], [9, 10], [6, 8, 2, 4], [5, 6, 7],
-                         [7, 8, 10]])
+            @tensor tensorscalar(
+            rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                H[t, t', s, s'] * conj(A1[a', t, b']) *
+                conj(A2[b', t', c'])
+        )
+        @test E ≈ @ncon(
+            [rhoL, A1, A2, rhoR, H, conj(A1), conj(A2)],
+            [
+                [5, 1], [1, 2, 3], [3, 4, 9], [9, 10], [6, 8, 2, 4], [5, 6, 7],
+                [7, 8, 10],
+            ]
+        )
         # this implicitly tests that `ncon` returns a scalar if no open indices
     end
 end
@@ -296,36 +318,44 @@ end
     @tensoropt (a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ) begin
         D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
-    @tensoropt (a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ) begin
+    @tensoropt (a = χ, b = χ^2, c = 2 * χ, d = χ, e = 5, f = 2 * χ) begin
         D2[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
     @tensoropt ((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5) begin
         D3[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
-    @tensoropt ((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5) begin
+    @tensoropt ((a, d) = χ, b = χ^2, (c, f) = 2 * χ, e = 5) begin
         D4[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
     @test D1 == D2 == D3 == D4
-    _optdata = optex -> TensorOperations.optdata(optex,
-                                                 :(D1[a, b, c, d] := A[a, e, c, f] *
-                                                                     B[g, d, e] *
-                                                                     C[g, f, b]))
+    _optdata = optex -> TensorOperations.optdata(
+        optex,
+        :(
+            D1[a, b, c, d] := A[a, e, c, f] *
+                B[g, d, e] *
+                C[g, f, b]
+        )
+    )
     optex1 = :((a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ))
-    optex2 = :((a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ))
+    optex2 = :((a = χ, b = χ^2, c = 2 * χ, d = χ, e = 5, f = 2 * χ))
     optex3 = :(((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5))
-    optex4 = :(((a, d)=χ, b=χ^2, (c, f)=2 * χ, e=5))
-    optex5 = :(((a,) => χ, b => χ^2, (c,) => 2χ, d => χ, e => 5, f => χ * 2,
-                () => 12345))
+    optex4 = :(((a, d) = χ, b = χ^2, (c, f) = 2 * χ, e = 5))
+    optex5 = :(
+        (
+            (a,) => χ, b => χ^2, (c,) => 2χ, d => χ, e => 5, f => χ * 2,
+            () => 12345,
+        )
+    )
     @test _optdata(optex1) == _optdata(optex2) == _optdata(optex3) ==
-          _optdata(optex4) == _optdata(optex5)
-    optex6 = :(((a, b, c)=χ,))
+        _optdata(optex4) == _optdata(optex5)
+    optex6 = :(((a, b, c) = χ,))
     optex7 = :((a, b, c))
     @test _optdata(optex6) == _optdata(optex7)
-    optex8 = :(((a, b, c)=1, (d, e, f, g)=χ))
+    optex8 = :(((a, b, c) = 1, (d, e, f, g) = χ))
     optex9 = :(!(a, b, c))
     @test _optdata(optex8) == _optdata(optex9)
-    optex10 = :((a => χ, b => χ^2, c=2 * χ, d => χ, e => 5, f=2 * χ))
-    optex11 = :((a=χ, b=χ^2, c=2 * χ, d, e=5, f))
+    optex10 = :((a => χ, b => χ^2, c = 2 * χ, d => χ, e => 5, f = 2 * χ))
+    optex11 = :((a = χ, b = χ^2, c = 2 * χ, d, e = 5, f))
     @test_throws ErrorException _optdata(optex10)
     @test_throws ErrorException _optdata(optex11)
 end
@@ -450,7 +480,7 @@ end
 
         res1 = @tensor begin
             (v1[a] * v1[b] * v1[c]) * m1[a, b, c] +
-            (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
+                (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
         end
         res2 = @tensor (v1[a] * v1[b] * v1[c]) * m1[a, b, c]
         res3 = @tensor (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
@@ -474,24 +504,24 @@ end
         @tensoropt res1[a, b] := mat1[x, y] * mat2[y, x] * mat3[a, c] * mat4[c, b]
         @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[a, c] * mat4[c, b]
         @tensor res3[a, b] := tensorscalar(mat1[x, y] * mat2[y, x]) * mat3[a, c] *
-                              mat4[c, b]
+            mat4[c, b]
         @tensor costcheck = warn res4[a, b] := tensorscalar(mat1[x, y] * mat2[y, x]) *
-                                               mat3[a, c] * mat4[c, b]
+            mat3[a, c] * mat4[c, b]
         @test res1 == res2 == res3 == res4
 
         @tensor res1[a, b] := mat1[x, y] * mat2[y, x] * mat3[b, a] + mat4[a, b]
         @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[b, a] + mat4[a, b]
         @tensoropt res3[a, b] := mat4[a, b] + mat1[x, y] * mat3[b, a] * mat2[y, x]
         @tensor costcheck = warn res4[a, b] := mat4[a, b] +
-                                               tensorscalar(mat1[x, y] * mat2[y, x]) *
-                                               mat3[b, a]
+            tensorscalar(mat1[x, y] * mat2[y, x]) *
+            mat3[b, a]
         @test res1 == res2 == res3 == res4
 
         @tensor res1[a, b] := 0.5 * mat1[x, y] * mat2[y, x] * mat3[b, a]
         @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[b, a] * 0.5
         @tensoropt res3[a, b] := 0.5 * mat1[x, y] * mat3[b, a] * mat2[y, x]
         @tensor costcheck = warn res4[a, b] := 0.5 * tensorscalar(mat1[x, y] * mat2[y, x]) *
-                                               mat3[b, a]
+            mat3[b, a]
         @test res1 == res2 == res3 == res4
     end
 
@@ -531,7 +561,7 @@ end
 
     @testset "methods for StridedBLAS" begin
         using TensorOperations: isblascontractable, isblasdestination, makeblascontractable,
-                                StridedBLAS, DefaultAllocator
+            StridedBLAS, DefaultAllocator
         using Strided
         backend = StridedBLAS()
         allocator = DefaultAllocator()
@@ -549,11 +579,13 @@ end
         @test isblascontractable(Anew, pnew)
 
         for p in (((2, 1), (3, 4)), ((1,), (3, 2, 4)), ((2, 1, 4), (3,))),
-            op in (identity, conj)
+                op in (identity, conj)
 
             @test !isblascontractable(op(A), p)
-            Anew, pnew, flag = makeblascontractable(op(A), p, ComplexF64, backend,
-                                                    allocator)
+            Anew, pnew, flag = makeblascontractable(
+                op(A), p, ComplexF64, backend,
+                allocator
+            )
             @test isblascontractable(Anew, pnew)
         end
 

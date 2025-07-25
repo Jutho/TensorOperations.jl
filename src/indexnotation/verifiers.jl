@@ -122,7 +122,7 @@ function isscalarexpr(ex)
         return istensorexpr(ex.args[2])
     elseif isexpr(ex, (:ref, :typed_vcat, :typed_hcat))
         return false
-    elseif isexpr(ex, :call)# || isdefinition(ex) || isassignment(ex)
+    elseif isexpr(ex, :call) # || isdefinition(ex) || isassignment(ex)
         return all(isscalarexpr, ex.args[2:end])
     else
         return true # assume everything else is valid scalar code

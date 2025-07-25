@@ -13,20 +13,28 @@ using Logging
     H = randn(d1, d2, d1, d2) .- 1 // 2
 
     E1 = @tensor backend = StridedNative() begin
-        tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
-                     H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+        tensorscalar(
+            rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c'])
+        )
     end
     E2 = @tensor backend = StridedBLAS() begin
-        tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
-                     H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+        tensorscalar(
+            rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c'])
+        )
     end
     E3 = @tensor backend = BaseView() begin
-        tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
-                     H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+        tensorscalar(
+            rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c'])
+        )
     end
     E4 = @tensor backend = BaseCopy() begin
-        tensorscalar(rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
-                     H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c']))
+        tensorscalar(
+            rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
+                H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c'])
+        )
     end
     @test E1 ≈ E2
     @test E1 ≈ E3
@@ -92,13 +100,13 @@ end
     @tensor opt = (a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ) begin
         D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
-    @tensor opt = (a=χ, b=χ^2, c=2 * χ, d=χ, e=5, f=2 * χ) begin
+    @tensor opt = (a = χ, b = χ^2, c = 2 * χ, d = χ, e = 5, f = 2 * χ) begin
         D2[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
     @tensor opt = ((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5) begin
         D3[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b]
     end
-    @tensor opt = ((1, 4)=χ, 2=χ^2, (3, 6)=2 * χ, 5=5) begin
+    @tensor opt = ((1, 4) = χ, 2 = χ^2, (3, 6) = 2 * χ, 5 = 5) begin
         D4[1, 2, 3, 4] := A[1, 5, 3, 6] * B[7, 4, 5] * C[7, 6, 2]
     end
     @tensor opt = true begin

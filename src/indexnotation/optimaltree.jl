@@ -1,4 +1,4 @@
-function optimaltree(network, optdata::Dict; verbose::Bool=false)
+function optimaltree(network, optdata::Dict; verbose::Bool = false)
     numtensors = length(network)
     allindices = unique(vcat(network...))
     numindices = length(allindices)
@@ -7,11 +7,15 @@ function optimaltree(network, optdata::Dict; verbose::Bool=false)
 
     tensorcosts = Vector{costtype}(undef, numtensors)
     for k in 1:numtensors
-        tensorcosts[k] = mapreduce(i -> get(optdata, i, one(costtype)), mulcost, network[k];
-                                   init=one(costtype))
+        tensorcosts[k] = mapreduce(
+            i -> get(optdata, i, one(costtype)), mulcost, network[k];
+            init = one(costtype)
+        )
     end
-    initialcost = addcost(mulcost(maximum(tensorcosts), minimum(tensorcosts)),
-                          zero(costtype)) # just some arbitrary guess
+    initialcost = addcost(
+        mulcost(maximum(tensorcosts), minimum(tensorcosts)),
+        zero(costtype)
+    ) # just some arbitrary guess
 
     if numindices <= 32
         return _optimaltree(UInt32, network, allindices, allcosts, initialcost; verbose)
@@ -32,7 +36,7 @@ function storeset(::Type{BitVector}, ints, maxint)
     end
     return set
 end
-function storeset(::Type{T}, ints, maxint) where {T<:Unsigned}
+function storeset(::Type{T}, ints, maxint) where {T <: Unsigned}
     set = zero(T)
     u = one(T)
     for i in ints
@@ -40,13 +44,13 @@ function storeset(::Type{T}, ints, maxint) where {T<:Unsigned}
     end
     return set
 end
-_intersect(s1::T, s2::T) where {T<:Unsigned} = s1 & s2
+_intersect(s1::T, s2::T) where {T <: Unsigned} = s1 & s2
 _intersect(s1::BitVector, s2::BitVector) = s1 .& s2
 _intersect(s1::BitSet, s2::BitSet) = intersect(s1, s2)
-_union(s1::T, s2::T) where {T<:Unsigned} = s1 | s2
+_union(s1::T, s2::T) where {T <: Unsigned} = s1 | s2
 _union(s1::BitVector, s2::BitVector) = s1 .| s2
 _union(s1::BitSet, s2::BitSet) = union(s1, s2)
-_setdiff(s1::T, s2::T) where {T<:Unsigned} = s1 & (~s2)
+_setdiff(s1::T, s2::T) where {T <: Unsigned} = s1 & (~s2)
 _setdiff(s1::BitVector, s2::BitVector) = s1 .& (.~s2)
 _setdiff(s1::BitSet, s2::BitSet) = setdiff(s1, s2)
 _isemptyset(s::Unsigned) = iszero(s)
@@ -59,7 +63,7 @@ end
 mulcost(cost1::Integer, cost2::Integer) = Base.Checked.checked_mul(cost1, cost2)
 addcost(cost1, cost2, costs...) = +(cost1, cost2, costs...)
 mulcost(cost1, cost2) = cost1 * cost2
-function computecost(allcosts, ind1::T, ind2::T) where {T<:Unsigned}
+function computecost(allcosts, ind1::T, ind2::T) where {T <: Unsigned}
     cost = one(eltype(allcosts))
     ind = _union(ind1, ind2)
     n = 1
@@ -104,8 +108,10 @@ function computemaxcost(allcosts, indexsets)
     return addcost(maxcost, zero(maxcost)) # add zero for type stability: Power -> Poly
 end
 
-function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C;
-                      verbose::Bool=false) where {T,S,C}
+function _optimaltree(
+        ::Type{T}, network, allindices, allcosts::Vector{S}, initialcost::C;
+        verbose::Bool = false
+    ) where {T, S, C}
     numindices = length(allindices)
     numtensors = length(network)
     indexsets = Array{T}(undef, numtensors)
@@ -147,14 +153,14 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
         # find optimal contraction for every component
         component = componentlist[c]
         componentsize = length(component)
-        costdict = Vector{Dict{T,C}}(undef, componentsize)
-        treedict = Vector{Dict{T,Any}}(undef, componentsize)
-        indexdict = Vector{Dict{T,T}}(undef, componentsize)
+        costdict = Vector{Dict{T, C}}(undef, componentsize)
+        treedict = Vector{Dict{T, Any}}(undef, componentsize)
+        indexdict = Vector{Dict{T, T}}(undef, componentsize)
 
         for k in 1:componentsize
-            costdict[k] = Dict{T,C}()
-            treedict[k] = Dict{T,Any}()
-            indexdict[k] = Dict{T,T}()
+            costdict[k] = Dict{T, C}()
+            treedict[k] = Dict{T, Any}()
+            indexdict[k] = Dict{T, T}()
         end
 
         for i in component
@@ -178,19 +184,23 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                 for k in 1:div(n - 1, 2)
                     for s1 in keys(costdict[k]), s2 in keys(costdict[n - k])
                         if _isemptyset(_intersect(s1, s2)) &&
-                           get(costdict[n], _union(s1, s2), currentcost) > previouscost
+                                get(costdict[n], _union(s1, s2), currentcost) > previouscost
                             ind1 = indexdict[k][s1]
                             ind2 = indexdict[n - k][s2]
                             cind = _intersect(ind1, ind2)
                             if !_isemptyset(cind)
                                 s = _union(s1, s2)
-                                cost = addcost(costdict[k][s1], costdict[n - k][s2],
-                                               computecost(allcosts, ind1, ind2))
+                                cost = addcost(
+                                    costdict[k][s1], costdict[n - k][s2],
+                                    computecost(allcosts, ind1, ind2)
+                                )
                                 if cost <= get(costdict[n], s, currentcost)
                                     costdict[n][s] = cost
                                     indexdict[n][s] = _setdiff(_union(ind1, ind2), cind)
-                                    treedict[n][s] = Any[treedict[k][s1],
-                                                         treedict[n - k][s2]]
+                                    treedict[n][s] = Any[
+                                        treedict[k][s1],
+                                        treedict[n - k][s2],
+                                    ]
                                 elseif currentcost < cost < nextcost
                                     nextcost = cost
                                 end
@@ -208,19 +218,23 @@ function _optimaltree(::Type{T}, network, allindices, allcosts::Vector{S}, initi
                         while elstate2 !== nothing
                             s2, nextstate2 = elstate2
                             if _isemptyset(_intersect(s1, s2)) &&
-                               get(costdict[n], _union(s1, s2), currentcost) > previouscost
+                                    get(costdict[n], _union(s1, s2), currentcost) > previouscost
                                 ind1 = indexdict[k][s1]
                                 ind2 = indexdict[k][s2]
                                 cind = _intersect(ind1, ind2)
                                 if !_isemptyset(cind)
                                     s = _union(s1, s2)
-                                    cost = addcost(costdict[k][s1], costdict[k][s2],
-                                                   computecost(allcosts, ind1, ind2))
+                                    cost = addcost(
+                                        costdict[k][s1], costdict[k][s2],
+                                        computecost(allcosts, ind1, ind2)
+                                    )
                                     if cost <= get(costdict[n], s, currentcost)
                                         costdict[n][s] = cost
                                         indexdict[n][s] = _setdiff(_union(ind1, ind2), cind)
-                                        treedict[n][s] = Any[treedict[k][s1],
-                                                             treedict[k][s2]]
+                                        treedict[n][s] = Any[
+                                            treedict[k][s1],
+                                            treedict[k][s2],
+                                        ]
                                     elseif currentcost < cost < nextcost
                                         nextcost = cost
                                     end
