@@ -22,8 +22,7 @@ trivtuple(N) = ntuple(identity, N)
 # Cannot free intermediate tensors when using AD
 # Thus we change the forward passes: `istemp=false` and `tensorfree!` is a no-op
 function ChainRulesCore.rrule(
-        ::typeof(TensorOperations.tensorfree!),
-        allocator = DefaultAllocator()
+        ::typeof(TensorOperations.tensorfree!), allocator = DefaultAllocator()
     )
     tensorfree!_pullback(Δargs...) = (NoTangent(), NoTangent())
     return nothing, tensorfree!_pullback
@@ -286,8 +285,7 @@ function _rrule_tensortrace!(C, A, p, q, conjA, α, β, ba)
             Es = map(q[1], q[2]) do i1, i2
                 return one(
                     TensorOperations.tensoralloc_add(
-                        scalartype(A), A,
-                        ((i1,), (i2,)), conjA
+                        scalartype(A), A, ((i1,), (i2,)), conjA
                     )
                 )
             end

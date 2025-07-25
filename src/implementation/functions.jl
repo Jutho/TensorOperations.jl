@@ -111,7 +111,8 @@ function tensoradd end
 
 function tensoradd(
         IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-        α::Number = One(), β::Number = One(); kwargs...
+        α::Number = One(), β::Number = One();
+        kwargs...
     )
     pA = add_indices(IA, IC)
     pB = add_indices(IB, IC)
@@ -120,14 +121,15 @@ end
 # default `IC`
 function tensoradd(
         A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-        α::Number = One(), β::Number = One(); kwargs...
+        α::Number = One(), β::Number = One();
+        kwargs...
     )
     return tensoradd(IA, A, IA, conjA, B, IB, conjB, α, β; kwargs...)
 end
 # default `conjA` and `conjB`
 function tensoradd(
-        IC::Labels, A, IA::Labels, B, IB::Labels,
-        α::Number = One(), β::Number = One(); kwargs...
+        IC::Labels, A, IA::Labels, B, IB::Labels, α::Number = One(), β::Number = One();
+        kwargs...
     )
     return tensoradd(IC, A, IA, false, B, IB, false, α, β)
 end
@@ -222,7 +224,8 @@ function tensorcontract end
 
 function tensorcontract(
         IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-        α::Number = One(); kwargs...
+        α::Number = One();
+        kwargs...
     )
     pA, pB, pAB = contract_indices(IA, IB, IC)
     return tensorcontract(A, pA, conjA, B, pB, conjB, pAB, α, _kwargs2args(; kwargs...)...)
@@ -230,7 +233,8 @@ end
 # default `IC`
 function tensorcontract(
         A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-        α::Number = One(); kwargs...
+        α::Number = One();
+        kwargs...
     )
     return tensorcontract(symdiff(IA, IB), A, IA, conjA, B, IB, conjB, α; kwargs...)
 end
@@ -255,8 +259,7 @@ function tensorcontract(
     TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
     C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, Val(false), allocator)
     return tensorcontract!(
-        C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend,
-        allocator
+        C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend, allocator
     )
 end
 
@@ -284,15 +287,16 @@ function tensorproduct end
 
 function tensorproduct(
         IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-        α::Number = One(); kwargs...
+        α::Number = One();
+        kwargs...
     )
     pA, pB, pAB = contract_indices(IA, IB, IC)
     return tensorproduct(A, pA, conjA, B, pB, conjB, pAB, α, _kwargs2args(; kwargs...)...)
 end
 # default `IC`
 function tensorproduct(
-        A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-        α::Number = One(); kwargs...
+        A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool, α::Number = One();
+        kwargs...
     )
     return tensorproduct(vcat(IA, IB), A, IA, conjA, B, IB, conjB, α; kwargs...)
 end

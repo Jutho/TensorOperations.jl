@@ -115,12 +115,7 @@
         @test !isscalarexpr(:(3 * tensorscalar(a[x, y] * b[y, x]) + conj(c[z])))
 
         @test instantiate_scalartype(:(a[1, 2, 3] * b[3, 4, 5] + c[1, 2, 4, 5])) ==
-            :(
-            promote_add(
-                promote_contract(scalartype(a), scalartype(b)),
-                scalartype(c)
-            )
-        )
+            :(promote_add(promote_contract(scalartype(a), scalartype(b)), scalartype(c)))
     end
 
     @testset "parsecost" begin
@@ -192,12 +187,7 @@ end
         @test TensorOperations.expandconj(:(conj(a[x, y, z] * b[x, y, z]))) ==
             :(conj(a[x, y, z]) * conj(b[x, y, z]))
         @test TensorOperations.expandconj(
-            :(
-                conj(
-                    a[x, y, z] * 2 * c[x, y, z] + 12 +
-                        A[1, 2] * B[3, 4] \ 1
-                )
-            )
+            :(conj(a[x, y, z] * 2 * c[x, y, z] + 12 + A[1, 2] * B[3, 4] \ 1))
         ) ==
             :(
             conj(a[x, y, z]) * conj(2) * conj(c[x, y, z]) + conj(12) +
@@ -236,10 +226,7 @@ end
             (((3, 4, 2), ()), ((1,), (5,)))
 
         @test_throws IndexError trace_indices((:a, :b, :c, :d, :d), (:a, :b, :d))
-        @test_throws IndexError trace_indices(
-            (:a, :b, :c, :d, :d),
-            (:a, :b, :c, :d, :d)
-        )
+        @test_throws IndexError trace_indices((:a, :b, :c, :d, :d), (:a, :b, :c, :d, :d))
 
         # only tests for all indices to the left, labels defaults to this
         for (p, q) in
@@ -262,10 +249,7 @@ end
         @test contract_indices((:c, :a, :b), (:c, :d), (:a, :b, :d)) ==
             (((2, 3), (1,)), ((1,), (2,)), ((1, 2, 3), ()))
 
-        @test_throws IndexError contract_indices(
-            (:a, :b, :c), (:c, :d),
-            (:a, :b, :d, :e)
-        )
+        @test_throws IndexError contract_indices((:a, :b, :c), (:c, :d), (:a, :b, :d, :e))
         @test_throws IndexError contract_indices((:a, :b, :c), (:c, :d), (:a, :b, :e))
 
         for (pA, pB, pAB) in

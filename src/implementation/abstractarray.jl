@@ -35,8 +35,7 @@ function select_backend(::typeof(tensortrace!), C::AbstractArray, A::AbstractArr
 end
 
 function select_backend(
-        ::typeof(tensorcontract!), C::AbstractArray, A::AbstractArray,
-        B::AbstractArray
+        ::typeof(tensorcontract!), C::AbstractArray, A::AbstractArray, B::AbstractArray
     )
     if all(_isstridedordiag, (A, B, C))
         return select_backend(
@@ -87,8 +86,7 @@ Check that the partial trace of `A` over indices `q` and with permutation of the
 indices `p` is compatible with output `C`.
 """
 function argcheck_tensortrace(
-        C::AbstractArray, A::AbstractArray, p::Index2Tuple,
-        q::Index2Tuple
+        C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple
     )
     ndims(C) == numind(p) ||
         throw(IndexError("invalid selection of length $(ndims(C)): $p"))
@@ -140,8 +138,7 @@ Check that `C` and `A` have compatible sizes for the trace and addition specifie
 `q`.
 """
 function dimcheck_tensortrace(
-        C::AbstractArray, A::AbstractArray,
-        p::Index2Tuple, q::Index2Tuple
+        C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple
     )
     szA, szC = size(A), size(C)
     TupleTools.getindices(szA, q[1]) == TupleTools.getindices(szA, q[2]) ||

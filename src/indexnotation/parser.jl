@@ -7,10 +7,7 @@ mutable struct TensorParser
     postprocessors::Vector{Any}
     function TensorParser()
         preprocessors = [
-            normalizeindices,
-            expandconj,
-            nconindexcompletion,
-            extracttensorobjects,
+            normalizeindices, expandconj, nconindexcompletion, extracttensorobjects,
         ]
         contractiontreebuilder = defaulttreebuilder
         contractiontreesorter = defaulttreesorter
@@ -18,9 +15,7 @@ mutable struct TensorParser
         postprocessors = [_flatten, removelinenumbernode, addtensoroperations]
         return new(
             preprocessors,
-            contractiontreebuilder,
-            contractiontreesorter,
-            contractioncostcheck,
+            contractiontreebuilder, contractiontreesorter, contractioncostcheck,
             postprocessors
         )
     end
@@ -63,7 +58,6 @@ function verifytensorexpr(ex)
         if istensor(lhs)
             istensorexpr(rhs) ||
                 throw(ArgumentError("@tensor: the following right hand side is not (no longer) recognized as a tensor expression:\n $rhs"))
-            return
         else
             (istensorexpr(rhs) && isempty(getindices(rhs))) || isscalarexpr(rhs) ||
                 throw(ArgumentError("@tensor: the following right hand side is not (no longer) recognized as a scalar expression:\n $rhs"))
@@ -73,6 +67,7 @@ function verifytensorexpr(ex)
             isscalarexpr(ex) ||
             throw(ArgumentError("@tensor: the following expression is not (no longer) recognized:\n$ex"))
     end
+    return nothing
 end
 
 """
@@ -108,18 +103,15 @@ function tensorify(ex::Expr)
             if isassignment(ex)
                 if ex.head == :(=)
                     return instantiate(
-                        dst, Zero(), rhs, One(), leftind, rightind,
-                        ExistingTensor
+                        dst, Zero(), rhs, One(), leftind, rightind, ExistingTensor
                     )
                 elseif ex.head == :(+=)
                     return instantiate(
-                        dst, One(), rhs, One(), leftind, rightind,
-                        ExistingTensor
+                        dst, One(), rhs, One(), leftind, rightind, ExistingTensor
                     )
                 else
                     return instantiate(
-                        dst, One(), rhs, -One(), leftind, rightind,
-                        ExistingTensor
+                        dst, One(), rhs, -One(), leftind, rightind, ExistingTensor
                     )
                 end
             else
@@ -128,18 +120,12 @@ function tensorify(ex::Expr)
                     dst2 = gensym(dst)
                     return quote
                         $dst2 = $dst
-                        $(
-                            instantiate(
-                                dst2, Zero(), rhs, One(), leftind, rightind,
-                                NewTensor
-                            )
-                        )
+                        $(instantiate(dst2, Zero(), rhs, One(), leftind, rightind, NewTensor))
                         $dst = $dst2
                     end
                 else
                     return instantiate(
-                        dst, Zero(), rhs, One(), leftind, rightind,
-                        NewTensor
+                        dst, Zero(), rhs, One(), leftind, rightind, NewTensor
                     )
                 end
             end

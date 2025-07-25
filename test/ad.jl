@@ -9,10 +9,7 @@ precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
 precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-8
 
 @testset "tensortrace! ($T₁, $T₂)" for (T₁, T₂) in
-    (
-        (Float64, Float64), (Float32, Float64),
-        (ComplexF64, ComplexF64), (Float64, ComplexF64),
-    )
+    ((Float64, Float64), (Float32, Float64), (ComplexF64, ComplexF64), (Float64, ComplexF64))
     T = promote_type(T₁, T₂)
     atol = max(precision(T₁), precision(T₂))
     rtol = max(precision(T₁), precision(T₂))
@@ -32,10 +29,7 @@ precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-8
 end
 
 @testset "tensoradd! ($T₁, $T₂)" for (T₁, T₂) in
-    (
-        (Float64, Float64), (Float32, Float64),
-        (ComplexF64, ComplexF64), (Float64, ComplexF64),
-    )
+    ((Float64, Float64), (Float32, Float64), (ComplexF64, ComplexF64), (Float64, ComplexF64))
     T = promote_type(T₁, T₂)
     atol = max(precision(T₁), precision(T₂))
     rtol = max(precision(T₁), precision(T₂))
@@ -53,11 +47,7 @@ end
 end
 
 @testset "tensorcontract! ($T₁, $T₂)" for (T₁, T₂) in
-    (
-        (Float64, Float64), (Float32, Float64),
-        (ComplexF64, ComplexF64),
-        (Float64, ComplexF64),
-    )
+    ((Float64, Float64), (Float32, Float64), (ComplexF64, ComplexF64), (Float64, ComplexF64))
     T = promote_type(T₁, T₂)
     atol = max(precision(T₁), precision(T₂))
     rtol = max(precision(T₁), precision(T₂))
@@ -82,8 +72,7 @@ end
         atol, rtol
     )
     test_rrule(
-        tensorcontract!, C, A, pA, true, B, pB, false, pAB, α, β,
-        StridedNative();
+        tensorcontract!, C, A, pA, true, B, pB, false, pAB, α, β, StridedNative();
         atol, rtol
     )
 end

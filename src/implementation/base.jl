@@ -72,8 +72,7 @@ function tensortrace!(
     so = TupleTools.getindices(szA, linearize(p))
     st = prod(TupleTools.getindices(szA, q[1]))
     Ã = reshape(
-        PermutedDimsArray(A, (linearize(p)..., linearize(q)...)),
-        (prod(so), st, st)
+        PermutedDimsArray(A, (linearize(p)..., linearize(q)...)), (prod(so), st, st)
     )
 
     if conjA

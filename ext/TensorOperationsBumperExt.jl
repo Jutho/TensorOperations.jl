@@ -4,12 +4,8 @@ using TensorOperations
 using Bumper
 
 function TensorOperations.tensoralloc(
-        ::Type{A}, structure, ::Val{istemp},
-        buf::Union{SlabBuffer, AllocBuffer}
-    ) where {
-        A <: AbstractArray,
-        istemp,
-    }
+        ::Type{A}, structure, ::Val{istemp}, buf::Union{SlabBuffer, AllocBuffer}
+    ) where {A <: AbstractArray, istemp}
     # TODO: remove the `ndims` check if this is fixed in Bumper / StrideArraysCore
     if istemp && ndims(A) > 0
         return Bumper.alloc!(buf, eltype(A), structure...)
@@ -24,8 +20,7 @@ function TensorOperations.blas_contract!(
     )
     @no_escape allocator begin
         C = Base.@invoke TensorOperations.blas_contract!(
-            C, A, pA, B, pB, pAB, α, β,
-            backend, allocator::Any
+            C, A, pA, B, pB, pAB, α, β, backend, allocator::Any
         )
     end
     return C

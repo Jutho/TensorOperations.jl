@@ -19,8 +19,7 @@ function select_backend(::typeof(tensortrace!), C::StridedView, A::StridedView)
 end
 
 function select_backend(
-        ::typeof(tensorcontract!), C::StridedView, A::StridedView,
-        B::StridedView
+        ::typeof(tensorcontract!), C::StridedView, A::StridedView, B::StridedView
     )
     if _ishostarray(C) && _ishostarray(A) && _ishostarray(B)
         return eltype(C) <: LinearAlgebra.BlasFloat ? StridedBLAS() : StridedNative()
@@ -84,23 +83,19 @@ function tensorcontract!(
     # resolve conj flags and absorb into StridedView constructor to avoid type instabilities later on
     if conjA && conjB
         stridedtensorcontract!(
-            SV(C), conj(SV(A)), pA, conj(SV(B)), pB, pAB, α, β,
-            backend, allocator
+            SV(C), conj(SV(A)), pA, conj(SV(B)), pB, pAB, α, β, backend, allocator
         )
     elseif conjA
         stridedtensorcontract!(
-            SV(C), conj(SV(A)), pA, SV(B), pB, pAB, α, β,
-            backend, allocator
+            SV(C), conj(SV(A)), pA, SV(B), pB, pAB, α, β, backend, allocator
         )
     elseif conjB
         stridedtensorcontract!(
-            SV(C), SV(A), pA, conj(SV(B)), pB, pAB, α, β,
-            backend, allocator
+            SV(C), SV(A), pA, conj(SV(B)), pB, pAB, α, β, backend, allocator
         )
     else
         stridedtensorcontract!(
-            SV(C), SV(A), pA, SV(B), pB, pAB, α, β,
-            backend, allocator
+            SV(C), SV(A), pA, SV(B), pB, pAB, α, β, backend, allocator
         )
     end
     return C

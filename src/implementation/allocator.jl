@@ -134,7 +134,8 @@ function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool)
 end
 
 function tensorcontract_type(
-        TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        TC,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
         pAB::Index2Tuple
     )
@@ -172,8 +173,7 @@ tensorfree!(C, allocator = DefaultAllocator()) = nothing
 # ManualAllocator implementation
 # ------------------------------------------------------------------------------------------
 function tensoralloc(
-        ::Type{A}, structure, ::Val{istemp},
-        ::ManualAllocator
+        ::Type{A}, structure, ::Val{istemp}, ::ManualAllocator
     ) where {A <: AbstractArray, istemp}
     if istemp
         return malloc(eltype(A), structure...)

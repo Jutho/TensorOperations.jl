@@ -254,28 +254,22 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         H = rand(T, d1, d2, d1, d2) .- 1 // 2
         A12 = reshape(reshape(A1, D1 * d1, D2) * reshape(A2, D2, d2 * D3), (D1, d1, d2, D3))
         rA12 = reshape(
-            reshape(
-                rhoL * reshape(A12, (D1, d1 * d2 * D3)),
-                (D1 * d1 * d2, D3)
-            ) * rhoR, (D1, d1, d2, D3)
+            reshape(rhoL * reshape(A12, (D1, d1 * d2 * D3)), (D1 * d1 * d2, D3)) * rhoR,
+            (D1, d1, d2, D3)
         )
         HrA12 = permutedims(
             reshape(
                 reshape(H, (d1 * d2, d1 * d2)) *
-                    reshape(
-                    permutedims(rA12, (2, 3, 1, 4)),
-                    (d1 * d2, D1 * D3)
-                ), (d1, d2, D1, D3)
+                    reshape(permutedims(rA12, (2, 3, 1, 4)), (d1 * d2, D1 * D3)),
+                    (d1, d2, D1, D3)
             ),
             (3, 1, 2, 4)
         )
         E = dot(A12, HrA12)
         @tensor backend = b HrA12′[a, s1, s2, c] := rhoL[a, a'] * A1[a', t1, b] *
-            A2[b, t2, c'] *
-            rhoR[c', c] * H[s1, s2, t1, t2]
+            A2[b, t2, c'] * rhoR[c', c] * H[s1, s2, t1, t2]
         @tensor backend = b HrA12′′[:] := rhoL[-1, 1] * H[-2, -3, 4, 5] * A2[2, 5, 3] *
-            rhoR[3, -4] *
-            A1[1, 4, 2] # should be contracted in exactly same order
+            rhoR[3, -4] * A1[1, 4, 2] # should be contracted in exactly same order
         @tensor backend = b order = (a', b, c', t1, t2) begin
             HrA12′′′[a, s1, s2, c] := rhoL[a, a'] * H[s1, s2, t1, t2] * A2[b, t2, c'] *
                 rhoR[c', c] * A1[a', t1, b] # should be contracted in exactly same order
@@ -298,15 +292,11 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         @test E ≈
             @tensor tensorscalar(
             rhoL[a', a] * A1[a, s, b] * A2[b, s', c] * rhoR[c, c'] *
-                H[t, t', s, s'] * conj(A1[a', t, b']) *
-                conj(A2[b', t', c'])
+                H[t, t', s, s'] * conj(A1[a', t, b']) * conj(A2[b', t', c'])
         )
         @test E ≈ @ncon(
             [rhoL, A1, A2, rhoR, H, conj(A1), conj(A2)],
-            [
-                [5, 1], [1, 2, 3], [3, 4, 9], [9, 10], [6, 8, 2, 4], [5, 6, 7],
-                [7, 8, 10],
-            ]
+            [[5, 1], [1, 2, 3], [3, 4, 9], [9, 10], [6, 8, 2, 4], [5, 6, 7], [7, 8, 10]]
         )
         # this implicitly tests that `ncon` returns a scalar if no open indices
     end
@@ -330,21 +320,14 @@ end
     @test D1 == D2 == D3 == D4
     _optdata = optex -> TensorOperations.optdata(
         optex,
-        :(
-            D1[a, b, c, d] := A[a, e, c, f] *
-                B[g, d, e] *
-                C[g, f, b]
-        )
+        :(D1[a, b, c, d] := A[a, e, c, f] * B[g, d, e] * C[g, f, b])
     )
     optex1 = :((a => χ, b => χ^2, c => 2 * χ, d => χ, e => 5, f => 2 * χ))
     optex2 = :((a = χ, b = χ^2, c = 2 * χ, d = χ, e = 5, f = 2 * χ))
     optex3 = :(((a, d) => χ, b => χ^2, (c, f) => 2 * χ, e => 5))
     optex4 = :(((a, d) = χ, b = χ^2, (c, f) = 2 * χ, e = 5))
     optex5 = :(
-        (
-            (a,) => χ, b => χ^2, (c,) => 2χ, d => χ, e => 5, f => χ * 2,
-            () => 12345,
-        )
+        ((a,) => χ, b => χ^2, (c,) => 2χ, d => χ, e => 5, f => χ * 2, () => 12345)
     )
     @test _optdata(optex1) == _optdata(optex2) == _optdata(optex3) ==
         _optdata(optex4) == _optdata(optex5)
@@ -479,8 +462,7 @@ end
         m2 = rand(2, 2, 2)
 
         res1 = @tensor begin
-            (v1[a] * v1[b] * v1[c]) * m1[a, b, c] +
-                (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
+            (v1[a] * v1[b] * v1[c]) * m1[a, b, c] + (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
         end
         res2 = @tensor (v1[a] * v1[b] * v1[c]) * m1[a, b, c]
         res3 = @tensor (v2[a] * v2[b] * v2[c]) * m2[a, b, c]
@@ -513,8 +495,7 @@ end
         @tensor res2[a, b] := (mat1[x, y] * mat2[y, x]) * mat3[b, a] + mat4[a, b]
         @tensoropt res3[a, b] := mat4[a, b] + mat1[x, y] * mat3[b, a] * mat2[y, x]
         @tensor costcheck = warn res4[a, b] := mat4[a, b] +
-            tensorscalar(mat1[x, y] * mat2[y, x]) *
-            mat3[b, a]
+            tensorscalar(mat1[x, y] * mat2[y, x]) * mat3[b, a]
         @test res1 == res2 == res3 == res4
 
         @tensor res1[a, b] := 0.5 * mat1[x, y] * mat2[y, x] * mat3[b, a]
@@ -583,8 +564,7 @@ end
 
             @test !isblascontractable(op(A), p)
             Anew, pnew, flag = makeblascontractable(
-                op(A), p, ComplexF64, backend,
-                allocator
+                op(A), p, ComplexF64, backend, allocator
             )
             @test isblascontractable(Anew, pnew)
         end

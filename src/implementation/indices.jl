@@ -85,8 +85,7 @@ function contract_indices(IA, IB, IC)
     return contract_indices(tuple(IA...), tuple(IB...), tuple(IC...))
 end
 function contract_indices(
-        IA::NTuple{NA, Any}, IB::NTuple{NB, Any},
-        IC::NTuple{NC, Any}
+        IA::NTuple{NA, Any}, IB::NTuple{NB, Any}, IC::NTuple{NC, Any}
     ) where {NA, NB, NC}
     # labels
     IAB = (IA..., IB...)

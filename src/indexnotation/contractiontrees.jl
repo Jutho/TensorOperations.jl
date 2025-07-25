@@ -51,8 +51,7 @@ function _processcontractions(ex, treebuilder, treesorter, costcheck)
     preexprs = Any[]
     postexprs = Any[]
     ex = insertcontractiontrees!(
-        ex, treebuilder, treesorter, costcheck, preexprs,
-        postexprs
+        ex, treebuilder, treesorter, costcheck, preexprs, postexprs
     )
     pre = isempty(preexprs) ? nothing : Expr(:block, preexprs...)
     post = isempty(postexprs) ? nothing : Expr(:block, postexprs...)
@@ -117,8 +116,7 @@ function insertcontractiontrees!(
     end
     costmapsym = gensym("costmap")
     costex = Expr(
-        :(=), costmapsym,
-        Expr(:call, Expr(:curly, :Dict, :Any, :Float64), costexargs...)
+        :(=), costmapsym, Expr(:call, Expr(:curly, :Dict, :Any, :Float64), costexargs...)
     )
     push!(
         preexprs,
@@ -135,24 +133,11 @@ function insertcontractiontrees!(
     if costcheck == :warn
         costcompareex = :(
             @notensor begin
-                $currentcostsym = first(
-                    treecost(
-                        $tree, $network,
-                        $costmapsym
-                    )
-                )
-                $optimaltreesym, $optimalcostsym = optimaltree(
-                    $network,
-                    $costmapsym
-                )
+                $currentcostsym = first(treecost($tree, $network, $costmapsym))
+                $optimaltreesym, $optimalcostsym = optimaltree($network, $costmapsym)
                 if $currentcostsym > $optimalcostsym
                     $optimalordersym = tuple(
-                        first(
-                            tree2indexorder(
-                                $optimaltreesym,
-                                $network
-                            )
-                        )...
+                        first(tree2indexorder($optimaltreesym, $network))...
                     )
                     @warn "Tensor network: " *
                         $(string(ex)) *
@@ -166,30 +151,14 @@ function insertcontractiontrees!(
         cacheref = GlobalRef(TensorOperations, :costcache)
         costcompareex = :(
             @notensor begin
-                $currentcostsym = first(
-                    treecost(
-                        $tree, $network,
-                        $costmapsym
-                    )
-                )
+                $currentcostsym = first(treecost($tree, $network, $costmapsym))
                 if !($key in keys($cacheref)) ||
                         first($cacheref[$key]) < $(currentcostsym)
-                    $optimaltreesym, $optimalcostsym = optimaltree(
-                        $network,
-                        $costmapsym
-                    )
+                    $optimaltreesym, $optimalcostsym = optimaltree($network, $costmapsym)
                     $optimalordersym = tuple(
-                        first(
-                            tree2indexorder(
-                                $optimaltreesym,
-                                $network
-                            )
-                        )...
+                        first(tree2indexorder($optimaltreesym, $network))...
                     )
-                    $cacheref[$key] = (
-                        $currentcostsym, $optimalcostsym,
-                        $optimalordersym,
-                    )
+                    $cacheref[$key] = ($currentcostsym, $optimalcostsym, $optimalordersym)
                 end
             end
         )

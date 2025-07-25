@@ -79,8 +79,7 @@ Insert an extra argument into a tensor operation, e.g. for any `op` ∈ `methods
 """
 function insertargument(ex, arg, methods)
     if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
-            ex.args[1].mod == TensorOperations &&
-            ex.args[1].name ∈ methods
+            ex.args[1].mod == TensorOperations && ex.args[1].name ∈ methods
         return Expr(:call, ex.args..., arg)
     elseif isa(ex, Expr)
         return Expr(ex.head, (insertargument(e, arg, methods) for e in ex.args)...)

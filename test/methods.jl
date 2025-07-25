@@ -54,8 +54,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         @test C1 ≈ C2
         @test C2 == C3 == C4
         @test_throws IndexError tensortrace(
-            randn(2, 2, 2, 2, 2, 2, 2), ((1,), (3, 2)),
-            ((1, 5), (2, 6)), false
+            randn(2, 2, 2, 2, 2, 2, 2), ((1,), (3, 2)), ((1, 5), (2, 6)), false
         )
     end
 
@@ -67,8 +66,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
             C1[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
         end
         C2 = @inferred tensorcontract(
-            (:a, :g, :e, :d, :f),
-            A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g);
+            (:a, :g, :e, :d, :f), A, (:a, :b, :c, :d, :e), B, (:c, :f, :b, :g);
             backend = b
         )
         C3 = @inferred tensorcontract(
@@ -98,20 +96,17 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
         C2 = reshape(
             (
                 @inferred tensorproduct(
-                    (1, 2, 5, 6, 3, 4, 7, 8),
-                    A, (1, 2, 3, 4), B, (5, 6, 7, 8); backend = b
+                    (1, 2, 5, 6, 3, 4, 7, 8), A, (1, 2, 3, 4), B, (5, 6, 7, 8); backend = b
                 )
             ),
             (5 * 5 * 5 * 5, 5 * 5 * 5 * 5)
         )
         @test C1 ≈ C2
         @test_throws IndexError tensorproduct(
-            A, [:a, :b, :c, :d],
-            B, [:d, :e, :f, :g]
+            A, [:a, :b, :c, :d], B, [:d, :e, :f, :g]
         )
         @test_throws IndexError tensorproduct(
-            [:a, :b, :c, :d, :e, :f, :g, :i],
-            A, [:a, :b, :c, :d], B, [:e, :f, :g, :h]
+            [:a, :b, :c, :d, :e, :f, :g, :i], A, [:a, :b, :c, :d], B, [:e, :f, :g, :h]
         )
 
         A = rand(1, 2)
@@ -175,8 +170,7 @@ end
         @test C ≈ Ccopy
         @test_throws IndexError tensoradd!(C, A, ((1, 2, 3), ()), false, 1.2, 0.5, b)
         @test_throws DimensionMismatch tensoradd!(
-            C, A, ((1, 2, 3, 4), ()), false, 1.2, 0.5,
-            b
+            C, A, ((1, 2, 3, 4), ()), false, 1.2, 0.5, b
         )
         @test_throws IndexError tensoradd!(C, A, ((1, 1, 2, 3), ()), false, 1.2, 0.5, b)
     end
@@ -198,24 +192,18 @@ end
         @test B ≈ Bcopy
         @test_throws IndexError tensortrace!(B, A, ((1,), ()), ((2,), (3,)), false, α, β, b)
         @test_throws DimensionMismatch tensortrace!(
-            B, A, ((1, 4), ()), ((2,), (3,)), false,
-            α, β, b
+            B, A, ((1, 4), ()), ((2,), (3,)), false, α, β, b
         )
         @test_throws IndexError tensortrace!(
-            B, A, ((1, 4), ()), ((1, 1), (4,)), false, α,
-            β, b
+            B, A, ((1, 4), ()), ((1, 1), (4,)), false, α, β, b
         )
         @test_throws IndexError tensortrace!(
-            B, A, ((1, 4), ()), ((1,), (3,)), false,
-            α, β, b
+            B, A, ((1, 4), ()), ((1,), (3,)), false, α, β, b
         )
     end
 
     @testset "tensorcontract! with allocator = $allocator" for allocator in
-        (
-            DefaultAllocator(),
-            ManualAllocator(),
-        )
+        (DefaultAllocator(), ManualAllocator())
         Abig = rand(Float64, (30, 30, 30, 30))
         A = view(Abig, 1 .+ 3 * (0:8), 2 .+ 2 * (0:14), 5 .+ 4 * (0:6), 7 .+ 2 * (0:8))
         Bbig = rand(ComplexF64, (50, 50, 50))

@@ -17,8 +17,7 @@ function instantiate_scalartype(ex::Expr)
     elseif isexpr(ex, :call, 3) && ex.args[1] == :* &&
             istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
         return Expr(
-            :call, :promote_contract,
-            map(instantiate_scalartype, ex.args[2:end])...
+            :call, :promote_contract, map(instantiate_scalartype, ex.args[2:end])...
         )
     elseif ex.head == :call && ex.args[1] ∈ (:/, :\, :*)
         return Expr(
@@ -100,9 +99,8 @@ function instantiate(
 end
 
 function instantiate_generaltensor(
-        dst, β, ex::Expr, α, leftind::Vector{Any},
-        rightind::Vector{Any}, alloc::AllocationStrategy,
-        scaltype
+        dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
+        alloc::AllocationStrategy, scaltype
     )
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
@@ -150,8 +148,7 @@ function instantiate_generaltensor(
             return :(throw(IndexError($err)))
         end
         push!(
-            out.args,
-            :($dst = tensortrace!($dst, $src, $p, ($q1, $q2), $conj, $α, $β))
+            out.args, :($dst = tensortrace!($dst, $src, $p, ($q1, $q2), $conj, $α, $β))
         )
         return out
     else
@@ -165,9 +162,8 @@ function instantiate_generaltensor(
     end
 end
 function instantiate_linearcombination(
-        dst, β, ex::Expr, α, leftind::Vector{Any},
-        rightind::Vector{Any}, alloc::AllocationStrategy,
-        scaltype
+        dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
+        alloc::AllocationStrategy, scaltype
     )
     out = Expr(:block)
     if alloc ∈ (NewTensor, TemporaryTensor)
@@ -205,8 +201,8 @@ function instantiate_linearcombination(
     return out
 end
 function instantiate_contraction(
-        dst, β, ex::Expr, α, leftind::Vector{Any},
-        rightind::Vector{Any}, alloc::AllocationStrategy, scaltype
+        dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
+        alloc::AllocationStrategy, scaltype
     )
     exA = ex.args[2]
     exB = ex.args[3]
@@ -285,8 +281,7 @@ function instantiate_contraction(
             TCval = Expr(:call, :promote_contract, Atype, Btype)
             if α !== One()
                 TCval = Expr(
-                    :call, :(Base.promote_op), :*, instantiate_scalartype(α),
-                    TCval
+                    :call, :(Base.promote_op), :*, instantiate_scalartype(α), TCval
                 )
             end
         else
@@ -297,8 +292,7 @@ function instantiate_contraction(
             :block, Expr(:(=), TCsym, TCval),
             :(
                 $dst = tensoralloc_contract(
-                    $TCsym, $A, $pA, $conjA, $B, $pB,
-                    $conjB, $pAB, $istemporary
+                    $TCsym, $A, $pA, $conjA, $B, $pB, $conjB, $pAB, $istemporary
                 )
             )
         )

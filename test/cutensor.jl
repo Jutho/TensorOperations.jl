@@ -83,8 +83,7 @@ if cuTENSOR.has_cutensor()
         @tensor D1[d, f, h] := A[c, a, f, a, e, b, b, g] * B[c, h, g, e, d] +
             0.5 * C[d, h, f]
         @tensor D2[d, f, h] := CuArray(A)[c, a, f, a, e, b, b, g] *
-            CuArray(B)[c, h, g, e, d] +
-            0.5 * CuArray(C)[d, h, f]
+            CuArray(B)[c, h, g, e, d] + 0.5 * CuArray(C)[d, h, f]
         @test collect(D2) ≈ D1
 
         @test norm(vec(D1)) ≈ sqrt(abs(@tensor D1[d, f, h] * conj(D1[d, f, h])))
@@ -112,10 +111,7 @@ if cuTENSOR.has_cutensor()
         end
 
         @testset "tensor network examples ($T)" for T in
-            (
-                Float32, Float64, ComplexF32,
-                ComplexF64,
-            )
+            (Float32, Float64, ComplexF32, ComplexF64)
             D1, D2, D3 = 30, 40, 20
             d1, d2 = 2, 3
 
@@ -127,13 +123,11 @@ if cuTENSOR.has_cutensor()
 
             @tensor begin
                 HRAA1[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                    ρᵣ[c', c] *
-                    H[s1, s2, t1, t2]
+                    ρᵣ[c', c] * H[s1, s2, t1, t2]
             end
             @tensor begin
                 HRAA2[a, s1, s2, c] := CuArray(ρₗ)[a, a'] * CuArray(A1)[a', t1, b] *
-                    CuArray(A2)[b, t2, c'] * CuArray(ρᵣ)[c', c] *
-                    CuArray(H)[s1, s2, t1, t2]
+                    CuArray(A2)[b, t2, c'] * CuArray(ρᵣ)[c', c] * CuArray(H)[s1, s2, t1, t2]
             end
             @test HRAA2 isa CuArray{T}
             @test collect(HRAA2) ≈ HRAA1
@@ -145,8 +139,7 @@ if cuTENSOR.has_cutensor()
                 allocator = CUDAAllocator{Mout, Min, Mtemp}()
                 @tensor backend = cuTENSORBackend() allocator = allocator begin
                     HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                        ρᵣ[c', c] *
-                        H[s1, s2, t1, t2]
+                        ρᵣ[c', c] * H[s1, s2, t1, t2]
                 end
                 @test HRAA3 isa CuArray{T, 4, Mout}
                 @test collect(HRAA3) ≈ HRAA1
@@ -157,8 +150,7 @@ if cuTENSOR.has_cutensor()
                 allocator = CUDAAllocator{Mout, Min, Mtemp}()
                 @tensor backend = cuTENSORBackend() allocator = allocator begin
                     HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                        ρᵣ[c', c] *
-                        H[s1, s2, t1, t2]
+                        ρᵣ[c', c] * H[s1, s2, t1, t2]
                 end
                 @test HRAA3 isa CuArray{T, 4, Mout}
                 @test collect(HRAA3) ≈ HRAA1
@@ -251,8 +243,7 @@ if cuTENSOR.has_cutensor()
             p = [3, 1, 4, 2]
             Abig = CUDA.randn(Float32, (30, 30, 30, 30))
             A = view(
-                Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
-                4 .+ 3 .* (0:8)
+                Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6), 4 .+ 3 .* (0:8)
             )
             Cbig = CUDA.zeros(Float32, (50, 50, 50, 50))
             C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
@@ -276,8 +267,7 @@ if cuTENSOR.has_cutensor()
             p = [3, 1, 4, 2]
             Abig = CUDA.randn(ComplexF32, (30, 30, 30, 30))
             A = view(
-                Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6),
-                4 .+ 3 .* (0:8)
+                Abig, 1 .+ 3 .* (0:9), 2 .+ 2 .* (0:6), 5 .+ 4 .* (0:6), 4 .+ 3 .* (0:8)
             )
             Cbig = CUDA.zeros(ComplexF32, (50, 50, 50, 50))
             C = view(Cbig, 13 .+ (0:6), 11 .+ 4 .* (0:9), 15 .+ 4 .* (0:8), 4 .+ 3 .* (0:6))
@@ -302,8 +292,7 @@ if cuTENSOR.has_cutensor()
         @testset "views 3" begin
             Abig = CUDA.rand(ComplexF64, (30, 30, 30, 30))
             A = view(
-                Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6),
-                7 .+ 2 .* (0:8)
+                Abig, 1 .+ 3 .* (0:8), 2 .+ 2 .* (0:14), 5 .+ 4 .* (0:6), 7 .+ 2 .* (0:8)
             )
             Bbig = CUDA.rand(ComplexF64, (50, 50))
             B = view(Bbig, 13 .+ (0:14), 3 .+ 5 .* (0:6))

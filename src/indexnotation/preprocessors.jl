@@ -11,14 +11,12 @@ function replaceindices((@nospecialize f), ex)
             elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
                 arg2 = ex.args[2]
                 return Expr(
-                    ex.head, ex.args[1],
-                    Expr(arg2.head, map(f, arg2.args)...),
+                    ex.head, ex.args[1], Expr(arg2.head, map(f, arg2.args)...),
                     (f(ex.args[i]) for i in 3:length(ex.args))...
                 )
             else
                 return Expr(
-                    ex.head, ex.args[1],
-                    (f(ex.args[i]) for i in 2:length(ex.args))...
+                    ex.head, ex.args[1], (f(ex.args[i]) for i in 2:length(ex.args))...
                 )
             end
             return ex
@@ -125,10 +123,7 @@ function extracttensorobjects(ex)
     ex = replacetensorobjects((obj, leftind, rightind) -> get(tensordict, obj, obj), ex)
     post = Expr(
         :block,
-        [
-            Expr(:(=), a, tensordict[a])
-                for a in unique!(vcat(newtensors, outputtensors))
-        ]...
+        (Expr(:(=), a, tensordict[a]) for a in unique!(vcat(newtensors, outputtensors)))...
     )
     pre2 = Expr(
         :macrocall, Symbol("@notensor"),
@@ -173,9 +168,7 @@ function insertcontractionchecks(ex)
                     out.args,
                     :(
                         @notensor checkcontractible(
-                            $obj1, $pos1, $conj1,
-                            $obj2, $pos2,
-                            $conj2, $l
+                            $obj1, $pos1, $conj1, $obj2, $pos2, $conj2, $l
                         )
                     )
                 )

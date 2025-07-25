@@ -39,26 +39,14 @@ end
 # Static preferences
 # ------------------
 const PRECOMPILE_ELTYPES = validate_precompile_eltypes(
-    @load_preference(
-        "precompile_eltypes",
-        [
-            "Float64",
-            "ComplexF64",
-        ]
-    )
+    @load_preference("precompile_eltypes", ["Float64", "ComplexF64"])
 )
 const PRECOMPILE_ADD_NDIMS = validate_add_ndims(@load_preference("precompile_add_ndims", 5))
 const PRECOMPILE_TRACE_NDIMS = validate_trace_ndims(
-    @load_preference(
-        "precompile_trace_ndims",
-        [4, 2]
-    )
+    @load_preference("precompile_trace_ndims", [4, 2])
 )
 const PRECOMPILE_CONTRACT_NDIMS = validate_contract_ndims(
-    @load_preference(
-        "precompile_contract_ndims",
-        [4, 2]
-    )
+    @load_preference("precompile_contract_ndims", [4, 2])
 )
 
 # Copy from PrecompileTools.workload_enabled but default to false

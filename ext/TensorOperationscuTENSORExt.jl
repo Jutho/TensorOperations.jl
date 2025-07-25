@@ -48,14 +48,8 @@ function TensorOperations._cutensor(src, ex...)
     return Expr(
         :macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
         src,
-        Expr(
-            :(=), :backend,
-            Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))
-        ),
-        Expr(
-            :(=), :allocator,
-            Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))
-        ),
+        Expr(:(=), :backend, Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))),
+        Expr( :(=), :allocator, Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
         ex...
     )
 end
@@ -73,8 +67,7 @@ function TO.select_backend(::typeof(TO.tensortrace!), ::CuStridedView, ::CuStrid
     return cuTENSORBackend()
 end
 function TO.select_backend(
-        ::typeof(TO.tensorcontract!), ::CuStridedView, ::CuStridedView,
-        ::CuStridedView
+        ::typeof(TO.tensorcontract!), ::CuStridedView, ::CuStridedView, ::CuStridedView
     )
     return cuTENSORBackend()
 end
@@ -108,8 +101,7 @@ function TO.tensorcontract!(
     A_cuda, = _custrided(A, allocator)
     B_cuda, = _custrided(B, allocator)
     tensorcontract!(
-        C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend,
-        allocator
+        C_cuda, A_cuda, pA, conjA, B_cuda, pB, conjB, pAB, α, β, backend, allocator
     )
     isview || copy!(C, C_cuda.parent)
     return C
@@ -129,8 +121,7 @@ end
 
 _custrided(A::AbstractArray, ::DefaultAllocator) = _custrided(A, CUDAAllocator())
 function _custrided(
-        A::AbstractArray,
-        allocator::CUDAAllocator{Mout, Min, Mtemp}
+        A::AbstractArray, allocator::CUDAAllocator{Mout, Min, Mtemp}
     ) where {Mout, Min, Mtemp}
     if isstrided(A)
         return _custrided(StridedView(A), allocator)
@@ -139,8 +130,7 @@ function _custrided(
     end
 end
 function _custrided(
-        A::StridedView,
-        allocator::CUDAAllocator{Mout, Min, Mtemp}
+        A::StridedView, allocator::CUDAAllocator{Mout, Min, Mtemp}
     ) where {Mout, Min, Mtemp}
     P = A.parent
     if P isa CuArray
@@ -166,8 +156,7 @@ end
 
 function TO.tensoralloc_add(
         TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-        istemp::Val,
-        allocator::CUDAAllocator
+        istemp::Val, allocator::CUDAAllocator
     )
     ttype = CuArray{TC, TO.numind(pA)}
     structure = TO.tensoradd_structure(A, pA, conjA)
@@ -179,8 +168,7 @@ function TO.tensoralloc_contract(
         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
         pAB::Index2Tuple,
-        istemp::Val,
-        allocator::CUDAAllocator
+        istemp::Val, allocator::CUDAAllocator
     )
     ttype = CuArray{TC, TO.numind(pAB)}
     structure = TO.tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
@@ -195,12 +183,9 @@ end
 # NOTE: the general implementation in the `DefaultAllocator` case works just fine, without
 # selecting an explicit memory model
 function TO.tensoralloc(
-        ::Type{CuArray{T, N}}, structure, ::Val{istemp},
-        allocator::CUDAAllocator{Mout, Min, Mtemp}
-    ) where {
-        T, N, istemp, Mout,
-        Min, Mtemp,
-    }
+        ::Type{CuArray{T, N}}, structure,
+        ::Val{istemp}, allocator::CUDAAllocator{Mout, Min, Mtemp}
+    ) where {T, N, istemp, Mout, Min, Mtemp}
     M = istemp ? Mtemp : Mout
     return CuArray{T, N, M}(undef, structure)
 end
@@ -304,18 +289,13 @@ find_alignment(A::CuStridedView) = gcd(MAX_ALIGNMENT, convert(UInt, pointer(A)))
 # ------
 # not actually part of cuTENSOR, just a special case of reduce
 function plan_trace(
-        @nospecialize(A::AbstractArray), Ainds::ModeType,
-        opA::cutensorOperator_t,
-        @nospecialize(C::AbstractArray), Cinds::ModeType,
-        opC::cutensorOperator_t,
+        @nospecialize(A::AbstractArray), Ainds::ModeType, opA::cutensorOperator_t,
+        @nospecialize(C::AbstractArray), Cinds::ModeType, opC::cutensorOperator_t,
         opReduce::cutensorOperator_t;
         jit::cutensorJitMode_t = JIT_MODE_NONE,
         workspace::cutensorWorksizePreference_t = WORKSPACE_DEFAULT,
         algo::cutensorAlgo_t = ALGO_DEFAULT,
-        compute_type::Union{
-            DataType, cutensorComputeDescriptorEnum,
-            Nothing,
-        } = nothing
+        compute_type::Union{DataType, cutensorComputeDescriptorEnum, Nothing} = nothing
     )
     !is_unary(opA) && throw(ArgumentError("opA must be a unary op!"))
     !is_unary(opC) && throw(ArgumentError("opC must be a unary op!"))

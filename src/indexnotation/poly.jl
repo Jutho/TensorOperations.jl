@@ -146,8 +146,7 @@ function Base.:*(p1::Poly{D}, p2::Poly{D}) where {D}
 end
 
 function Base.promote_rule(
-        ::Type{Power{D, T1}},
-        ::Type{Power{D, T2}}
+        ::Type{Power{D, T1}}, ::Type{Power{D, T2}}
     ) where {D, T1 <: Number, T2 <: Number}
     return Power{D, promote_type(T1, T2)}
 end
@@ -155,14 +154,12 @@ function Base.promote_rule(::Type{Power{D, T1}}, ::Type{T2}) where {D, T1 <: Num
     return Power{D, promote_type(T1, T2)}
 end
 function Base.promote_rule(
-        ::Type{Poly{D, T1}},
-        ::Type{Poly{D, T2}}
+        ::Type{Poly{D, T1}}, ::Type{Poly{D, T2}}
     ) where {D, T1 <: Number, T2 <: Number}
     return Poly{D, promote_type(T1, T2)}
 end
 function Base.promote_rule(
-        ::Type{Poly{D, T1}},
-        ::Type{Power{D, T2}}
+        ::Type{Poly{D, T1}}, ::Type{Power{D, T2}}
     ) where {D, T1 <: Number, T2 <: Number}
     return Poly{D, promote_type(T1, T2)}
 end

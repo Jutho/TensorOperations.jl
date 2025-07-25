@@ -17,8 +17,7 @@ using Bumper
     H = randn(T, d1, d2, d1, d2)
 
     @tensor begin
-        HRAA1[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-            ρᵣ[c', c] *
+        HRAA1[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * ρᵣ[c', c] *
             H[s1, s2, t1, t2]
         E1 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
             conj(A1[a', t, b']) * conj(A2[b', t', c'])
@@ -26,8 +25,7 @@ using Bumper
 
     # butensor implementation
     @butensor begin
-        HRAA2[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-            ρᵣ[c', c] *
+        HRAA2[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * ρᵣ[c', c] *
             H[s1, s2, t1, t2]
         E2 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
             conj(A1[a', t, b']) * conj(A2[b', t', c'])
@@ -39,8 +37,7 @@ using Bumper
 
     # manual equivalent
     @no_escape @tensor allocator = default_buffer() begin
-        HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-            ρᵣ[c', c] *
+        HRAA3[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * ρᵣ[c', c] *
             H[s1, s2, t1, t2]
         E3 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
             conj(A1[a', t, b']) * conj(A2[b', t', c'])
@@ -56,8 +53,7 @@ using Bumper
     begin
         local cp = Bumper.checkpoint_save(slabbuf)
         @tensor allocator = slabbuf begin
-            HRAA4[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-                ρᵣ[c', c] *
+            HRAA4[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * ρᵣ[c', c] *
                 H[s1, s2, t1, t2]
             E4 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
                 conj(A1[a', t, b']) * conj(A2[b', t', c'])
@@ -73,8 +69,7 @@ using Bumper
     # allocbuffer
     allocbuf = AllocBuffer(bufferlength)
     @no_escape allocbuf @tensor allocator = allocbuf begin
-        HRAA5[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] *
-            ρᵣ[c', c] *
+        HRAA5[a, s1, s2, c] := ρₗ[a, a'] * A1[a', t1, b] * A2[b, t2, c'] * ρᵣ[c', c] *
             H[s1, s2, t1, t2]
         E5 = ρₗ[a', a] * A1[a, s, b] * A2[b, s', c] * ρᵣ[c, c'] * H[t, t', s, s'] *
             conj(A1[a', t, b']) * conj(A2[b', t', c'])

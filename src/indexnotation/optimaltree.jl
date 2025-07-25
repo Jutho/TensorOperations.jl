@@ -13,8 +13,7 @@ function optimaltree(network, optdata::Dict; verbose::Bool = false)
         )
     end
     initialcost = addcost(
-        mulcost(maximum(tensorcosts), minimum(tensorcosts)),
-        zero(costtype)
+        mulcost(maximum(tensorcosts), minimum(tensorcosts)), zero(costtype)
     ) # just some arbitrary guess
 
     if numindices <= 32
@@ -197,10 +196,7 @@ function _optimaltree(
                                 if cost <= get(costdict[n], s, currentcost)
                                     costdict[n][s] = cost
                                     indexdict[n][s] = _setdiff(_union(ind1, ind2), cind)
-                                    treedict[n][s] = Any[
-                                        treedict[k][s1],
-                                        treedict[n - k][s2],
-                                    ]
+                                    treedict[n][s] = Any[treedict[k][s1], treedict[n - k][s2]]
                                 elseif currentcost < cost < nextcost
                                     nextcost = cost
                                 end
@@ -231,10 +227,7 @@ function _optimaltree(
                                     if cost <= get(costdict[n], s, currentcost)
                                         costdict[n][s] = cost
                                         indexdict[n][s] = _setdiff(_union(ind1, ind2), cind)
-                                        treedict[n][s] = Any[
-                                            treedict[k][s1],
-                                            treedict[k][s2],
-                                        ]
+                                        treedict[n][s] = Any[treedict[k][s1], treedict[k][s2]]
                                     elseif currentcost < cost < nextcost
                                         nextcost = cost
                                     end

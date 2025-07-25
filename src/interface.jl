@@ -177,8 +177,7 @@ function tensorcontract!(
     if backend isa DefaultBackend
         newbackend = select_backend(tensorcontract!, C, A, B)
         return tensorcontract!(
-            C, A, pA, conjA, B, pB, conjB, pAB, α, β, newbackend,
-            allocator
+            C, A, pA, conjA, B, pB, conjB, pAB, α, β, newbackend, allocator
         )
     elseif backend isa NoBackend
         # error for missing backend
