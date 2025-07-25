@@ -76,7 +76,7 @@ using PackageExtensionCompat
 function __init__()
     @require_extensions
 
-    return @info """
+    @info """
     TensorOperations can optionally be instructed to precompile several functions, which can be used to reduce the time to first execution (TTFX).
     This is disabled by default as this can take a while on some machines, and is only relevant for contraction-heavy workloads.
 
@@ -89,6 +89,7 @@ function __init__()
 
     This will create a `LocalPreferences.toml` file next to your current `Project.toml` file to store this setting in a persistent way.
     """ maxlog = 1
+    return nothing
 end
 
 include("precompile.jl")
