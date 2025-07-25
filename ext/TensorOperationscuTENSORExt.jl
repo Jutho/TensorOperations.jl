@@ -49,7 +49,7 @@ function TensorOperations._cutensor(src, ex...)
         :macrocall, GlobalRef(TensorOperations, Symbol("@tensor")),
         src,
         Expr(:(=), :backend, Expr(:call, GlobalRef(TensorOperations, :cuTENSORBackend))),
-        Expr( :(=), :allocator, Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
+        Expr(:(=), :allocator, Expr(:call, GlobalRef(TensorOperations, :CUDAAllocator))),
         ex...
     )
 end

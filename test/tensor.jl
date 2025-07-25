@@ -261,7 +261,7 @@ backendlist = (BaseCopy(), BaseView(), StridedNative(), StridedBLAS())
             reshape(
                 reshape(H, (d1 * d2, d1 * d2)) *
                     reshape(permutedims(rA12, (2, 3, 1, 4)), (d1 * d2, D1 * D3)),
-                    (d1, d2, D1, D3)
+                (d1, d2, D1, D3)
             ),
             (3, 1, 2, 4)
         )
