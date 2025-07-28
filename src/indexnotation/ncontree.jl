@@ -1,8 +1,8 @@
-const ISNCONSTYLE = "Valid ncon style network"
+const NCONSTYLE = "Valid ncon style network"
 
 # check if a list of indices specifies a tensor contraction in ncon style
 function isnconstyle(network)
-    return _nconstyle_error(network) == ISNCONSTYLE
+    return _nconstyle_error(network) == NCONSTYLE
 end
 
 function _nconstyle_error(network)
@@ -25,7 +25,13 @@ function _nconstyle_error(network)
             return "Index 0 is not allowed in the network"
         end
     end
-    return ISNCONSTYLE
+    return NCONSTYLE
+end
+
+function nconstylecheck(network)
+    err = _nconstyle_error(network)
+    err === NCONSTYLE || throw(ArgumentError(err))
+    return nothing
 end
 
 function ncontree(network)
