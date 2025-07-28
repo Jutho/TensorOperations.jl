@@ -1,9 +1,4 @@
-"""
-    check_nconstyle(::Type{Bool}, network) -> Bool
-    check_nconstyle(network) -> Nothing
-    
-Verify if a list of indices specifies a tensor contraction in ncon style.
-"""
+# Verify if a list of indices specifies a tensor contraction in ncon style.
 check_nconstyle(::Type{Bool}, network) = _check_nconstyle_error(network, Val(true))
 check_nconstyle(network) = (_check_nconstyle_error(network, Val(false)); nothing)
 
