@@ -340,7 +340,7 @@ end
 # NCON functions
 @non_differentiable TensorOperations.ncontree(args...)
 @non_differentiable TensorOperations.nconoutput(args...)
-@non_differentiable TensorOperations.isnconstyle(args...)
+@non_differentiable TensorOperations.check_nconstyle(args...)
 @non_differentiable TensorOperations.indexordertree(args...)
 
 end

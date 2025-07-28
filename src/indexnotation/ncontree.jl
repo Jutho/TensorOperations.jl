@@ -1,10 +1,8 @@
 # Verify if a list of indices specifies a tensor contraction in ncon style.
-check_nconstyle(::Type{Bool}, network) = _check_nconstyle_error(network, Val(true))
-check_nconstyle(network) = (_check_nconstyle_error(network, Val(false)); nothing)
+check_nconstyle(::Type{Bool}, network) = _check_nconstyle(network, Val(true))
+check_nconstyle(network) = _check_nconstyle(network, Val(false))
 
-isnconstyle(network) = check_nconstyle(Bool, network)
-
-function _check_nconstyle_error(network, ::Val{check}) where {check}
+function _check_nconstyle(network, ::Val{check}) where {check}
     allindices = Vector{Int}()
     for ind in network
         all(i -> isa(i, Integer), ind) || return check ? false :
@@ -28,7 +26,7 @@ function _check_nconstyle_error(network, ::Val{check}) where {check}
             return check ? false : throw(IndexError("Index 0 is not allowed in the network"))
         end
     end
-    return true
+    return check ? true : nothing
 end
 
 function ncontree(network)

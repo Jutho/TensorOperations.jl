@@ -215,7 +215,7 @@ function defaulttreesorter(args, tree, depth)
 end
 
 function defaulttreebuilder(network)
-    if isnconstyle(network)
+    if check_nconstyle(Bool, network)
         tree = ncontree(network)
     else
         tree = Any[1, 2]
