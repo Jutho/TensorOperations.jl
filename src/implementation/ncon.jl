@@ -22,9 +22,10 @@ over are labelled by increasing integers, i.e. first the contraction correspondi
 
 See also the macro version [`@ncon`](@ref).
 """
-function ncon(tensors, network,
-              conjlist=fill(false, length(tensors));
-              order=nothing, output=nothing, kwargs...)
+function ncon(
+        tensors, network, conjlist = fill(false, length(tensors));
+        order = nothing, output = nothing, kwargs...
+    )
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
     isnconstyle(network) || throw(ArgumentError("invalid NCON network: $network"))
@@ -38,7 +39,7 @@ function ncon(tensors, network,
         end
     end
 
-    (tensors, network) = resolve_traces(tensors, network)
+    tensors, network = resolve_traces(tensors, network)
     tree = order === nothing ? ncontree(network) : indexordertree(network, order)
 
     A, IA, conjA = contracttree(tensors, network, conjlist, tree[1]; kwargs...)
@@ -64,8 +65,9 @@ function contracttree(tensors, network, conjlist, tree; kwargs...)
     allocator = haskey(kwargs, :allocator) ? kwargs[:allocator] : DefaultAllocator()
     backend = haskey(kwargs, :backend) ? kwargs[:backend] : DefaultBackend()
     C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, Val(true), allocator)
-    C = tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero(), backend,
-                        allocator)
+    C = tensorcontract!(
+        C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero(), backend, allocator
+    )
     tree[1] isa Int || tensorfree!(A, allocator)
     tree[2] isa Int || tensorfree!(B, allocator)
     return C, IC, false
@@ -80,7 +82,7 @@ function nconoutput(network, output)
             end
         end
     end
-    isnothing(output) && return sort(outputindices; rev=true)
+    isnothing(output) && return sort(outputindices; rev = true)
 
     issetequal(output, outputindices) ||
         throw(ArgumentError("invalid NCON network: $network -> $output"))

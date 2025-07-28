@@ -6,8 +6,10 @@ tensorscalar(C::AbstractArray) = ndims(C) == 0 ? sum(C) : throw(DimensionMismatc
 
 tensorcost(C::AbstractArray, i) = size(C, i)
 
-function checkcontractible(A::AbstractArray, iA, conjA::Bool,
-                           B::AbstractArray, iB, conjB::Bool, label)
+function checkcontractible(
+        A::AbstractArray, iA, conjA::Bool,
+        B::AbstractArray, iB, conjB::Bool, label
+    )
     size(A, iA) == size(B, iB) ||
         throw(DimensionMismatch("Nonmatching dimensions for $label: $(size(A, iA)) != $(size(B, iB))"))
     return nothing
@@ -32,11 +34,14 @@ function select_backend(::typeof(tensortrace!), C::AbstractArray, A::AbstractArr
     end
 end
 
-function select_backend(::typeof(tensorcontract!), C::AbstractArray, A::AbstractArray,
-                        B::AbstractArray)
+function select_backend(
+        ::typeof(tensorcontract!), C::AbstractArray, A::AbstractArray, B::AbstractArray
+    )
     if all(_isstridedordiag, (A, B, C))
-        return select_backend(tensorcontract!, _stridedordiag(C), _stridedordiag(A),
-                              _stridedordiag(B))
+        return select_backend(
+            tensorcontract!, _stridedordiag(C), _stridedordiag(A),
+            _stridedordiag(B)
+        )
     else
         if eltype(C) <: LinearAlgebra.BlasFloat
             return BaseCopy()
@@ -60,7 +65,7 @@ Check that `C` has `numind(pC)` indices and that `pC` constitutes a valid permut
 """
 function argcheck_index2tuple(C::AbstractArray, pC::Index2Tuple)
     return ndims(C) == numind(pC) && isperm(linearize(pC)) ||
-           throw(IndexError("invalid permutation of length $(ndims(C)): $pC"))
+        throw(IndexError("invalid permutation of length $(ndims(C)): $pC"))
 end
 
 """
@@ -80,8 +85,9 @@ end
 Check that the partial trace of `A` over indices `q` and with permutation of the remaining
 indices `p` is compatible with output `C`.
 """
-function argcheck_tensortrace(C::AbstractArray, A::AbstractArray, p::Index2Tuple,
-                              q::Index2Tuple)
+function argcheck_tensortrace(
+        C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple
+    )
     ndims(C) == numind(p) ||
         throw(IndexError("invalid selection of length $(ndims(C)): $p"))
     2 * numin(q) == 2 * numout(q) == ndims(A) - ndims(C) ||
@@ -96,10 +102,12 @@ end
 Check that `C`, `A` and `pA`, and `B` and `pB` and `pAB` have compatible indices and number
 of dimensions.
 """
-function argcheck_tensorcontract(C::AbstractArray,
-                                 A::AbstractArray, pA::Index2Tuple,
-                                 B::AbstractArray, pB::Index2Tuple,
-                                 pAB::Index2Tuple)
+function argcheck_tensorcontract(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple,
+        B::AbstractArray, pB::Index2Tuple,
+        pAB::Index2Tuple
+    )
     argcheck_index2tuple(C, pAB)
     argcheck_index2tuple(A, pA)
     argcheck_index2tuple(B, pB)
@@ -129,8 +137,9 @@ end
 Check that `C` and `A` have compatible sizes for the trace and addition specified by `p` and
 `q`.
 """
-function dimcheck_tensortrace(C::AbstractArray, A::AbstractArray,
-                              p::Index2Tuple, q::Index2Tuple)
+function dimcheck_tensortrace(
+        C::AbstractArray, A::AbstractArray, p::Index2Tuple, q::Index2Tuple
+    )
     szA, szC = size(A), size(C)
     TupleTools.getindices(szA, q[1]) == TupleTools.getindices(szA, q[2]) ||
         throw(DimensionMismatch("non-matching sizes in traced dimensions"))
@@ -148,10 +157,12 @@ end
 Check that `C`, `A` and `B` have compatible sizes for the contraction specified by `pA`,
 `pB` and `pAB`.
 """
-function dimcheck_tensorcontract(C::AbstractArray,
-                                 A::AbstractArray, pA::Index2Tuple,
-                                 B::AbstractArray, pB::Index2Tuple,
-                                 pAB::Index2Tuple)
+function dimcheck_tensorcontract(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple,
+        B::AbstractArray, pB::Index2Tuple,
+        pAB::Index2Tuple
+    )
     szA, szB, szC = size(A), size(B), size(C)
     TupleTools.getindices(szA, pA[2]) == TupleTools.getindices(szB, pB[1]) ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))

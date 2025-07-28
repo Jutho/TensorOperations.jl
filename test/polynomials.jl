@@ -3,7 +3,7 @@ using DynamicPolynomials
 using Test
 
 using VectorInterface: VectorInterface
-const PolyTypes = Union{<:AbstractPolynomialLike,<:AbstractTermLike,<:AbstractMonomialLike}
+const PolyTypes = Union{<:AbstractPolynomialLike, <:AbstractTermLike, <:AbstractMonomialLike}
 # not clear if this is really the true `scalartype` we want
 VectorInterface.scalartype(T::Type{<:PolyTypes}) = T
 VectorInterface.zerovector!!(v::PolyTypes) = zero(v)

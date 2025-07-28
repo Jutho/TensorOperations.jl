@@ -69,7 +69,7 @@ the tensor operations as BLAS operations.
 """
 struct StridedBLAS <: AbstractBackend end
 
-const StridedBackend = Union{StridedNative,StridedBLAS}
+const StridedBackend = Union{StridedNative, StridedBLAS}
 
 # CuTENSOR backend
 #-----------------

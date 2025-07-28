@@ -44,18 +44,22 @@ See also [`tensorcopy!`](@ref).
 """
 function tensorcopy end
 
-function tensorcopy(IC::Labels, A, IA::Labels, conjA::Bool=false, α::Number=One();
-                    kwargs...)
+function tensorcopy(
+        IC::Labels, A, IA::Labels, conjA::Bool = false, α::Number = One();
+        kwargs...
+    )
     pA = add_indices(IA, IC)
     return tensorcopy(A, pA, conjA, α, _kwargs2args(; kwargs...)...)
 end
 # default `IC`
-function tensorcopy(A, IA::Labels, conjA::Bool=false, α::Number=One(); kwargs...)
+function tensorcopy(A, IA::Labels, conjA::Bool = false, α::Number = One(); kwargs...)
     return tensorcopy(IA, A, IA, conjA, α; kwargs...)
 end
 # expert mode
-function tensorcopy(A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
-                    backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensorcopy(
+        A, pA::Index2Tuple, conjA::Bool = false, α::Number = One(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     TC = promote_add(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, A, pA, conjA, Val(false), allocator)
     return tensorcopy!(C, A, pA, conjA, α, backend, allocator)
@@ -77,8 +81,10 @@ conjugated (`true`) or not (`false`).
 
 See also [`tensorcopy`](@ref) and [`tensoradd!`](@ref)
 """
-function tensorcopy!(C, A, pA::Index2Tuple, conjA::Bool=false, α::Number=One(),
-                     backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensorcopy!(
+        C, A, pA::Index2Tuple, conjA::Bool = false, α::Number = One(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     return tensoradd!(C, A, pA, conjA, α, Zero(), backend, allocator)
 end
 
@@ -103,32 +109,44 @@ See also [`tensoradd!`](@ref).
 """
 function tensoradd end
 
-function tensoradd(IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-                   α::Number=One(), β::Number=One(); kwargs...)
+function tensoradd(
+        IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+        α::Number = One(), β::Number = One();
+        kwargs...
+    )
     pA = add_indices(IA, IC)
     pB = add_indices(IB, IC)
     return tensoradd(A, pA, conjA, B, pB, conjB, α, β, _kwargs2args(; kwargs...)...)
 end
 # default `IC`
-function tensoradd(A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-                   α::Number=One(), β::Number=One(); kwargs...)
+function tensoradd(
+        A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+        α::Number = One(), β::Number = One();
+        kwargs...
+    )
     return tensoradd(IA, A, IA, conjA, B, IB, conjB, α, β; kwargs...)
 end
 # default `conjA` and `conjB`
-function tensoradd(IC::Labels, A, IA::Labels, B, IB::Labels,
-                   α::Number=One(), β::Number=One(); kwargs...)
+function tensoradd(
+        IC::Labels, A, IA::Labels, B, IB::Labels, α::Number = One(), β::Number = One();
+        kwargs...
+    )
     return tensoradd(IC, A, IA, false, B, IB, false, α, β)
 end
 # default `IC`, `conjA` and `conjB`
-function tensoradd(A, IA::Labels, B, IB::Labels, α::Number=One(), β::Number=One();
-                   kwargs...)
+function tensoradd(
+        A, IA::Labels, B, IB::Labels, α::Number = One(), β::Number = One();
+        kwargs...
+    )
     return tensoradd(IA, A, IA, B, IB, α, β; kwargs...)
 end
 # expert mode
-function tensoradd(A, pA::Index2Tuple, conjA::Bool,
-                   B, pB::Index2Tuple, conjB::Bool,
-                   α::Number=One(), β::Number=One(),
-                   backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensoradd(
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        α::Number = One(), β::Number = One(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     TC = promote_add(scalartype(A), scalartype(B), scalartype(α), scalartype(β))
     C = tensoralloc_add(TC, A, pA, conjA, Val(false), allocator)
     C = tensorcopy!(C, A, pA, conjA, α, backend, allocator)
@@ -155,25 +173,27 @@ See also [`tensortrace!`](@ref).
 """
 function tensortrace end
 
-function tensortrace(IC::Labels, A, IA::Labels, conjA::Bool, α::Number=One(); kwargs...)
+function tensortrace(IC::Labels, A, IA::Labels, conjA::Bool, α::Number = One(); kwargs...)
     p, q = trace_indices(IA, IC)
     return tensortrace(A, p, q, conjA, α, _kwargs2args(; kwargs...)...)
 end
 # default `IC`
-function tensortrace(A, IA::Labels, conjA::Bool, α::Number=One(); kwargs...)
+function tensortrace(A, IA::Labels, conjA::Bool, α::Number = One(); kwargs...)
     return tensortrace(unique2(IA), A, IA, conjA, α; kwargs...)
 end
 # default `conjA`
-function tensortrace(IC::Labels, A, IA::Labels, α::Number=One(); kwargs...)
+function tensortrace(IC::Labels, A, IA::Labels, α::Number = One(); kwargs...)
     return tensortrace(IC, A, IA, false, α; kwargs...)
 end
 # default `IC` and `conjA`
-function tensortrace(A, IA::Labels, α::Number=One(); kwargs...)
+function tensortrace(A, IA::Labels, α::Number = One(); kwargs...)
     return tensortrace(unique2(IA), A, IA, false, α; kwargs...)
 end
 # expert mode
-function tensortrace(A, p::Index2Tuple, q::Index2Tuple, conjA::Bool, α::Number=One(),
-                     backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensortrace(
+        A, p::Index2Tuple, q::Index2Tuple, conjA::Bool, α::Number = One(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     TC = promote_contract(scalartype(A), scalartype(α))
     C = tensoralloc_add(TC, A, p, conjA, Val(false), allocator)
     return tensortrace!(C, A, p, q, conjA, α, Zero(), backend, allocator)
@@ -202,34 +222,45 @@ See also [`tensorcontract!`](@ref).
 """
 function tensorcontract end
 
-function tensorcontract(IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-                        α::Number=One(); kwargs...)
+function tensorcontract(
+        IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+        α::Number = One();
+        kwargs...
+    )
     pA, pB, pAB = contract_indices(IA, IB, IC)
     return tensorcontract(A, pA, conjA, B, pB, conjB, pAB, α, _kwargs2args(; kwargs...)...)
 end
 # default `IC`
-function tensorcontract(A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-                        α::Number=One(); kwargs...)
+function tensorcontract(
+        A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+        α::Number = One();
+        kwargs...
+    )
     return tensorcontract(symdiff(IA, IB), A, IA, conjA, B, IB, conjB, α; kwargs...)
 end
 # default `conjA` and `conjB`
-function tensorcontract(IC::Labels, A, IA::Labels, B, IB::Labels, α::Number=One();
-                        kwargs...)
+function tensorcontract(
+        IC::Labels, A, IA::Labels, B, IB::Labels, α::Number = One();
+        kwargs...
+    )
     return tensorcontract(IC, A, IA, false, B, IB, false, α; kwargs...)
 end
 # default `IC`, `conjA` and `conjB`
-function tensorcontract(A, IA::Labels, B, IB::Labels, α::Number=One(); kwargs...)
+function tensorcontract(A, IA::Labels, B, IB::Labels, α::Number = One(); kwargs...)
     return tensorcontract(symdiff(IA, IB), A, IA, false, B, IB, false, α; kwargs...)
 end
 # expert mode
-function tensorcontract(A, pA::Index2Tuple, conjA::Bool,
-                        B, pB::Index2Tuple, conjB::Bool,
-                        pAB::Index2Tuple, α::Number=One(),
-                        backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensorcontract(
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple, α::Number = One(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     TC = promote_contract(scalartype(A), scalartype(B), scalartype(α))
     C = tensoralloc_contract(TC, A, pA, conjA, B, pB, conjB, pAB, Val(false), allocator)
-    return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend,
-                           allocator)
+    return tensorcontract!(
+        C, A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend, allocator
+    )
 end
 
 # ------------------------------------------------------------------------------------------
@@ -254,29 +285,36 @@ See also [`tensorproduct!`](@ref) and [`tensorcontract`](@ref).
 """
 function tensorproduct end
 
-function tensorproduct(IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-                       α::Number=One(); kwargs...)
+function tensorproduct(
+        IC::Labels, A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
+        α::Number = One();
+        kwargs...
+    )
     pA, pB, pAB = contract_indices(IA, IB, IC)
     return tensorproduct(A, pA, conjA, B, pB, conjB, pAB, α, _kwargs2args(; kwargs...)...)
 end
 # default `IC`
-function tensorproduct(A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool,
-                       α::Number=One(); kwargs...)
+function tensorproduct(
+        A, IA::Labels, conjA::Bool, B, IB::Labels, conjB::Bool, α::Number = One();
+        kwargs...
+    )
     return tensorproduct(vcat(IA, IB), A, IA, conjA, B, IB, conjB, α; kwargs...)
 end
 # default `conjA` and `conjB`
-function tensorproduct(IC::Labels, A, IA::Labels, B, IB::Labels, α::Number=One(); kwargs...)
+function tensorproduct(IC::Labels, A, IA::Labels, B, IB::Labels, α::Number = One(); kwargs...)
     return tensorproduct(IC, A, IA, false, B, IB, false, α; kwargs...)
 end
 # default `IC`, `conjA` and `conjB`
-function tensorproduct(A, IA::Labels, B, IB::Labels, α::Number=One(); kwargs...)
+function tensorproduct(A, IA::Labels, B, IB::Labels, α::Number = One(); kwargs...)
     return tensorproduct(vcat(IA, IB), A, IA, false, B, IB, false, α; kwargs...)
 end
 # expert mode
-function tensorproduct(A, pA::Index2Tuple, conjA::Bool,
-                       B, pB::Index2Tuple, conjB::Bool,
-                       pAB::Index2Tuple, α::Number=One(),
-                       backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensorproduct(
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple, α::Number = One(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract(A, pA, conjA, B, pB, conjB, pAB, α, backend, allocator)
@@ -297,12 +335,14 @@ objects are needed.
 
 See als [`tensorproduct`](@ref) and [`tensorcontract!`](@ref).
 """
-function tensorproduct!(C,
-                        A, pA::Index2Tuple, conjA::Bool,
-                        B, pB::Index2Tuple, conjB::Bool,
-                        pAB::Index2Tuple,
-                        α::Number=One(), β::Number=Zero(),
-                        backend=DefaultBackend(), allocator=DefaultAllocator())
+function tensorproduct!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number = One(), β::Number = Zero(),
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    )
     numin(pA) == 0 && numout(pB) == 0 ||
         throw(IndexError("not a valid tensor product"))
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)

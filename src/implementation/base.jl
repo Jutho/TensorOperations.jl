@@ -1,12 +1,13 @@
-
 #-------------------------------------------------------------------------------------------
 # AbstractArray implementation based on Base + LinearAlgebra
 #-------------------------------------------------------------------------------------------
 # Note that this is mostly for convenience + checking, and not for performance
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number,
-                    ::BaseView, allocator=DefaultAllocator())
+function tensoradd!(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        ::BaseView, allocator = DefaultAllocator()
+    )
     argcheck_tensoradd(C, A, pA)
     dimcheck_tensoradd(C, A, pA)
 
@@ -27,10 +28,12 @@ function tensoradd!(C::AbstractArray,
     end
     return C
 end
-function tensoradd!(C::AbstractArray,
-                    A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number,
-                    ::BaseCopy, allocator=DefaultAllocator())
+function tensoradd!(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        ::BaseCopy, allocator = DefaultAllocator()
+    )
     argcheck_tensoradd(C, A, pA)
     dimcheck_tensoradd(C, A, pA)
 
@@ -56,18 +59,21 @@ function tensoradd!(C::AbstractArray,
 end
 
 # tensortrace
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number,
-                      ::BaseView, allocator=DefaultAllocator())
+function tensortrace!(
+        C::AbstractArray,
+        A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        ::BaseView, allocator = DefaultAllocator()
+    )
     argcheck_tensortrace(C, A, p, q)
     dimcheck_tensortrace(C, A, p, q)
 
     szA = size(A)
     so = TupleTools.getindices(szA, linearize(p))
     st = prod(TupleTools.getindices(szA, q[1]))
-    Ã = reshape(PermutedDimsArray(A, (linearize(p)..., linearize(q)...)),
-                 (prod(so), st, st))
+    Ã = reshape(
+        PermutedDimsArray(A, (linearize(p)..., linearize(q)...)), (prod(so), st, st)
+    )
 
     if conjA
         if iszero(β)
@@ -90,10 +96,12 @@ function tensortrace!(C::AbstractArray,
     end
     return C
 end
-function tensortrace!(C::AbstractArray,
-                      A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number,
-                      ::BaseCopy, allocator=DefaultAllocator())
+function tensortrace!(
+        C::AbstractArray,
+        A::AbstractArray, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        ::BaseCopy, allocator = DefaultAllocator()
+    )
     argcheck_tensortrace(C, A, p, q)
     dimcheck_tensortrace(C, A, p, q)
 
@@ -126,12 +134,14 @@ function tensortrace!(C::AbstractArray,
     return C
 end
 
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::BaseView, allocator=DefaultAllocator())
+function tensorcontract!(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        ::BaseView, allocator = DefaultAllocator()
+    )
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -165,12 +175,14 @@ function tensorcontract!(C::AbstractArray,
     end
     return C
 end
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::BaseCopy, allocator=DefaultAllocator())
+function tensorcontract!(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        ::BaseCopy, allocator = DefaultAllocator()
+    )
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -183,8 +195,10 @@ function tensorcontract!(C::AbstractArray,
     soB1 = prod(soB)
     sc1 = prod(sc)
 
-    AB = tensoralloc_contract(eltype(C), A, pA, conjA, B, pB, conjB,
-                              trivialpermutation(pAB), Val(true), allocator)
+    AB = tensoralloc_contract(
+        eltype(C), A, pA, conjA, B, pB, conjB,
+        trivialpermutation(pAB), Val(true), allocator
+    )
     ÃB̃ = reshape(AB, (soA1, soB1))
     if conjA && conjB
         Atemp = tensoralloc_add(eltype(C), A, reverse(pA), conjA, Val(true), allocator)

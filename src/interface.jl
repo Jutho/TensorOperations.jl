@@ -21,22 +21,28 @@ function tensoradd!(C, A, pA::Index2Tuple, conjA::Bool)
     return tensoradd!(C, A, pA, conjA, One(), One())
 end
 # insert default backend
-function tensoradd!(C,
-                    A, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number)
+function tensoradd!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        α::Number, β::Number
+    )
     return tensoradd!(C, A, pA, conjA, α, β, DefaultBackend())
 end
 # insert default allocator
-function tensoradd!(C,
-                    A, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number, backend)
+function tensoradd!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        α::Number, β::Number, backend
+    )
     return tensoradd!(C, A, pA, conjA, α, β, backend, DefaultAllocator())
 end
 # replace default backend with select_backend mechanism
-function tensoradd!(C,
-                    A, pA::Index2Tuple, conjA::Bool,
-                    α::Number, β::Number,
-                    backend, allocator)
+function tensoradd!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        backend, allocator
+    )
     if backend isa DefaultBackend
         newbackend = select_backend(tensoradd!, C, A)
         return tensoradd!(C, A, pA, conjA, α, β, newbackend, allocator)
@@ -74,22 +80,28 @@ function tensortrace!(C, A, p::Index2Tuple, q::Index2Tuple, conjA::Bool)
     return tensortrace!(C, A, p, q, conjA, One(), Zero())
 end
 # insert default backend
-function tensortrace!(C,
-                      A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number)
+function tensortrace!(
+        C,
+        A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+        α::Number, β::Number
+    )
     return tensortrace!(C, A, p, q, conjA, α, β, DefaultBackend())
 end
 # insert default allocator
-function tensortrace!(C,
-                      A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number, backend)
+function tensortrace!(
+        C,
+        A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+        α::Number, β::Number, backend
+    )
     return tensortrace!(C, A, p, q, conjA, α, β, backend, DefaultAllocator())
 end
 # replace default backend with select_backend mechanism
-function tensortrace!(C,
-                      A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
-                      α::Number, β::Number,
-                      backend, allocator)
+function tensortrace!(
+        C,
+        A, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        backend, allocator
+    )
     if backend isa DefaultBackend
         newbackend = select_backend(tensortrace!, C, A)
         return tensortrace!(C, A, p, q, conjA, α, β, newbackend, allocator)
@@ -124,40 +136,49 @@ See also [`tensorcontract`](@ref).
 """
 function tensorcontract! end
 # insert default α and β arguments
-function tensorcontract!(C,
-                         A, pA::Index2Tuple, conjA::Bool,
-                         B, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple)
+function tensorcontract!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, One(), Zero())
 end
 # insert default backend
-function tensorcontract!(C,
-                         A, pA::Index2Tuple, conjA::Bool,
-                         B, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number)
+function tensorcontract!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number
+    )
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, DefaultBackend())
 end
 # insert default allocator
-function tensorcontract!(C,
-                         A, pA::Index2Tuple, conjA::Bool,
-                         B, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number, backend)
+function tensorcontract!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number, backend
+    )
     allocator = DefaultAllocator()
     return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
 end
 # replace default backend with select_backend mechanism
-function tensorcontract!(C,
-                         A, pA::Index2Tuple, conjA::Bool,
-                         B, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         backend, allocator)
+function tensorcontract!(
+        C,
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        backend, allocator
+    )
     if backend isa DefaultBackend
         newbackend = select_backend(tensorcontract!, C, A, B)
-        return tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, newbackend,
-                               allocator)
+        return tensorcontract!(
+            C, A, pA, conjA, B, pB, conjB, pAB, α, β, newbackend, allocator
+        )
     elseif backend isa NoBackend
         # error for missing backend
         TC = typeof(C)

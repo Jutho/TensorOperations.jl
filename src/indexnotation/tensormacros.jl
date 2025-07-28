@@ -188,7 +188,7 @@ macro tensoropt_verbose(expressions...)
     end
 
     parser = TensorParser()
-    parser.contractiontreebuilder = network -> optimaltree(network, optdict; verbose=true)[1]
+    parser.contractiontreebuilder = network -> optimaltree(network, optdict; verbose = true)[1]
     return esc(parser(ex))
 end
 
@@ -247,14 +247,18 @@ macro ncon(args...)
         return _nconmacro(args[2], args[3], args[1])
     end
 end
-function _nconmacro(tensors, indices, kwargs=nothing)
+function _nconmacro(tensors, indices, kwargs = nothing)
     if !(tensors isa Expr) # there is not much that we can do
         if kwargs === nothing
-            ex = Expr(:call, :ncon, tensors, indices,
-                      Expr(:call, :fill, false, Expr(:call, :length, tensors)))
+            ex = Expr(
+                :call, :ncon, tensors, indices,
+                Expr(:call, :fill, false, Expr(:call, :length, tensors))
+            )
         else
-            ex = Expr(:call, :ncon, kwargs, tensors, indices,
-                      Expr(:call, :fill, false, Expr(:call, :length, tensors)))
+            ex = Expr(
+                :call, :ncon, kwargs, tensors, indices,
+                Expr(:call, :fill, false, Expr(:call, :length, tensors))
+            )
         end
         return esc(ex)
     end

@@ -18,10 +18,10 @@ tsetdiff(a::Tuple, b::Tuple) = tsetdiff(tsetdiff(a, (b[1],)), tail(b))
 
 # tuple unique: assumes that every element appears exactly twice
 tunique(src::Tuple) = tunique(src, ())
-tunique(src::NTuple{N,Any}, dst::NTuple{N,Any}) where {N} = dst
+tunique(src::NTuple{N, Any}, dst::NTuple{N, Any}) where {N} = dst
 function tunique(src::Tuple, dst::Tuple)
     return src[1] in dst ? tunique((tail(src)..., src[1]), dst) :
-           tunique(tail(src), (dst..., src[1]))
+        tunique(tail(src), (dst..., src[1]))
 end
 
 # type stable find, returns zero if not found
@@ -57,7 +57,7 @@ end
 # Extract index information
 #-------------------------------------------------------------------------------------------
 add_indices(IA, IC) = add_indices(tuple(IA...), tuple(IC...))
-function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
+function add_indices(IA::NTuple{NA, Any}, IC::NTuple{NC, Any}) where {NA, NC}
     indCinA = map(l -> _findfirst(isequal(l), IA), IC)
     (NA == NC && isperm(indCinA)) ||
         throw(IndexError("invalid index specification: $IA to $IC"))
@@ -65,7 +65,7 @@ function add_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
 end
 
 trace_indices(IA, IC) = trace_indices(tuple(IA...), tuple(IC...))
-function trace_indices(IA::NTuple{NA,Any}, IC::NTuple{NC,Any}) where {NA,NC}
+function trace_indices(IA::NTuple{NA, Any}, IC::NTuple{NC, Any}) where {NA, NC}
     # trace indices
     isodd(length(IA) - length(IC)) &&
         throw(IndexError("invalid trace specification: $IA to $IC"))
@@ -84,8 +84,9 @@ end
 function contract_indices(IA, IB, IC)
     return contract_indices(tuple(IA...), tuple(IB...), tuple(IC...))
 end
-function contract_indices(IA::NTuple{NA,Any}, IB::NTuple{NB,Any},
-                          IC::NTuple{NC,Any}) where {NA,NB,NC}
+function contract_indices(
+        IA::NTuple{NA, Any}, IB::NTuple{NB, Any}, IC::NTuple{NC, Any}
+    ) where {NA, NB, NC}
     # labels
     IAB = (IA..., IB...)
     isodd(length(IAB) - length(IC)) &&

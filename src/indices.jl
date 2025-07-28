@@ -3,11 +3,11 @@
     
 Exception type for reporting errors in the index specification.
 """
-struct IndexError{S<:AbstractString} <: Exception
+struct IndexError{S <: AbstractString} <: Exception
     msg::S
 end
 
-const IndexTuple{N} = NTuple{N,Int}
+const IndexTuple{N} = NTuple{N, Int}
 
 """
     Index2Tuple{N₁,N₂} = Tuple{NTuple{N₁,Int},NTuple{N₂,Int}}
@@ -15,7 +15,7 @@ const IndexTuple{N} = NTuple{N,Int}
 A specification of a permutation of `N₁ + N₂` indices that are partitioned into `N₁` left
 and `N₂` right indices.
 """
-const Index2Tuple{N₁,N₂} = Tuple{IndexTuple{N₁},IndexTuple{N₂}}
+const Index2Tuple{N₁, N₂} = Tuple{IndexTuple{N₁}, IndexTuple{N₂}}
 
 linearize(p::Index2Tuple) = (p[1]..., p[2]...)
 numout(p::Index2Tuple) = length(p[1])
@@ -35,11 +35,11 @@ istrivialpermutation(p::Index2Tuple) = p == trivialpermutation(p)
 
 Alias for supported label types.
 """
-const LabelType = Union{Int,Symbol,Char}
+const LabelType = Union{Int, Symbol, Char}
 
 """
     const Labels{I<:LabelType} = Union{Tuple{Vararg{I}},Vector{I}}
 
 Alias for supported label containers.
 """
-const Labels{I<:LabelType} = Union{Tuple{Vararg{I}},AbstractVector{I}}
+const Labels{I <: LabelType} = Union{Tuple{Vararg{I}}, AbstractVector{I}}

@@ -1,4 +1,4 @@
-# general implementation for backends that implement tensor contractions by permuting and 
+# general implementation for backends that implement tensor contractions by permuting and
 # reshaping the input tensors and then calling a BLAS routine to perform the contraction
 
 # all of the following methods expect that basic argument checks on dimensionality and
@@ -10,8 +10,10 @@ function blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
         map(n -> ifelse(n > N₁, n - N₁, n + N₂), linearize(pAB))
     end
     tpAB = trivialpermutation(pAB)
-    rpAB = (TupleTools.getindices(indCinoBA, tpAB[1]),
-            TupleTools.getindices(indCinoBA, tpAB[2]))
+    rpAB = (
+        TupleTools.getindices(indCinoBA, tpAB[1]),
+        TupleTools.getindices(indCinoBA, tpAB[2]),
+    )
 
     if contract_memcost(C, A, pA, B, pB, pAB) <= contract_memcost(C, B, rpB, A, rpA, rpAB)
         return _blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
@@ -20,12 +22,14 @@ function blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
     end
 end
 # specialised fast path for matrix matrix multiplication
-function blas_contract!(C::StridedView{T,2},
-                        A::StridedView{T,2}, pA::Index2Tuple{1,1},
-                        B::StridedView{T,2}, pB::Index2Tuple{1,1},
-                        pAB::Index2Tuple{1,1},
-                        α::Number, β::Number,
-                        backend, allocator) where {T}
+function blas_contract!(
+        C::StridedView{T, 2},
+        A::StridedView{T, 2}, pA::Index2Tuple{1, 1},
+        B::StridedView{T, 2}, pB::Index2Tuple{1, 1},
+        pAB::Index2Tuple{1, 1},
+        α::Number, β::Number,
+        backend, allocator
+    ) where {T}
     A′ = pA == ((1,), (2,)) ? A : transpose(A)
     B′ = pB == ((1,), (2,)) ? B : transpose(B)
     if pAB == ((1,), (2,))
@@ -50,8 +54,10 @@ function _blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
         _unsafe_blas_contract!(C_, A_, pA, B_, pB, ipAB, α, β)
     else
         C_ = SV(tensoralloc_add(TC, C, ipAB, false, Val(true), allocator))
-        _unsafe_blas_contract!(C_, A_, pA, B_, pB, trivialpermutation(ipAB),
-                               one(TC), zero(TC))
+        _unsafe_blas_contract!(
+            C_, A_, pA, B_, pB, trivialpermutation(ipAB),
+            one(TC), zero(TC)
+        )
         tensoradd!(C, C_, pAB, false, α, β, backend, allocator)
         tensorfree!(C_.parent, allocator)
     end
@@ -62,10 +68,12 @@ end
 
 # perform the actual contraction, assuming it can be done as matrix multiplication by simply
 # reshaping without any further allocations
-function _unsafe_blas_contract!(C::StridedView{T},
-                                A::StridedView{T}, pA,
-                                B::StridedView{T}, pB,
-                                pAB, α, β) where {T<:BlasFloat}
+function _unsafe_blas_contract!(
+        C::StridedView{T},
+        A::StridedView{T}, pA,
+        B::StridedView{T}, pB,
+        pAB, α, β
+    ) where {T <: BlasFloat}
     sizeA = size(A)
     sizeB = size(B)
     csizeA = TupleTools.getindices(sizeA, pA[2])
@@ -73,10 +81,12 @@ function _unsafe_blas_contract!(C::StridedView{T},
     osizeA = TupleTools.getindices(sizeA, pA[1])
     osizeB = TupleTools.getindices(sizeB, pB[2])
 
-    mul!(sreshape(permutedims(C, linearize(pAB)), (prod(osizeA), prod(osizeB))),
-         sreshape(permutedims(A, linearize(pA)), (prod(osizeA), prod(csizeA))),
-         sreshape(permutedims(B, linearize(pB)), (prod(csizeB), prod(osizeB))),
-         α, β)
+    mul!(
+        sreshape(permutedims(C, linearize(pAB)), (prod(osizeA), prod(osizeB))),
+        sreshape(permutedims(A, linearize(pA)), (prod(osizeA), prod(csizeA))),
+        sreshape(permutedims(B, linearize(pB)), (prod(csizeB), prod(osizeB))),
+        α, β
+    )
 
     return C
 end
@@ -160,6 +170,6 @@ end
 function contract_memcost(C, A, pA, B, pB, pAB)
     ipAB = oindABinC(pAB, pA, pB)
     return length(A) * (!isblascontractable(A, pA) || eltype(A) !== eltype(C)) +
-           length(B) * (!isblascontractable(B, pB) || eltype(B) !== eltype(C)) +
-           length(C) * !isblasdestination(C, ipAB)
+        length(B) * (!isblascontractable(B, pB) || eltype(B) !== eltype(C)) +
+        length(C) * !isblasdestination(C, ipAB)
 end

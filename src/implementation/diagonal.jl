@@ -1,12 +1,14 @@
 #-------------------------------------------------------------------------------------------
 # Specialized implementations for contractions involving diagonal matrices
 #-------------------------------------------------------------------------------------------
-function tensorcontract!(C::AbstractArray,
-                         A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::StridedNative, allocator=DefaultAllocator())
+function tensorcontract!(
+        C::AbstractArray,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        B::Diagonal, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        ::StridedNative, allocator = DefaultAllocator()
+    )
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -22,12 +24,14 @@ function tensorcontract!(C::AbstractArray,
     return C
 end
 
-function tensorcontract!(C::AbstractArray,
-                         A::Diagonal, pA::Index2Tuple, conjA::Bool,
-                         B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::StridedNative, allocator=DefaultAllocator())
+function tensorcontract!(
+        C::AbstractArray,
+        A::Diagonal, pA::Index2Tuple, conjA::Bool,
+        B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        ::StridedNative, allocator = DefaultAllocator()
+    )
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -37,8 +41,10 @@ function tensorcontract!(C::AbstractArray,
         map(n -> ifelse(n > N₁, n - N₁, n + N₂), linearize(pAB))
     end
     tpAB = trivialpermutation(pAB)
-    rpAB = (TupleTools.getindices(indCinoBA, tpAB[1]),
-            TupleTools.getindices(indCinoBA, tpAB[2]))
+    rpAB = (
+        TupleTools.getindices(indCinoBA, tpAB[1]),
+        TupleTools.getindices(indCinoBA, tpAB[2]),
+    )
 
     if conjA && conjB
         _diagtensorcontract!(SV(C), conj(SV(B)), rpB, conj(SV(A.diag)), rpA, rpAB, α, β)
@@ -52,12 +58,14 @@ function tensorcontract!(C::AbstractArray,
     return C
 end
 
-function tensorcontract!(C::AbstractArray,
-                         A::Diagonal, pA::Index2Tuple, conjA::Bool,
-                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::StridedNative, allocator=DefaultAllocator())
+function tensorcontract!(
+        C::AbstractArray,
+        A::Diagonal, pA::Index2Tuple, conjA::Bool,
+        B::Diagonal, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        ::StridedNative, allocator = DefaultAllocator()
+    )
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -73,12 +81,14 @@ function tensorcontract!(C::AbstractArray,
     return C
 end
 
-function tensorcontract!(C::Diagonal,
-                         A::Diagonal, pA::Index2Tuple, conjA::Bool,
-                         B::Diagonal, pB::Index2Tuple, conjB::Bool,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         ::StridedNative, allocator=DefaultAllocator())
+function tensorcontract!(
+        C::Diagonal,
+        A::Diagonal, pA::Index2Tuple, conjA::Bool,
+        B::Diagonal, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        ::StridedNative, allocator = DefaultAllocator()
+    )
     argcheck_tensorcontract(C, A, pA, B, pB, pAB)
     dimcheck_tensorcontract(C, A, pA, B, pB, pAB)
 
@@ -98,10 +108,12 @@ function tensorcontract!(C::Diagonal,
     return C
 end
 
-function _diagtensorcontract!(C::StridedView,
-                              A::StridedView, pA::Index2Tuple,
-                              Bdiag::StridedView, pB::Index2Tuple,
-                              pAB::Index2Tuple, α::Number, β::Number)
+function _diagtensorcontract!(
+        C::StridedView,
+        A::StridedView, pA::Index2Tuple,
+        Bdiag::StridedView, pB::Index2Tuple,
+        pAB::Index2Tuple, α::Number, β::Number
+    )
     sizeA = i -> size(A, i)
     csizeA = sizeA.(pA[2])
     osizeA = sizeA.(pA[1])
@@ -140,10 +152,12 @@ function _diagtensorcontract!(C::StridedView,
     return C
 end
 
-function _diagdiagcontract!(C::StridedView,
-                            Adiag::StridedView, pA::Index2Tuple,
-                            Bdiag::StridedView, pB::Index2Tuple,
-                            pAB::Index2Tuple, α::Number, β::Number)
+function _diagdiagcontract!(
+        C::StridedView,
+        Adiag::StridedView, pA::Index2Tuple,
+        Bdiag::StridedView, pB::Index2Tuple,
+        pAB::Index2Tuple, α::Number, β::Number
+    )
     if numin(pA) == 1 # matrix multiplication
         scale!(C, β)
         β = one(β)

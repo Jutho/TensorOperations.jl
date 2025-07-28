@@ -28,7 +28,7 @@ parameters `Min`, `Mout`, `Mtemp` can be any of the CUDA.jl memory types, i.e.
   `CUDA.default_memory` which is `CUDA.DeviceMemory`. Only if many or huge temporary tensors
   are expected could it be useful to choose `CUDA.UnifiedMemory`.
 """
-struct CUDAAllocator{Mout,Min,Mtemp} end
+struct CUDAAllocator{Mout, Min, Mtemp} end
 
 """
     ManualAllocator()
@@ -72,8 +72,10 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_add(TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val=Val(false),
-                         allocator=DefaultAllocator())
+function tensoralloc_add(
+        TC, A, pA::Index2Tuple, conjA::Bool, istemp::Val = Val(false),
+        allocator = DefaultAllocator()
+    )
     ttype = tensoradd_type(TC, A, pA, conjA)
     structure = tensoradd_structure(A, pA, conjA)
     return tensoralloc(ttype, structure, istemp, allocator)
@@ -92,11 +94,13 @@ used to implement different allocation strategies.
 
 See also [`tensoralloc`](@ref) and [`tensorfree!`](@ref).
 """
-function tensoralloc_contract(TC,
-                              A, pA::Index2Tuple, conjA::Bool,
-                              B, pB::Index2Tuple, conjB::Bool,
-                              pAB::Index2Tuple, istemp::Val=Val(false),
-                              allocator=DefaultAllocator())
+function tensoralloc_contract(
+        TC,
+        A, pA::Index2Tuple, conjA::Bool,
+        B, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple, istemp::Val = Val(false),
+        allocator = DefaultAllocator()
+    )
     ttype = tensorcontract_type(TC, A, pA, conjA, B, pB, conjB, pAB)
     structure = tensorcontract_structure(A, pA, conjA, B, pB, conjB, pAB)
     return tensoralloc(ttype, structure, istemp, allocator)
@@ -110,10 +114,10 @@ tensorstructure(A::AbstractArray) = size(A)
 tensorstructure(A::AbstractArray, iA::Int, conjA::Bool) = size(A, iA)
 
 function tensoradd_type(TC, A::Array, pA::Index2Tuple, conjA::Bool)
-    return Array{TC,sum(length.(pA))}
+    return Array{TC, sum(length.(pA))}
 end
 function tensoradd_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool)
-    return Array{TC,sum(length.(pA))}
+    return Array{TC, sum(length.(pA))}
 end
 function tensoradd_type(TC, A::SubArray, pA::Index2Tuple, conjA::Bool)
     return tensoradd_type(TC, A.parent, pA, conjA)
@@ -129,9 +133,12 @@ function tensoradd_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool)
     return size.(Ref(A), linearize(pA))
 end
 
-function tensorcontract_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                             B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                             pAB::Index2Tuple)
+function tensorcontract_type(
+        TC,
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
     T1 = tensoradd_type(TC, A, pAB, conjA)
     T2 = tensoradd_type(TC, B, pAB, conjB)
     if T1 == T2
@@ -141,15 +148,17 @@ function tensorcontract_type(TC, A::AbstractArray, pA::Index2Tuple, conjA::Bool,
     end
 end
 
-function tensorcontract_structure(A::AbstractArray, pA::Index2Tuple, conjA::Bool,
-                                  B::AbstractArray, pB::Index2Tuple, conjB::Bool,
-                                  pAB::Index2Tuple)
+function tensorcontract_structure(
+        A::AbstractArray, pA::Index2Tuple, conjA::Bool,
+        B::AbstractArray, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
     return let lA = length(pA[1])
         map(n -> n <= lA ? size(A, pA[1][n]) : size(B, pB[2][n - lA]), linearize(pAB))
     end
 end
 
-function tensoralloc(ttype, structure, ::Val=Val(false), allocator=DefaultAllocator())
+function tensoralloc(ttype, structure, ::Val = Val(false), allocator = DefaultAllocator())
     C = ttype(undef, structure)
     # fix an issue with undefined references for strided arrays
     if !isbitstype(scalartype(ttype))
@@ -158,13 +167,14 @@ function tensoralloc(ttype, structure, ::Val=Val(false), allocator=DefaultAlloca
     return C
 end
 
-tensorfree!(C, allocator=DefaultAllocator()) = nothing
+tensorfree!(C, allocator = DefaultAllocator()) = nothing
 
 # ------------------------------------------------------------------------------------------
 # ManualAllocator implementation
 # ------------------------------------------------------------------------------------------
-function tensoralloc(::Type{A}, structure, ::Val{istemp},
-                     ::ManualAllocator) where {A<:AbstractArray,istemp}
+function tensoralloc(
+        ::Type{A}, structure, ::Val{istemp}, ::ManualAllocator
+    ) where {A <: AbstractArray, istemp}
     if istemp
         return malloc(eltype(A), structure...)
     else

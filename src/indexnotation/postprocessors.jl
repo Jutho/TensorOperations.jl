@@ -45,12 +45,14 @@ function removelinenumbernode(ex)
 end
 
 # list of functions that are used in expressions produced by `@tensor`
-const tensoroperationsfunctions = (:tensoralloc, :tensorfree!,
-                                   :tensoradd!, :tensortrace!, :tensorcontract!,
-                                   :tensorscalar, :tensorcost, :IndexError, :scalartype,
-                                   :checkcontractible, :promote_contract, :promote_add,
-                                   :tensoralloc_add, :tensoralloc_contract,
-                                   :treecost, :optimaltree, :tree2indexorder)
+const tensoroperationsfunctions = (
+    :tensoralloc, :tensorfree!,
+    :tensoradd!, :tensortrace!, :tensorcontract!,
+    :tensorscalar, :tensorcost, :IndexError, :scalartype,
+    :checkcontractible, :promote_contract, :promote_add,
+    :tensoralloc_add, :tensoralloc_contract,
+    :treecost, :optimaltree, :tree2indexorder,
+)
 """
     addtensoroperations(ex)
 
@@ -58,8 +60,10 @@ Fix references to TensorOperations functions in namespaces where `@tensor` is pr
 """
 function addtensoroperations(ex)
     if isexpr(ex, :call) && ex.args[1] in tensoroperationsfunctions
-        return Expr(ex.head, GlobalRef(TensorOperations, ex.args[1]),
-                    (addtensoroperations(ex.args[i]) for i in 2:length(ex.args))...)
+        return Expr(
+            ex.head, GlobalRef(TensorOperations, ex.args[1]),
+            (addtensoroperations(ex.args[i]) for i in 2:length(ex.args))...
+        )
     elseif isa(ex, Expr)
         return Expr(ex.head, (addtensoroperations(e) for e in ex.args)...)
     else
@@ -75,8 +79,7 @@ Insert an extra argument into a tensor operation, e.g. for any `op` ∈ `methods
 """
 function insertargument(ex, arg, methods)
     if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
-       ex.args[1].mod == TensorOperations &&
-       ex.args[1].name ∈ methods
+            ex.args[1].mod == TensorOperations && ex.args[1].name ∈ methods
         return Expr(:call, ex.args..., arg)
     elseif isa(ex, Expr)
         return Expr(ex.head, (insertargument(e, arg, methods) for e in ex.args)...)
@@ -102,7 +105,11 @@ Insert the allocator argument into the tensor operation and allocation methods `
 and `tensorfree!`.
 """
 function insertallocator(ex, allocator)
-    return insertargument(ex, allocator,
-                          (:tensoradd!, :tensortrace!, :tensorcontract!, :tensoralloc,
-                           :tensoralloc_add, :tensoralloc_contract, :tensorfree!))
+    return insertargument(
+        ex, allocator,
+        (
+            :tensoradd!, :tensortrace!, :tensorcontract!, :tensoralloc,
+            :tensoralloc_add, :tensoralloc_contract, :tensorfree!,
+        )
+    )
 end
