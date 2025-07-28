@@ -1,37 +1,39 @@
-const NCONSTYLE = "Valid ncon style network"
+"""
+    check_nconstyle(::Type{Bool}, network) -> Bool
+    check_nconstyle(network) -> Nothing
+    
+Verify if a list of indices specifies a tensor contraction in ncon style.
+"""
+check_nconstyle(::Type{Bool}, network) = _check_nconstyle_error(network, Val(true))
+check_nconstyle(network) = (_check_nconstyle_error(network, Val(false)); nothing)
 
-# check if a list of indices specifies a tensor contraction in ncon style
-function isnconstyle(network)
-    return _nconstyle_error(network) == NCONSTYLE
-end
+isnconstyle(network) = check_nconstyle(Bool, network)
 
-function _nconstyle_error(network)
+function _check_nconstyle_error(network, ::Val{check}) where {check}
     allindices = Vector{Int}()
     for ind in network
-        all(i -> isa(i, Integer), ind) || return "All indices must be integers"
+        all(i -> isa(i, Integer), ind) && return check ? false :
+            throw(IndexError("All indices must be integers"))
         append!(allindices, ind)
     end
     while length(allindices) > 0
         i = pop!(allindices)
         if i > 0 # positive labels represent contractions or traces and should appear twice
             k = findfirst(isequal(i), allindices)
-            k === nothing && return "Index $i appears only once in the network"
+            isnothing(k) && return check ? false :
+                throw(IndexError(lazy"Index $i appears only once in the network"))
             l = findnext(isequal(i), allindices, k + 1)
-            l !== nothing && return "Index $i appears more than twice in the network"
+            !isnothing(l) && return check ? false :
+                throw(IndexError(lazy"Index $i appears more than twice in the network"))
             deleteat!(allindices, k)
         elseif i < 0 # negative labels represent open indices and should appear once
-            findfirst(isequal(i), allindices) === nothing || return "Index $i appears more than once in the network"
+            isnothing(findfirst(isequal(i), allindices)) || return check ? false :
+                throw(IndexError(lazy"Index $i appears more than once in the network"))
         else # i == 0
-            return "Index 0 is not allowed in the network"
+            return check ? false : throw(IndexError("Index 0 is not allowed in the network"))
         end
     end
-    return NCONSTYLE
-end
-
-function nconstylecheck(network)
-    err = _nconstyle_error(network)
-    err === NCONSTYLE || throw(ArgumentError(err))
-    return nothing
+    return true
 end
 
 function ncontree(network)
