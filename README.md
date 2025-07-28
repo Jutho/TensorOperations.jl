@@ -1,4 +1,7 @@
-<img src="https://github.com/Jutho/TensorOperations.jl/blob/master/docs/src/assets/logo.svg" width="150">
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/Jutho/TensorOperations.jl/blob/master/docs/src/assets/logo-dark.svg">
+    <img alt="TensorOperations.jl logo" src="https://github.com/Jutho/TensorOperations.jl/blob/master/docs/src/assets/logo.svg" width="150">
+</picture>
 
 # TensorOperations.jl
 
