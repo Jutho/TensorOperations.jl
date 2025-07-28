@@ -12,7 +12,7 @@ isnconstyle(network) = check_nconstyle(Bool, network)
 function _check_nconstyle_error(network, ::Val{check}) where {check}
     allindices = Vector{Int}()
     for ind in network
-        all(i -> isa(i, Integer), ind) && return check ? false :
+        all(i -> isa(i, Integer), ind) || return check ? false :
             throw(IndexError("All indices must be integers"))
         append!(allindices, ind)
     end
