@@ -1,25 +1,37 @@
+const NCONSTYLE = "Valid ncon style network"
+
 # check if a list of indices specifies a tensor contraction in ncon style
 function isnconstyle(network)
+    return _nconstyle_error(network) == NCONSTYLE
+end
+
+function _nconstyle_error(network)
     allindices = Vector{Int}()
     for ind in network
-        all(i -> isa(i, Integer), ind) || return false
+        all(i -> isa(i, Integer), ind) || return "All indices must be integers"
         append!(allindices, ind)
     end
     while length(allindices) > 0
         i = pop!(allindices)
         if i > 0 # positive labels represent contractions or traces and should appear twice
             k = findfirst(isequal(i), allindices)
-            k === nothing && return false
+            k === nothing && return "Index $i appears only once in the network"
             l = findnext(isequal(i), allindices, k + 1)
-            l !== nothing && return false
+            l !== nothing && return "Index $i appears more than twice in the network"
             deleteat!(allindices, k)
         elseif i < 0 # negative labels represent open indices and should appear once
-            findfirst(isequal(i), allindices) === nothing || return false
+            findfirst(isequal(i), allindices) === nothing || return "Index $i appears more than once in the network"
         else # i == 0
-            return false
+            return "Index 0 is not allowed in the network"
         end
     end
-    return true
+    return NCONSTYLE
+end
+
+function nconstylecheck(network)
+    err = _nconstyle_error(network)
+    err === NCONSTYLE || throw(ArgumentError(err))
+    return nothing
 end
 
 function ncontree(network)
