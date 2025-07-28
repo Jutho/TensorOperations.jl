@@ -28,7 +28,7 @@ function ncon(
     )
     length(tensors) == length(network) == length(conjlist) ||
         throw(ArgumentError("number of tensors and of index lists should be the same"))
-    nconstylecheck(network) # asserts that the network is in ncon style
+    check_nconstyle(network)
     output′ = nconoutput(network, output)
 
     if length(tensors) == 1
